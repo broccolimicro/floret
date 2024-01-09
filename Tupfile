@@ -7,11 +7,11 @@ LIBRARIES = -l:libpgen.a
 ifeq (@(TUP_PLATFORM),windows)
 CXX           = x86_64-w64-mingw32-g++
 PEGC         = deps/pgen/pgen-windows.exe
-TARGET        = floret-@(TUP_PLATFORM).exe
+TARGET        = floret.exe
 else
 CXX           = g++
 PEGC         = deps/pgen/pgen-linux
-TARGET        = floret-@(TUP_PLATFORM)
+TARGET        = floret
 endif
 
 # Grammar

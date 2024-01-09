@@ -15,12 +15,15 @@ tup
 
 This will install it to `/usr/local/bin`:
 ```
-mv build-linux/floret-linux /usr/local/bin/floret
+cp build-linux/floret /usr/local/bin
 ```
 
 ## Examples
 
-TODO
+This will create the `cells` directory and run cell layout for all cells in the `test` directory.
+```
+./build-linux/floret -c cells test/*.spi
+```
 
 ## Cell Layout
 
