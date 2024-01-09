@@ -64,10 +64,12 @@ The UNIX design philosophy is a good foundation to build on. However, VLSI CAD t
 ## Documentation Format
 
 **Structs**
+*Only needed for more complex structures*
 1. Purpose of struct
 2. Example usage of struct
 
 **Functions**
+*Only needed for more complex functions*
 1. Description of operation
 2. Inputs (format, purpose)
 3. Outputs (format, purpose)
