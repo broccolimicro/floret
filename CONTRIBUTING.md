@@ -18,6 +18,7 @@ The UNIX design philosophy is a good foundation to build on. However, VLSI CAD t
     * Document thoroughly in comments
     * Always use public structures (we're all adults here)
     * Use CamelCase (structs are capitalized, functions and instances are not)
+4. File conversion programs should have import and export functionaliy for all filetypes associated with a single purpose. (ex. storing geometry: gds, lef, def, rect, ...)
 
 ## Documentation Format
 

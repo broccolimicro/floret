@@ -1,11 +1,11 @@
 CXXFLAGS	 =  -g -O2 -Wall -fmessage-length=0
-INCLUDE_DIRS =
-LIBRARY_DIRS =
-LIBRARIES =
+INCLUDE_DIRS = -Ideps/pgen
+LIBRARY_DIRS = -Ldeps/pgen/build
+LIBRARIES = -l:libpgen.a
 
-GRAMMAR := $(wildcard src/*.peg)
-GRAMSRC := $(GRAMMAR:src/%.peg=src/%.cpp)
-GRAMHDR := $(GRAMMAR:src/%.peg=src/%.h)
+GRAMMAR := $(wildcard peg/*.peg)
+GRAMSRC := $(GRAMMAR:peg/%.peg=src/%.cpp)
+GRAMHDR := $(GRAMMAR:peg/%.peg=src/%.h)
 SOURCES := $(wildcard src/*.cpp)
 OBJECTS := $(SOURCES:src/%.cpp=obj/%.o)
 DEPS := $(OBJECTS:.o=.d)
@@ -17,8 +17,9 @@ all: $(TARGET)
 
 grammar: $(GRAMSRC)
 
-src/%.cpp: src/%.peg
-	pgen $<
+src/%.cpp: peg/%.peg
+	deps/pgen/build/pgen-linux $<
+	mv peg/*.cpp peg/*.h src/
 
 $(TARGET): $(OBJECTS)
 	g++ $(CXXFLAGS) $(LIBRARY_DIRS) -o $(TARGET) $(OBJECTS) $(LIBRARIES)

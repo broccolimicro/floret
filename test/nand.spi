@@ -1,0 +1,26 @@
+*
+*---- act defproc: nand<> -----
+* raw ports:  g.Vdd g.GND a b c d
+*
+.subckt nand g_aVdd g_aGND a b c d
+*.PININFO g_aVdd:I g_aGND:I a:I b:I c:I d:O
+*.POWER VDD g_aVdd
+*.POWER g_aGND g_aGND
+*.POWER NSUB g_aGND
+*.POWER PSUB g_aVdd
+*
+* --- node flags ---
+*
+* d (combinational)
+*
+* --- end node flags ---
+*
+xM0_ d a g_aVdd g_aVdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM1_ d b g_aVdd g_aVdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM2_ d c g_aVdd g_aVdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM3_ #4 a g_aGND g_aGND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+C_per_node_0 d g_aGND 5e-15
+xM4_ d c #3 g_aGND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+xM5_ #3 b #4 g_aGND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+.ends
+*---- end of process: nand<> -----
