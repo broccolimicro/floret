@@ -4,9 +4,19 @@
 
 Floret is a cell generator designed for advanced nodes.
 
-## Install
+## Build and Install
 
-TODO
+This will build the `floret-linux` binary in the `build-linux` directory:
+```
+git submodule update --init --recursive
+tup init
+tup
+```
+
+This will install it to `/usr/local/bin`:
+```
+mv build-linux/floret-linux /usr/local/bin/floret
+```
 
 ## Examples
 
