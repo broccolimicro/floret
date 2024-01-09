@@ -29,9 +29,9 @@ TODO
 **Steps:**
 1. Read input and configuration
 2. Determine transistor order for pull-up and pull-down stacks
-   1. Align transistor gates
-   2. Align source and drain connections
-   3. Create sufficient space for vias
+  1. Align transistor gates
+  2. Align source and drain connections
+  3. Create sufficient space for vias
 3. Route over the stacks
 4. Route between stacks
 5. Identify DRC violations
@@ -48,18 +48,18 @@ TODO
 The UNIX design philosophy is a good foundation to build on. However, VLSI CAD tools face distinctly different problems with individual tasks often being very complex and requiring configuration information that is quite involved. Today's CAD tools have a myriad of different configuration and data languages that make it difficult to make them interoperate. Therefore Broccoli will modify the UNIX design philosophy as follows:
 
 1. Write programs that do one thing and do it well.
-   1. Write programs in which each step is separable from every other step through the command line interface.
-   2. Write programs in C++ for performance.
-   3. provide a complete C++ library and Python interface for interoperability.
+  1. Write programs in which each step is separable from every other step through the command line interface.
+  2. Write programs in C++ for performance.
+  3. provide a complete C++ library and Python interface for interoperability.
 2. Write programs to work together.
-   1. Write programs that consume configuration input through a Python interface, because that is a scriptable interface.
-   2. Write programs that consume data input through text streams, because that is a universal interface.
-   3. Prefer non-interactive interfaces.
+  1. Write programs that consume configuration input through a Python interface, because that is a scriptable interface.
+  2. Write programs that consume data input through text streams, because that is a universal interface.
+  3. Prefer non-interactive interfaces.
 3. Write programs that are easy to contribute to
-   1. Use a parsing expression grammar for all input formats
-   2. Document thoroughly in comments
-   3. Always use public structures (we're all adults here)
-   4. Use CamelCase (structs are capitalized, functions and instances are not)
+  1. Use a parsing expression grammar for all input formats
+  2. Document thoroughly in comments
+  3. Always use public structures (we're all adults here)
+  4. Use CamelCase (structs are capitalized, functions and instances are not)
 
 ## Documentation Format
 
