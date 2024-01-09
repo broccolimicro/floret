@@ -1,0 +1,24 @@
+NAME          = floret
+CXXFLAGS	    = -O2 -g -Wall -fmessage-length=0 -std=c++17
+INCLUDE_PATHS = -Ideps/pgen
+LIBRARY_PATHS = -Ldeps/pgen
+LIBRARIES = -l:libpgen.a
+
+ifeq (@(TUP_PLATFORM),windows)
+CXX           = x86_64-w64-mingw32-g++
+PEGC         = deps/pgen/pgen-windows.exe
+TARGET        = floret-@(TUP_PLATFORM).exe
+else
+CXX           = g++
+PEGC         = deps/pgen/pgen-linux
+TARGET        = floret-@(TUP_PLATFORM)
+endif
+
+# Grammar
+: foreach peg/*.peg | $(PEGC) |> $(PEGC) %f && mv peg/*.cpp peg/*.h src |> src/%B.cpp | src/%B.h
+
+# Executable
+: foreach src/*.cpp | src/*.h |> $(CXX) $(INCLUDE_PATHS) $(CXXFLAGS) -fPIC -c -o %o %f |> dyn_obj/%B.o {dynamic_objs}
+: {dynamic_objs} | deps/pgen/libpgen.a |> $(CXX) $(LIBRARY_PATHS) -L. -o %o %f $(LIBRARIES) |> $(TARGET)
+
+.gitignore

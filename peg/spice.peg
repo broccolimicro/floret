@@ -1,4 +1,5 @@
-spice = (__ | statement)* (end_k __*)? "[\0]";
+spice = ___; 
+tmp = (__ | statement)* (end_k __*)? "[\0]";
 end_k ~= "\.end" | "\.END";
 
 statement = subckt | model | options | nodeset | ic;
@@ -35,11 +36,11 @@ nodeset_k ~= "\.nodeset" | "\.NODESET";
 ic = ic_k _ initial* __;
 ic_k ~= "\.ic" | "\.IC";
 
-initial = measure _ "=" _ constant _;
+initial = measure _ ~"=" _ constant _;
 measure = "[vViI]" ~"\(" node ~"\)";
-param = name _ "=" _ constant _ ("," _ constant _)*;
+param = name _ ~"=" _ constant _ (~"," _ constant _)*;
 node = integer | name;
-name = "[#_a-zA-Z][_a-zA-Z0-9]*";
+name = ~"[#_a-zA-Z][_a-zA-Z0-9]*";
 value = constant unit;
 
 unit = ~"[aAfFpPnNuUmMkKxXgG]";
@@ -54,4 +55,5 @@ text = ~"\"([^\"\\]|\\.)*\"";
 
 _ ~= "[ \t]*";
 __ ~= "[ \t]*(\*[^\n\r]*)?[\n\r]+";
+___ = "\*[^\n\r]*[\n\r]+";
 
