@@ -9,7 +9,7 @@ GRAMHDR := $(GRAMMAR:src/%.peg=src/%.h)
 SOURCES := $(wildcard src/*.cpp)
 OBJECTS := $(SOURCES:src/%.cpp=obj/%.o)
 DEPS := $(OBJECTS:.o=.d)
-TARGET = layout
+TARGET = floret
 
 -include $(DEPS)
 
