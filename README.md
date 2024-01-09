@@ -55,3 +55,43 @@ The UNIX design philosophy is a good foundation to build on. However, VLSI CAD t
   a. Write programs that consume configuration input through a Python interface, because that is a scriptable interface.
 	b. Write programs that consume data input through text streams, because that is a universal interface.
 	c. Prefer non-interactive interfaces.
+3. Write programs that are easy to contribute to
+  a. Use a parsing expression grammar for all input formats
+  b. Document thoroughly in comments
+  c. Always use public structures (we're all adults here)
+  d. Use CamelCase (structs are capitalized, functions and instances are not)
+
+## Documentation Format
+
+**Structs**
+1. Purpose of struct
+2. Example usage of struct
+
+**Functions**
+1. Description of operation
+2. Inputs (format, purpose)
+3. Outputs (format, purpose)
+4. Example usage of function
+
+**Design Decisions**
+1. Unique label for decision
+2. Who made this decision?
+3. What did we choose?
+4. What were the alternatives?
+5. Why did we choose this?
+6. What other design decisions interact with this?
+
+```
+// DESIGN(edward.bingham) myfunc.1
+// ...
+```
+
+**Todos**
+1. Who created this todo?
+2. What needs to be done?
+3. Why does this need to be done?
+
+```
+// TODO(edward.bingham) description...
+```
+
