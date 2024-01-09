@@ -49,7 +49,8 @@ The UNIX design philosophy is a good foundation to build on. However, VLSI CAD t
 
 1. Write programs that do one thing and do it well.
   a. Write programs in which each step is separable from every other step through the command line interface.
-	b. Write programs in C++ for performance and provide a complete Python interface for interoperability.
+	b. Write programs in C++ for performance.
+  c. provide a complete C++ library and Python interface for interoperability.
 2. Write programs to work together.
   a. Write programs that consume configuration input through a Python interface, because that is a scriptable interface.
 	b. Write programs that consume data input through text streams, because that is a universal interface.
