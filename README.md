@@ -1,6 +1,6 @@
 # Floret
 
-> *Spout-like structures at the head of a piece of broccoli.*
+> *small flower buds at the head of a piece of broccoli.*
 
 Floret is a cell generator designed for advanced nodes.
 
