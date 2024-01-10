@@ -250,3 +250,19 @@ void processCell()
 	task.stack[0].print("nmos");
 	task.stack[1].print("pmos");*/
 }
+
+void Cell::loadSubckt(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &subckt) {
+	for (auto tok = subckt.tokens.begin(); tok != subckt.tokens.end(); tok++) {
+		if (tok->type == lang.NAME) {
+			name = lexer.read(tok->begin, tok->end);
+		} else if (tok->type == lang.PORT_LIST) {
+			for (auto port = tok->tokens.begin(); port != tok->tokens.end(); port++) {
+				nets.push_back(Net(lexer.read(port->begin, port->end)));
+			}
+		} else if (tok->type == lang.X) {
+			tok->emit(lexer);
+		} else if (tok->type == lang.M) {
+			tok->emit(lexer);
+		}
+	}
+}

@@ -5,11 +5,11 @@
 using namespace std;
 
 // load a spice AST into the layout engine
-void Library::loadSpice(pgen::spice_t spice, pgen::lexer_t &lexer, pgen::parsing ast) {
-	for (auto tok = ast.tree.tokens.begin(); tok != ast.tree.tokens.end(); tok++) {
-		if (tok->type == spice.SUBCKT) {
-			
-			tok->emit(lexer);
+void Library::loadSpice(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &spice) {
+	for (auto tok = spice.tokens.begin(); tok != spice.tokens.end(); tok++) {
+		if (tok->type == lang.SUBCKT) {
+			cells.push_back(Cell());
+			cells.back().loadSubckt(lang, lexer, *tok);
 		}
 	}
 }
@@ -17,8 +17,8 @@ void Library::loadSpice(pgen::spice_t spice, pgen::lexer_t &lexer, pgen::parsing
 void Library::loadFile(string path) {
 	// Initialize the grammar
 	pgen::grammar_t gram;
-	pgen::spice_t spice;
-	spice.load(gram);
+	pgen::spice_t lang;
+	lang.load(gram);
 
 	// Load the file into the lexer
 	pgen::lexer_t lexer;
@@ -28,7 +28,7 @@ void Library::loadFile(string path) {
 	pgen::parsing ast = gram.parse(lexer);
 	if (ast.msgs.size() == 0) {
 		// no errors, print the parsed abstract syntax tree
-		loadSpice(spice, lexer, ast);
+		loadSpice(lang, lexer, ast.tree);
 	} else {
 		// there were parsing errors, print them out
 		for (int i = 0; i < (int)ast.msgs.size(); i++) {

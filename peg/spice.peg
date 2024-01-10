@@ -1,11 +1,11 @@
 spice = (__ | subckt | model | options | nodeset | ic)* (end_k __*)? "[\0]";
 end_k ~= "\.end" | "\.END";
 
-subckt = subckt_k _ name _ (name _)* __ (device | __)* ends_k __;
+subckt = subckt_k _ name _ port_list __ (R | C | L | K | D | Q | J | V | E | F | G | H | M | X | __)* ends_k __;
 subckt_k ~= "\.subckt" | "\.SUBCKT";
 ends_k ~= "\.ends" | "\.ENDS";
+port_list = (name _)*;
 
-device = R | C | L | K | D | Q | J | V | E | F | G | H | M | X;
 R = "[rR]" name _ node _ node _ value _ param* __;
 C = "[cC]" name _ node _ node _ value _ param* __;
 L = "[lL]" name _ node _ node _ value _ param* __;

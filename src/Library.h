@@ -9,7 +9,7 @@ struct Library {
 
 	vector<Cell> cells;
 
-	void loadSpice(pgen::spice_t spice, pgen::lexer_t &lexer, pgen::parsing ast);
+	void loadSpice(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &spice);
 	void loadFile(string path); 
 };
 

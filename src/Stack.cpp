@@ -6,6 +6,12 @@ Net::Net()
 	ports = 0;
 }
 
+Net::Net(string name)
+{
+	this->name = name;
+	this->ports = 0;
+}
+
 Net::~Net()
 {
 }

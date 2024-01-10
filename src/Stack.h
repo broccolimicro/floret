@@ -13,6 +13,7 @@ struct Cell;
 struct Net
 {
 	Net();
+	Net(string name);
 	~Net();
 
 	string name;
