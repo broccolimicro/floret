@@ -3,13 +3,15 @@
 #include <string>
 #include <vector>
 
+#include "ColorGraph.h"
+
 using namespace std;
 
 struct Config {
 	
 };
 
-void print_help() {
+void printHelp() {
 	printf("Usage: floret [options] <file.spi>...\n");
 	printf("A cell generator designed for advanced nodes.\n");
 	printf("\nOptions:\n");
@@ -19,7 +21,7 @@ void print_help() {
 	printf(" -o,--output <dir> Place output files in this directory (default: use cells directory)\n");
 }
 
-void print_version() {
+void printVersion() {
 	printf("floret 0.0.0\n");
 	printf("Copyright (C) 2024 Broccoli, LLC.\n");
 	printf("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n");
@@ -33,10 +35,10 @@ int main(int argc, char **argv) {
 	for (int i = 1; i < argc; i++) {
 		string arg = argv[i];
 		if (arg == "--help" or arg == "-h") {
-			print_help();
+			printHelp();
 			return 0;
 		} else if (arg == "--version") {
-			print_version();
+			printVersion();
 			return 0;
 		} else if (arg == "-c" or arg == "--cells") {
 			i++;
@@ -60,7 +62,7 @@ int main(int argc, char **argv) {
 	}
 
 	if (spiceFiles.size() == 0) {
-		print_help();
+		printHelp();
 		return 0;
 	}
 
