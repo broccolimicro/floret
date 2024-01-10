@@ -61,7 +61,9 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
+	Tech tech;
 	Library cellLib;
-	cellLib.loadFile(spiceFiles[0]);
+	cellLib.loadFile(tech, spiceFiles[0]);
+	cellLib.fullLayout();
 }
 

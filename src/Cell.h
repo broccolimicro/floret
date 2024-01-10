@@ -5,6 +5,7 @@
 #include "Rect.h"
 #include "Stack.h"
 #include "spice.h"
+#include "Tech.h"
 
 using namespace std;
 
@@ -37,8 +38,12 @@ struct Cell
 	void collectStacks();
 	void orderStacks();
 	void routeChannel();
+	void fullLayout();
 
-	void loadSubckt(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &subckt);
+	int findNet(string name);
+
+	bool loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &dev);
+	void loadSubckt(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &subckt);
 };
 
 void processCell();

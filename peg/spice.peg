@@ -1,26 +1,13 @@
 spice = (__ | subckt | model | options | nodeset | ic)* (end_k __*)? "[\0]";
 end_k ~= "\.end" | "\.END";
 
-subckt = subckt_k _ name _ port_list __ (R | C | L | K | D | Q | J | V | E | F | G | H | M | X | __)* ends_k __;
+subckt = subckt_k _ name _ port_list __ (device | __)* ends_k __;
 subckt_k ~= "\.subckt" | "\.SUBCKT";
 ends_k ~= "\.ends" | "\.ENDS";
 port_list = (name _)*;
 
-R = "[rR]" name _ node _ node _ value _ param* __;
-C = "[cC]" name _ node _ node _ value _ param* __;
-L = "[lL]" name _ node _ node _ value _ param* __;
-K = "[kK]" name _ "[lL]" node _ "[lL]" node _ value _ param* __;
-D = "[dD]" name _ node _ node _ node _ (value _ (value _)?)? param* __;
-Q = "[qQ]" name _ node _ node _ node _ (node _)? node _ (value _ (value _)?)? param* __;
-J = "[jJ]" name _ node _ node _ node _ node (value _ (value _)?)? param* __;
-V = "[vV]" name _ node _ node _ (("dc" _|"DC" _)? value | ("ac" _|"AC" _) (value _ (value _)?)? | ("distof1"|"DISTOF1") (value _ (value _)?)? | ("distof2"|"DISTOF2") (value _ (value _)?)?);
-I = "[iI]" name _ node _ node _ (("dc" _|"DC" _)? value | ("ac" _|"AC" _) (value _ (value _)?)? | ("distof1"|"DISTOF1") (value _ (value _)?)? | ("distof2"|"DISTOF2") (value _ (value _)?)?);
-E = "[eE]" name _ node _ node _ node _ node _ value __;
-F = "[fF]" name _ node _ node _ name _ value __;
-G = "[gG]" name _ node _ node _ node _ node _ value __;
-H = "[hH]" name _ node _ node _ name _ value __;
-M = "[mM]" name _ node _ node _ node _ node _ name _ param* (value _)? param* __;
-X = "[xX]" name _ (node _)* name _ param* __;
+device = "[rRcClLdDqQjJmMxXfFhHeEgGkKvViI]" name _ param_list __;
+param_list = (param | value _ | name _)*;
 
 model = model_k _ name _ name _ param* __;
 model_k ~= "\.model" | "\.MODEL";
@@ -35,9 +22,8 @@ ic = ic_k _ initial* __;
 ic_k ~= "\.ic" | "\.IC";
 
 initial = measure _ ~"=" _ value _;
-measure = "[vViI]" ~"\(" node ~"\)";
+measure = "[vViI]" ~"\(" (integer | name) ~"\)";
 param = name _ ~"=" _ value _ (~"," _ value _)*;
-node = integer | name;
 name = ~"[#_a-zA-Z][_a-zA-Z0-9]*";
 value = constant unit?;
 

@@ -139,92 +139,13 @@ void Cell::routeChannel()
 {
 }
 
-void processCell()
+void Cell::fullLayout()
 {
-	bool discrete_lengths = false;
-	int n_fold = 10;
-	int p_fold = 10;
-
-	Cell task;
-
-	/*// allocate a new array with all of the nets in the cell
-	int max_net_id = -1;
-	for (node_t *x = n->hd; x; x = x->next) {
-		if (x->i > max_net_id) {
-			max_net_id = x->i;
-		}
-	}
-	max_net_id += 1;
-
-	task.nets.resize(max_net_id);
-
 	// allocate the arrays for the pull up and pull down stacks
-	task.stack[0].init(max_net_id);
-	task.stack[1].init(max_net_id);
+	stack[0].init(nets.size());
+	stack[1].init(nets.size());
 
-	printf("\n\nStarting Cell %d\n", max_net_id);
-	// loop through all of the nets in the cell
-	for (node_t *x = n->hd; x; x = x->next) {
-		task.nets[x->i].node = x;
-
-		listitem_t *li;
-
-		for (li = list_first(x->e); li; li = list_next(li)) {
-			edge_t *e = (edge_t *)list_value(li);
-			
-			int len_repeat, width_repeat;
-      int width_last;
-      int il, iw;
-      int w, l;
-      int fold;
-
-			
-			if (e->visited || e->pruned)
-				continue;
-			
-			e->visited = 1;
-	
-			w = e->w;
-			l = e->l;
-
-			// discretize lengths
-			len_repeat = e->nlen;
-			if (discrete_len > 0) {
-				l = discrete_len;
-			}
-
-			if (e->type == EDGE_NFET) {
-				fold = n_fold;
-			} else {
-				Assert (e->type == EDGE_PFET, "Hmm");
-				fold = p_fold;
-			}
-
-			width_repeat = e->nfolds;
-
-			for (int il = 0; il < len_repeat; il++) {
-				for (int iw = 0; iw < width_repeat; iw++) {
-					if (width_repeat > 1) {
-						w = EDGE_WIDTH (e, iw);
-					} else {
-						w = e->w;
-					}
-
-					A_NEW(task.stack[e->type].mos, Term);
-					new (&A_NEXT(task.stack[e->type].mos)) Term(e->g->i, e->a->i, e->b->i, e->bulk->i, w, l);
-					A_INC(task.stack[e->type].mos);
-				}
-			}
-		}
-	}
-
-	for (node_t *x = n->hd; x; x = x->next) {
-    listitem_t *li;
-    for (li = list_first (x->e); li; li = list_next (li)) {
-      edge_t *e = (edge_t *)list_value (li);
-      e->visited = 0;
-    }
-  }
+	printf("\n\nStarting Cell\n");
 
 	// TODO: figure out the stack ordering
 	// TODO: route above and below the stacks
@@ -232,26 +153,97 @@ void processCell()
 	// TODO: parse the DRC rule files
 	// TODO: add the DRC constraints into the routers
 
-	
-	collectStacks(&task);
-	orderStacks(&task);
+	collectStacks();
+	orderStacks();
 
-	char buf[1000];
-	for (int i = 0; i < (int)task.nets.size(); i++) {
-		if (task.nets[i].node != NULL and task.nets[i].node->v != NULL) {
-			ActId *id = task.nets[i].node->v->v->id->toid();
-			id->sPrint(buf, 1000);
-			printf("%d: \"%s\" pmos:%d,%d nmos:%d,%d\n", i, buf, task.stack[1].ovr[i].links, task.stack[1].ovr[i].gates, task.stack[0].ovr[i].links, task.stack[0].ovr[i].gates);
-		} else {
-			printf("%d: \"\" pmos:%d,%d nmos:%d,%d\n", i, task.stack[1].ovr[i].links, task.stack[1].ovr[i].gates, task.stack[0].ovr[i].links, task.stack[0].ovr[i].gates);
+	for (int i = 0; i < (int)nets.size(); i++) {
+		printf("%d: \"%s\" pmos:%d,%d nmos:%d,%d\n", i, nets[i].name.c_str(), stack[1].ovr[i].links, stack[1].ovr[i].gates, stack[0].ovr[i].links, stack[0].ovr[i].gates);
+	}
+
+	stack[0].print("nmos");
+	stack[1].print("pmos");
+}
+
+int Cell::findNet(string name) {
+	for (int i = 0; i < (int)nets.size(); i++) {
+		if (nets[i].name == name) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+bool Cell::loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &dev) {
+	// deviceType deviceName paramList
+	if (dev.tokens.size() < 3) {
+		return false;
+	}
+
+	string devType = lexer.read(dev.tokens[0].begin, dev.tokens[0].end);
+	string devName = lexer.read(dev.tokens[1].begin, dev.tokens[1].end);
+
+	// DESIGN(edward.bingham) Since we're focused on digital design, we'll only support transistor layout for now.
+	if (string("mMxX").find(devType) == string::npos) {
+		return false;
+	}
+
+	auto args = dev.tokens.begin() + 2;
+	// Transistors must have the following args
+	// drain gate source base modelName
+	if (args->tokens.size() < 5) {
+		return false;
+	}
+
+	// modelName cannot be a number or assignment
+	if (args->tokens[4].type != lang.NAME) {
+		return false;
+	}
+
+	string modelName = lexer.read(args->tokens[4].begin, args->tokens[4].end);
+	int modelIdx = tech.findModel(modelName);
+	// if the modelName isn't in the model list, then this is a non-transistor subckt
+	if (modelIdx < 0) {
+		return false;
+	}
+	int type = tech.models[modelIdx].type;
+
+	vector<int> ports;
+	map<string, float> params;
+	double width = 0.0, length = 0.0;
+	for (auto arg = args->tokens.begin(); arg != args->tokens.end(); arg++) {
+		if (arg->type == lang.PARAM) {
+			string paramName = lexer.read(arg->tokens[0].begin, arg->tokens[0].end);
+			vector<double> values;
+			for (auto value = arg->tokens.begin()+1; value != arg->tokens.end(); value++) {
+				string valueStr = lexer.read(value->begin, value->end);
+				printf("%s %s\n", paramName.c_str(), valueStr.c_str());
+				values.push_back(stod(valueStr));
+			}
+			// TODO(edward.bingham) implement a lower() function
+			// TODO(edward.bingham) implement a value parser that handles units
+			if (paramName == "w" or paramName == "W") {
+				width = values[0];
+			} else if (paramName == "l" or paramName == "L") {
+				length = values[0];
+			}
+		} else if (ports.size() < 4) {
+			string netName = lexer.read(arg->begin, arg->end);
+			int netIdx = findNet(netName);
+			if (netIdx < 0) {
+				netIdx = (int)nets.size();
+				nets.push_back(Net(netName)); 
+			}
+			ports.push_back(netIdx);
 		}
 	}
 
-	task.stack[0].print("nmos");
-	task.stack[1].print("pmos");*/
+	stack[type].mos.push_back(Term(ports[1], ports[2], ports[0], ports[3], (int)(width/tech.dbunit), (int)(length/tech.dbunit)));
+	printf("%s %d %d %d %d %f %f\n", modelName.c_str(), ports[0], ports[1], ports[2], ports[3], width, length);
+
+	return true;
 }
 
-void Cell::loadSubckt(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &subckt) {
+void Cell::loadSubckt(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &subckt) {
 	for (auto tok = subckt.tokens.begin(); tok != subckt.tokens.end(); tok++) {
 		if (tok->type == lang.NAME) {
 			name = lexer.read(tok->begin, tok->end);
@@ -259,10 +251,11 @@ void Cell::loadSubckt(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &s
 			for (auto port = tok->tokens.begin(); port != tok->tokens.end(); port++) {
 				nets.push_back(Net(lexer.read(port->begin, port->end)));
 			}
-		} else if (tok->type == lang.X) {
-			tok->emit(lexer);
-		} else if (tok->type == lang.M) {
-			tok->emit(lexer);
+		} else if (tok->type == lang.DEVICE) {
+			if (not loadDevice(tech, lang, lexer, *tok)) {
+				
+				printf("unrecognized device\n");
+			}
 		}
 	}
 }

@@ -43,6 +43,7 @@ struct Tech {
 	vector<Layer> layers;
 	vector<Model> models;
 
-	Model *findModel(string name);
+	int findLayer(string name) const;
+	int findModel(string name) const;
 };
 
