@@ -28,6 +28,7 @@
 #include <string>
 #include "ColorGraph.h"
 #include "Term.h"
+#include "Rect.h"
 
 using namespace std;
 
@@ -72,16 +73,6 @@ struct Column
 	// this indexes into task->nets or task->stack[i].ovr
 	int net;
 };
-
-struct Rect
-{
-	int left;
-	int right;
-	int bottom;
-	int top;
-	int layer;
-};
-
 
 struct OverRoute
 {
