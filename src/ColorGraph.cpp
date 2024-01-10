@@ -11,7 +11,7 @@ ColorEdge::ColorEdge() {
 	y = 0;
 }
 
-ColorEdge::ColorEdge(uint32_t x, uint32_t y) {
+ColorEdge::ColorEdge(int x, int y) {
 	this->x = x;
 	this->y = y;
 }
@@ -19,7 +19,7 @@ ColorEdge::ColorEdge(uint32_t x, uint32_t y) {
 ColorEdge::~ColorEdge() {
 }
 
-ColorGraph::ColorGraph(uint32_t count) {
+ColorGraph::ColorGraph(int count) {
 	if (count > 0) {
 		color.resize(count, -1);
 	}
@@ -31,19 +31,19 @@ ColorGraph::ColorGraph(uint32_t count) {
 ColorGraph::~ColorGraph() {
 }
 
-void ColorGraph::init(uint32_t count) {
-	if (count > color.size()) {
+void ColorGraph::init(int count) {
+	if (count > (int)color.size()) {
 		color.resize(count, -1);
 	}
 }
 
-bool ColorGraph::hasEdge(uint32_t a, uint32_t b) {
-	for (uint32_t i = 0; i < stage[0]; i++) {
+bool ColorGraph::hasEdge(int a, int b) {
+	for (int i = 0; i < (int)stage[0]; i++) {
 		if ((edges[i].x == a and edges[i].y == b) or (edges[i].x == b and edges[i].y == a)) {
 			return true;
 		}
 	}
-	for (uint32_t i = stage[1]; i < edges.size(); i++) {
+	for (int i = stage[1]; i < (int)edges.size(); i++) {
 		if ((edges[i].x == a and edges[i].y == b) or (edges[i].x == b and edges[i].y == a)) {
 			return true;
 		}
@@ -52,24 +52,24 @@ bool ColorGraph::hasEdge(uint32_t a, uint32_t b) {
 	return false;
 }
 
-void ColorGraph::pushEdge(uint32_t a, uint32_t b)
+void ColorGraph::pushEdge(int a, int b)
 {
 	edges.push_back(ColorEdge(a, b));
 }
 
-uint32_t ColorGraph::stashCost()
+int ColorGraph::stashCost()
 {
 	return edges.size() - stage[1];
 }
 
-uint32_t ColorGraph::stageCost()
+int ColorGraph::stageCost()
 {
 	return stage[1] - stage[0];
 }
 
 void ColorGraph::stash()
 {
-	edges.resize(stage[0]);
+	edges.erase(edges.begin()+stage[0], edges.begin()+stage[1]);
 	stage[1] = edges.size();
 }
 
@@ -77,8 +77,8 @@ void ColorGraph::commit()
 {
 	edges.resize(stage[1]);
 
-	uint32_t len = color.size()-1;
-	for (uint32_t i = stage[0]; i < edges.size(); i++) {
+	int len = color.size()-1;
+	for (int i = stage[0]; i < (int)edges.size(); i++) {
 		if (edges[i].x > len) {
 			len = edges[i].x;
 		}
@@ -94,13 +94,13 @@ void ColorGraph::commit()
 	}
 
 	printf("Edges:\n");
-	for (uint32_t j = 0; j < edges.size(); j++) {
+	for (int j = 0; j < (int)edges.size(); j++) {
 		printf("%d -> %d\n", edges[j].x, edges[j].y);
 	}
 
-	for (uint32_t j = stage[0]; j < edges.size(); j++) {
-		uint32_t a = edges[j].x;
-		uint32_t b = edges[j].y;
+	for (int j = stage[0]; j < (int)edges.size(); j++) {
+		int a = edges[j].x;
+		int b = edges[j].y;
 
 		if (color[a] < 0) {
 			color[a] = 0;
@@ -114,7 +114,7 @@ void ColorGraph::commit()
 			vector<bool> s(color.size(), false);
 
 			//printf("checking colors for %d\n", b);
-			for (uint32_t i = 0; i <= j; i++) {
+			for (int i = 0; i <= j; i++) {
 				if (edges[i].x == b) {
 					printf("%u/%lu: %d/%lu\n", edges[i].y, color.size(), color[edges[i].y], s.size());
 					s[color[edges[i].y]] = true;
@@ -124,7 +124,7 @@ void ColorGraph::commit()
 				}
 			}
 			
-			for (uint32_t i = 0; i < color.size(); i++) {
+			for (int i = 0; i < (int)color.size(); i++) {
 				if (not s[i]) {
 					color[b] = i;
 					break;

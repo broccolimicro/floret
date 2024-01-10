@@ -7,28 +7,28 @@ using namespace std;
 
 struct ColorEdge {
 	ColorEdge();
-	ColorEdge(uint32_t x, uint32_t y);
+	ColorEdge(int x, int y);
 	~ColorEdge();
 
-	uint32_t x;
-	uint32_t y;
+	int x;
+	int y;
 };
 
 struct ColorGraph {
-	ColorGraph(uint32_t count = 0);
+	ColorGraph(int count = 0);
 	~ColorGraph();
 
 	vector<ColorEdge> edges;
 	vector<int32_t> color;
-	uint32_t stage[2];
+	int stage[2];
 
-	void init(uint32_t count = 0);
+	void init(int count = 0);
 
-	bool hasEdge(uint32_t a, uint32_t b);
-	void pushEdge(uint32_t a, uint32_t b);
+	bool hasEdge(int a, int b);
+	void pushEdge(int a, int b);
 
-	uint32_t stashCost();
-	uint32_t stageCost();
+	int stashCost();
+	int stageCost();
 
 	void stash();
 	void commit();

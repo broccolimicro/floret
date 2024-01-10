@@ -4,11 +4,15 @@
 #include <vector>
 
 #include "ColorGraph.h"
+#include "Layout.h"
 
 using namespace std;
 
 struct Config {
-	
+	double lambda;
+	int n_fold;
+	int p_fold;
+	int discrete_len;
 };
 
 void printHelp() {

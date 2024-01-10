@@ -14,7 +14,8 @@ The UNIX design philosophy is a good foundation to build on. However, VLSI CAD t
     * Prefer non-interactive interfaces.
 3. Write programs that are easy to contribute to
     * Use a parsing expression grammar for all input formats
-    * Grammars should prefer specificity over generalization to reduce ambiguity
+    * Grammars should be only as specific as is necessary for the program
+    * No parsing should happen outside the grammar
     * Document thoroughly in comments
     * Always use public structures (we're all adults here)
     * Use CamelCase (structs are capitalized, functions and instances are not)
