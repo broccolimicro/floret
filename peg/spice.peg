@@ -1,7 +1,5 @@
-spice = (__ | statement)* (end_k __*)? "[\0]";
+spice = (__ | subckt | model | options | nodeset | ic)* (end_k __*)? "[\0]";
 end_k ~= "\.end" | "\.END";
-
-statement = subckt | model | options | nodeset | ic;
 
 subckt = subckt_k _ name _ (name _)* __ (device | __)* ends_k __;
 subckt_k ~= "\.subckt" | "\.SUBCKT";

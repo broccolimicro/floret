@@ -12,10 +12,10 @@ struct Route
 	vector<int> assign;
 };
 
-struct Layout
+struct Cell
 {
-	Layout();
-	~Layout();
+	Cell();
+	~Cell();
 
 	Stack stack[2];
 	vector<Net> nets;

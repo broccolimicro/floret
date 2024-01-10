@@ -1,5 +1,5 @@
 #include "Stack.h"
-#include "Layout.h"
+#include "Cell.h"
 
 Net::Net()
 {
@@ -186,7 +186,7 @@ void Stack::countPorts()
 }
 
 // merge all serial-only transistor stacks into terms
-void Stack::collect(Layout *task)
+void Stack::collect(Cell *task)
 {
 	for (int i = 0; i < (int)mos.size(); i++) {
 		for (int j = mos.size()-1; j > i; j--) {

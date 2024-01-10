@@ -1,19 +1,10 @@
-#include "spice.h"
 #include <iostream>
 #include <string>
 #include <vector>
 
-#include "ColorGraph.h"
-#include "Layout.h"
+#include "Library.h"
 
 using namespace std;
-
-struct Config {
-	double lambda;
-	int n_fold;
-	int p_fold;
-	int discrete_len;
-};
 
 void printHelp() {
 	printf("Usage: floret [options] <file.spi>...\n");
@@ -70,27 +61,7 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
-	Config config;
-
-	// Initialize the grammar
-	pgen::grammar_t gram;
-	pgen::spice_t spice;
-	spice.load(gram);
-
-	// Load the file into the lexer
-	pgen::lexer_t lexer;
-	lexer.open(spiceFiles[0]);
-
-	// Parse the file with the grammar
-	pgen::parsing result = gram.parse(lexer);
-	if (result.msgs.size() == 0) {
-		// no errors, print the parsed abstract syntax tree
-		result.tree.emit(lexer);
-	} else {
-		// there were parsing errors, print them out
-		for (int i = 0; i < (int)result.msgs.size(); i++) {
-			cout << result.msgs[i];
-		}
-	}
+	Library cellLib;
+	cellLib.loadFile(spiceFiles[0]);
 }
 

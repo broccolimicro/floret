@@ -8,7 +8,7 @@
 
 using namespace std;
 
-struct Layout;
+struct Cell;
 
 struct Net
 {
@@ -88,7 +88,7 @@ struct Stack
 
 	void print(const char *dev);
 	void countPorts();
-	void collect(Layout *task);
+	void collect(Cell *task);
 	void stageColumn(int net, bool is_gate);
 	int stageStack(int sel, int flip);
 };
