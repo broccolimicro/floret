@@ -1,16 +1,15 @@
-spice = ___; 
-tmp = (__ | statement)* (end_k __*)? "[\0]";
+spice = (__ | statement)* (end_k __*)? "[\0]";
 end_k ~= "\.end" | "\.END";
 
 statement = subckt | model | options | nodeset | ic;
 
-subckt = subckt_k _ name (_ name)* __ (device | __)* ends_k __;
+subckt = subckt_k _ name _ (name _)* __ (device | __)* ends_k __;
 subckt_k ~= "\.subckt" | "\.SUBCKT";
 ends_k ~= "\.ends" | "\.ENDS";
 
-device = R | C | L | K | D | Q | J | V | E | F | G | H | M;
+device = R | C | L | K | D | Q | J | V | E | F | G | H | M | X;
 R = "[rR]" name _ node _ node _ value _ param* __;
-C = "[cC]" name _ node _ value _ param* __;
+C = "[cC]" name _ node _ node _ value _ param* __;
 L = "[lL]" name _ node _ node _ value _ param* __;
 K = "[kK]" name _ "[lL]" node _ "[lL]" node _ value _ param* __;
 D = "[dD]" name _ node _ node _ node _ (value _ (value _)?)? param* __;
@@ -23,6 +22,7 @@ F = "[fF]" name _ node _ node _ name _ value __;
 G = "[gG]" name _ node _ node _ node _ node _ value __;
 H = "[hH]" name _ node _ node _ name _ value __;
 M = "[mM]" name _ node _ node _ node _ node _ name _ param* (value _)? param* __;
+X = "[xX]" name _ (node _)* name _ param* __;
 
 model = model_k _ name _ name _ param* __;
 model_k ~= "\.model" | "\.MODEL";
@@ -36,24 +36,20 @@ nodeset_k ~= "\.nodeset" | "\.NODESET";
 ic = ic_k _ initial* __;
 ic_k ~= "\.ic" | "\.IC";
 
-initial = measure _ ~"=" _ constant _;
+initial = measure _ ~"=" _ value _;
 measure = "[vViI]" ~"\(" node ~"\)";
-param = name _ ~"=" _ constant _ (~"," _ constant _)*;
+param = name _ ~"=" _ value _ (~"," _ value _)*;
 node = integer | name;
 name = ~"[#_a-zA-Z][_a-zA-Z0-9]*";
-value = constant unit;
+value = constant unit?;
 
 unit = ~"[aAfFpPnNuUmMkKxXgG]";
-constant = bool | int | text | real;
-int = ~"0x" integer16 | ~"0b" integer2 | integer;
-real = integer ("." integer)? ("e" "-"? integer)?;
+constant = bool | text | real;
+real = ~integer (~"\." ~integer)? (~"e" ~"-"? ~integer)?;
 bool = ~"true" | ~"false";
-integer2 = ~"[01]+";
-integer16 = ~"[0-9a-fA-F]+";
 integer = ~"[0-9]+";
 text = ~"\"([^\"\\]|\\.)*\"";
 
 _ ~= "[ \t]*";
-__ ~= "[ \t]*(\*[^\n\r]*)?[\n\r]+";
-___ = "\*[^\n\r]*[\n\r]+";
+__ ~= "[ \t]*" ("\*[^\n\r]*" | "") "[\n\r]+";
 
