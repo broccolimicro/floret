@@ -6,22 +6,22 @@
 #include <stdint.h>
 #include "Layout.h"
 
-LayoutTask::LayoutTask()
+Layout::Layout()
 {
 }
 
-LayoutTask::~LayoutTask()
+Layout::~Layout()
 {
 }
 
-void LayoutTask::stash()
+void Layout::stash()
 {
 	//printf("STASH\n");
 	cols.erase(cols.begin()+stage[0], cols.begin()+stage[1]);
 	stage[1] = cols.size();
 }
 
-void LayoutTask::commit()
+void Layout::commit()
 {
 	//printf("COMMIT\n");
 	cols.erase(cols.begin()+stage[1], cols.end());
@@ -29,19 +29,19 @@ void LayoutTask::commit()
 	stage[1] = cols.size();
 }
 
-void LayoutTask::clear()
+void Layout::clear()
 {
 	//printf("CLEAR\n");
 	cols.resize(stage[1]);
 }
 
-void LayoutTask::reset()
+void Layout::reset()
 {
 	cols.resize(stage[0]);
 	stage[1] = stage[0];
 }
 
-void LayoutTask::stageChannel()
+void Layout::stageChannel()
 {
 	//A_NEW(cols, Route);
 	if (cols.size() <= 1) {
@@ -50,7 +50,7 @@ void LayoutTask::stageChannel()
 	}
 }
 
-void LayoutTask::collectStacks()
+void Layout::collectStacks()
 {
 	for (int m = 0; m < (int)2; m++) {
 		stack[m].countPorts();
@@ -67,7 +67,7 @@ void LayoutTask::collectStacks()
 	}
 }
 
-void LayoutTask::orderStacks()
+void Layout::orderStacks()
 {
 	int j[2] = {0,0};
 	while (j[0] < (int)stack[0].mos.size() or j[1] < (int)stack[1].mos.size()) {
@@ -135,7 +135,7 @@ void LayoutTask::orderStacks()
 	}
 }
 
-void LayoutTask::routeChannel()
+void Layout::routeChannel()
 {
 }
 
@@ -145,7 +145,7 @@ void processCell()
 	int n_fold = 10;
 	int p_fold = 10;
 
-	LayoutTask task;
+	Layout task;
 
 	/*// allocate a new array with all of the nets in the cell
 	int max_net_id = -1;

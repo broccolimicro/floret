@@ -186,7 +186,7 @@ void Stack::countPorts()
 }
 
 // merge all serial-only transistor stacks into terms
-void Stack::collect(LayoutTask *task)
+void Stack::collect(Layout *task)
 {
 	for (int i = 0; i < (int)mos.size(); i++) {
 		for (int j = mos.size()-1; j > i; j--) {
