@@ -30,7 +30,7 @@
 
 using namespace std;
 
-struct layout_task;
+struct LayoutTask;
 
 struct Net
 {
@@ -150,10 +150,10 @@ struct Stack
 	void reset();
 
 	void print(const char *dev);
-	void count_ports();
-	void collect(layout_task *task);
-	void stage_col(int net, bool is_gate);
-	int stage_stack(int sel, int flip);
+	void countPorts();
+	void collect(LayoutTask *task);
+	void stageColumn(int net, bool is_gate);
+	int stageStack(int sel, int flip);
 };
 
 struct Route
@@ -161,10 +161,10 @@ struct Route
 	vector<int> assign;
 };
 
-struct layout_task
+struct LayoutTask
 {
-	layout_task();
-	~layout_task();
+	LayoutTask();
+	~LayoutTask();
 
 	Stack stack[2];
 	vector<Net> nets;
@@ -178,9 +178,9 @@ struct layout_task
 	void commit();
 	void clear();
 	void reset();
-	void stage_channel();
+	void stageChannel();
 };
 
-void collect_stacks(layout_task *task);
-void process_cell();
+void collectStacks(LayoutTask *task);
+void processCell();
 

@@ -232,7 +232,7 @@ void Stack::print(const char *dev)
 	}
 }
 
-void Stack::count_ports()
+void Stack::countPorts()
 {
 	for (int i = 0; i < (int)mos.size(); i++) {
 		ovr[mos[i].source].links+= 1;
@@ -243,7 +243,7 @@ void Stack::count_ports()
 	}
 }
 
-void Stack::collect(layout_task *task)
+void Stack::collect(LayoutTask *task)
 {
 	for (int i = 0; i < (int)mos.size(); i++) {
 		for (int j = mos.size()-1; j > i; j--) {
@@ -261,7 +261,7 @@ void Stack::collect(layout_task *task)
 	}
 }
 
-void Stack::stage_col(int net, bool is_gate)
+void Stack::stageColumn(int net, bool is_gate)
 {
 	//printf("Staging MOS %d: %d,%d\n", net, ovr[net].link_idx, ovr[net].gate_idx);
 	if (ovr[net].link_idx >= 0 or ovr[net].gate_idx >= 0) {
@@ -287,7 +287,7 @@ void Stack::stage_col(int net, bool is_gate)
 	col.push_back(Column(0, net));
 }
 
-int Stack::stage_stack(int sel, int flip)
+int Stack::stageStack(int sel, int flip)
 {
 	//printf("Staging Stack %d:%d\n", sel, flip);
 	int cost = 0;
@@ -295,7 +295,7 @@ int Stack::stage_stack(int sel, int flip)
 	this->flip[1] = flip;
 	if (not flip) {
 		if (stage[0] == 0 or mos[sel].source != col[stage[0]-1].net) {
-			stage_col(mos[sel].source, false);
+			stageColumn(mos[sel].source, false);
 			if (stage[0] > 0) {
 				cost += 1;
 			}
@@ -307,12 +307,12 @@ int Stack::stage_stack(int sel, int flip)
 			ovr[mos[sel].source].link_idx += 1;
 		}
 		for (int g = 0; g < (int)mos[sel].gate.size(); g++) {
-			stage_col(mos[sel].gate[g].net, true);
+			stageColumn(mos[sel].gate[g].net, true);
 		}
-		stage_col(mos[sel].drain, false);
+		stageColumn(mos[sel].drain, false);
 	} else {
 		if (stage[0] == 0 or mos[sel].drain != col[stage[0]-1].net) {
-			stage_col(mos[sel].drain, false);
+			stageColumn(mos[sel].drain, false);
 			if (stage[0] > 0) {
 				cost += 1;
 			}
@@ -324,29 +324,29 @@ int Stack::stage_stack(int sel, int flip)
 			ovr[mos[sel].drain].link_idx += 1;
 		}
 		for (int g = mos[sel].gate.size()-1; g >= 0; g--) {
-			stage_col(mos[sel].gate[g].net, true);
+			stageColumn(mos[sel].gate[g].net, true);
 		}
-		stage_col(mos[sel].source, false);
+		stageColumn(mos[sel].source, false);
 	}
 	return cost;
 }
 
-layout_task::layout_task()
+LayoutTask::LayoutTask()
 {
 }
 
-layout_task::~layout_task()
+LayoutTask::~LayoutTask()
 {
 }
 
-void layout_task::stash()
+void LayoutTask::stash()
 {
 	//printf("STASH\n");
 	cols.erase(cols.begin()+stage[0], cols.begin()+stage[1]);
 	stage[1] = cols.size();
 }
 
-void layout_task::commit()
+void LayoutTask::commit()
 {
 	//printf("COMMIT\n");
 	cols.erase(cols.begin()+stage[1], cols.end());
@@ -354,19 +354,19 @@ void layout_task::commit()
 	stage[1] = cols.size();
 }
 
-void layout_task::clear()
+void LayoutTask::clear()
 {
 	//printf("CLEAR\n");
 	cols.resize(stage[1]);
 }
 
-void layout_task::reset()
+void LayoutTask::reset()
 {
 	cols.resize(stage[0]);
 	stage[1] = stage[0];
 }
 
-void layout_task::stage_channel()
+void LayoutTask::stageChannel()
 {
 	//A_NEW(cols, Route);
 	if (cols.size() <= 1) {
@@ -375,10 +375,10 @@ void layout_task::stage_channel()
 	}
 }
 
-void collect_stacks(layout_task *task)
+void collectStacks(LayoutTask *task)
 {
 	for (int m = 0; m < (int)2; m++) {
-		task->stack[m].count_ports();
+		task->stack[m].countPorts();
 	}
 
 	for (int i = 0; i < (int)task->nets.size(); i++) {
@@ -392,7 +392,7 @@ void collect_stacks(layout_task *task)
 	}
 }
 
-void compute_stack_order(layout_task *task)
+void compute_stack_order(LayoutTask *task)
 {
 	int j[2] = {0,0};
 	while (j[0] < (int)task->stack[0].mos.size() or j[1] < (int)task->stack[1].mos.size()) {
@@ -424,7 +424,7 @@ void compute_stack_order(layout_task *task)
 					int edge = 0;
 					
 					// compute the cost of selecting this stack
-					col += task->stack[i].stage_stack(k, f);
+					col += task->stack[i].stageStack(k, f);
 				
 					edge += task->stack[i].layer.stashCost();
 
@@ -460,17 +460,17 @@ void compute_stack_order(layout_task *task)
 	}
 }
 
-void compute_channel_routes(layout_task *task)
+void compute_channel_routes(LayoutTask *task)
 {
 }
 
-void process_cell()
+void processCell()
 {
 	bool discrete_lengths = false;
 	int n_fold = 10;
 	int p_fold = 10;
 
-	layout_task task;
+	LayoutTask task;
 
 	/*// allocate a new array with all of the nets in the cell
 	int max_net_id = -1;
@@ -558,7 +558,7 @@ void process_cell()
 	// TODO: add the DRC constraints into the routers
 
 	
-	collect_stacks(&task);
+	collectStacks(&task);
 	compute_stack_order(&task);
 
 	char buf[1000];
