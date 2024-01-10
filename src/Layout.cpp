@@ -1,26 +1,3 @@
-/*************************************************************************
- *
- *  This file is part of the ACT library
- *
- *  Copyright (c) 2018-2019 Rajit Manohar
- *
- *  This program is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU General Public License
- *  as published by the Free Software Foundation; either version 2
- *  of the License, or (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin Street, Fifth Floor,
- *  Boston, MA  02110-1301, USA.
- *
- **************************************************************************
- */
 #include <stdio.h>
 #include <string.h>
 #include <set>
@@ -38,49 +15,19 @@ Net::~Net()
 {
 }
 
-Gate::Gate()
-{
-}
-
-Gate::Gate(int net, int width, int length)
-{
-	this->net = net;
-	this->width = width;
-	this->length = length;
-}
-
-Gate::~Gate()
-{
-}
-
-
-Device::Device(int gate, int source, int drain, int bulk, int width, int length)
-{
-	this->gate.push_back(Gate(gate, width, length));
-	this->source = source;
-	this->drain = drain;
-	this->bulk = bulk;
-
-	this->selected = 0;
-}
-
-Device::~Device()
-{
-}
-
-DeviceLayout::DeviceLayout()
+TermIndex::TermIndex()
 {
 	idx = 0;
 	flip = 0;
 }
 
-DeviceLayout::DeviceLayout(int idx, int flip)
+TermIndex::TermIndex(int idx, int flip)
 {
 	this->idx = idx;
 	this->flip = flip;
 }
 
-DeviceLayout::~DeviceLayout()
+TermIndex::~TermIndex()
 {
 }
 
@@ -170,7 +117,7 @@ void Stack::commit()
 	stage[0] = col.size();
 	stage[1] = col.size();
 	layer.commit();
-	sel.push_back(DeviceLayout(idx[0], flip[0]));
+	sel.push_back(TermIndex(idx[0], flip[0]));
 	mos[idx[0]].selected = 1;
 }
 
@@ -535,8 +482,8 @@ void processCell()
 						w = e->w;
 					}
 
-					A_NEW(task.stack[e->type].mos, Device);
-					new (&A_NEXT(task.stack[e->type].mos)) Device(e->g->i, e->a->i, e->b->i, e->bulk->i, w, l);
+					A_NEW(task.stack[e->type].mos, Term);
+					new (&A_NEXT(task.stack[e->type].mos)) Term(e->g->i, e->a->i, e->b->i, e->bulk->i, w, l);
 					A_INC(task.stack[e->type].mos);
 				}
 			}

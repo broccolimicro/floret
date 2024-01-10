@@ -27,6 +27,7 @@
 #include <vector>
 #include <string>
 #include "ColorGraph.h"
+#include "Term.h"
 
 using namespace std;
 
@@ -44,42 +45,11 @@ struct Net
 	int ports;
 };
 
-struct Gate
+struct TermIndex
 {
-	Gate();
-	Gate(int net, int width, int length);
-	~Gate();
-
-	// the id of the net for this gate
-	// this indexes into task->nets or task->stack[i].ovr
-	int net;
-
-	// transistor dimensions
-	int width;
-	int length;
-};
-
-struct Device
-{
-	Device(int gate, int source, int drain, int bulk, int width, int length);
-	~Device();
-
-	vector<Gate> gate;
-	// the id of the net for this stack
-	// this indexes into task->nets or task->stack[i].ovr
-	int source;
-	int drain;
-	int bulk;
-
-	// whether or not this stack has been placed in the layout problem
-	bool selected;
-};
-
-struct DeviceLayout
-{
-	DeviceLayout();
-	DeviceLayout(int idx, int flip);
-	~DeviceLayout();
+	TermIndex();
+	TermIndex(int idx, int flip);
+	~TermIndex();
 
 	// the device stack stack index
 	int idx;
@@ -132,8 +102,8 @@ struct Stack
 	Stack();
 	~Stack();
 
-	vector<Device> mos;
-	vector<DeviceLayout> sel;
+	vector<Term> mos;
+	vector<TermIndex> sel;
 	vector<Column> col;
 	vector<OverRoute> ovr;
 	ColorGraph layer;
