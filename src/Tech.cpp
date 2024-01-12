@@ -21,12 +21,14 @@ Layer::~Layer() {
 
 Diffusion::Diffusion() {
 	layer = -1;
-	overhang = 0;
+	overhangX = 0;
+	overhangY = 0;
 }
 
-Diffusion::Diffusion(int layer, int overhang) {
+Diffusion::Diffusion(int layer, int overhangX, int overhangY) {
 	this->layer = layer;
-	this->overhang = overhang;
+	this->overhangX = overhangX;
+	this->overhangY = overhangY;
 }
 
 Diffusion::~Diffusion() {
@@ -355,12 +357,12 @@ Tech::Tech() {
 	layers.push_back(Layer("cmm5.waffleDrop", 117, 4));
 
 	models.push_back(Model(Model::NMOS, "sky130_fd_pr__nfet_01v8"));
-	models.back().layers.push_back(Diffusion(findLayer("diff.drawing"), 50));
-	models.back().layers.push_back(Diffusion(findLayer("nsdm.drawing"), 25));
+	models.back().layers.push_back(Diffusion(findLayer("diff.drawing"), 50, 0));
+	models.back().layers.push_back(Diffusion(findLayer("nsdm.drawing"), 25, 25));
 	models.push_back(Model(Model::PMOS, "sky130_fd_pr__pfet_01v8"));
-	models.back().layers.push_back(Diffusion(findLayer("diff.drawing"), 50));
-	models.back().layers.push_back(Diffusion(findLayer("psdm.drawing"), 25));
-	models.back().layers.push_back(Diffusion(findLayer("nwell.drawing"), 36));
+	models.back().layers.push_back(Diffusion(findLayer("diff.drawing"), 50, 0));
+	models.back().layers.push_back(Diffusion(findLayer("psdm.drawing"), 25, 25));
+	models.back().layers.push_back(Diffusion(findLayer("nwell.drawing"), 36, 36));
 
 	vias.push_back(Via(findLayer("diff.drawing"), findLayer("li1.drawing"), findLayer("licon1.drawing")));
 	vias.push_back(Via(findLayer("poly.drawing"), findLayer("li1.drawing"), findLayer("licon1.drawing")));

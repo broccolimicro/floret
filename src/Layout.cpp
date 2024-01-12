@@ -74,26 +74,41 @@ void Layout::drawTransistor(const Tech &tech, Point pos, int model, const Gate &
 	
 	// draw diffusion
 	int length = gate.length;
+	int width = gate.width*flip;
 	for (auto layer = tech.models[model].layers.begin(); layer != tech.models[model].layers.end(); layer++) {
-		pos.x -= layer->overhang;
-		length += 2*layer->overhang;
-		diff[type].push_back(Rect(layer->layer, pos, length, gate.width*flip));
+		pos.x -= layer->overhangX;
+		pos.y -= layer->overhangY*flip;
+		length += 2*layer->overhangX;
+		width += 2*layer->overhangY*flip;
+		diff[type].push_back(Rect(layer->layer, pos, length, width));
 	}
 }
 
 Point Layout::drawTerm(const Tech &tech, Point pos, const Term &term, bool flip) {
+	int coeff = 1;
+	int type = tech.models[term.model].type;
+	if (type == Model::NMOS) {
+		coeff = -1;
+	}
+
+	int via = tech.vias[0].drawingLayer; 
+
+	nets[flip ? term.drain : term.source].rect.push_back(Rect(via, Point(pos.x, pos.y*coeff), tech.layers[via].minWidth, tech.layers[via].minWidth));
+
 	for (int i = flip ? (int)term.gate.size()-1 : 0; i != (flip ? -1 : (int)term.gate.size()); i += flip ? -1 : 1) {
 		// draw transistor
 		drawTransistor(tech, pos, term.model, term.gate[i]);
 		 
 		// draw li contacts
 		
-		
 		// draw li
 		
 		
 		pos.x += term.gate[i].length + tech.layers[tech.wires[0].drawingLayer].minSpacing;
 	}
+
+	nets[flip ? term.source : term.drain].rect.push_back(Rect(via, Point(pos.x, pos.y*coeff), tech.layers[via].minWidth, tech.layers[via].minWidth));
+	
 	return pos;
 }
 
@@ -114,14 +129,23 @@ void Layout::drawCell(const Tech &tech, Point pos, const Cell &cell) {
 	}
 
 	// draw pull-up
-	drawStack(tech, Point(0, 30), cell.stack[Model::PMOS]);
+	drawStack(tech, Point(0, 50), cell.stack[Model::PMOS]);
 
 	// draw pull-down
-	drawStack(tech, Point(0, 30), cell.stack[Model::NMOS]);
+	drawStack(tech, Point(0, 50), cell.stack[Model::NMOS]);
 
 	// draw channel routing
 
 	// draw boundary
+}
+
+gdstk::Label *Layout::emitLabel(const Tech &tech, Point pos, int layer, string text) const {
+	return new gdstk::Label{
+		.tag = gdstk::make_tag(tech.layers[layer].major, tech.layers[layer].minor),
+		.text = strdup(text.c_str()),
+		.origin = gdstk::Vec2{(double)pos.x, (double)pos.y},
+		.magnification = 1,
+	};
 }
 
 void Layout::emit(const Tech &tech, string libName) const {
@@ -143,6 +167,7 @@ void Layout::emit(const Tech &tech, string libName) const {
 	for (auto n = nets.begin(); n != nets.end(); n++) {
 		for (auto r = n->rect.begin(); r != n->rect.end(); r++) {
 			cell->polygon_array.append(r->emit(tech));
+			cell->label_array.append(emitLabel(tech, Point((r->left+r->right)/2, (r->bottom+r->top)/2), r->layer, n->name));
 		}
 	}
 

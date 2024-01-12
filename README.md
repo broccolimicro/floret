@@ -34,7 +34,7 @@ This will create the `cells` directory and run cell layout for all cells in the 
 
 **Data Input:**
 * A spice netlist
-* Optionally a Rectangle file (partial solution)
+* Optionally a GDS file (partial solution)
 
 **Configuration Input:**
 * Design rule set for a process technology node
@@ -42,7 +42,7 @@ This will create the `cells` directory and run cell layout for all cells in the 
 * Heuristic preferences for each step
 
 **Output:**
-* Rectangle file
+* GDS file
 
 **Steps:**
 1. Read input and configuration

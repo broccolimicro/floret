@@ -56,5 +56,6 @@ struct Layout {
 	void drawStack(const Tech &tech, Point pos, const Stack &stack);
 	void drawCell(const Tech &tech, Point pos, const Cell &cell);
 
+	gdstk::Label *emitLabel(const Tech &tech, Point pos, int layer, string text) const;
 	void emit(const Tech &tech, string libName) const;
 };

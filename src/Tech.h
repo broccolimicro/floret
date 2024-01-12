@@ -20,13 +20,14 @@ struct Layer {
 
 struct Diffusion {
 	Diffusion();
-	Diffusion(int layer, int overhang);
+	Diffusion(int layer, int overhangX, int overhangY);
 	~Diffusion();
 
 	// these index into Tech::layers
 	int layer;
-	
-	int overhang;
+
+	int overhangX;
+	int overhangY;
 };
 
 struct Model {
