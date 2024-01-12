@@ -37,11 +37,15 @@ Diffusion::~Diffusion() {
 Model::Model() {
 	name = "";
 	type = NMOS;
+	viaPolySpacing = 0;
+	polyOverhang = 0;
 }
 
-Model::Model(int type, string name) {
+Model::Model(int type, string name, int viaPolySpacing, int polyOverhang) {
 	this->name = name;
 	this->type = type;
+	this->viaPolySpacing = viaPolySpacing;
+	this->polyOverhang = polyOverhang;
 }
 
 Model::~Model() {
@@ -356,21 +360,21 @@ Tech::Tech() {
 	layers.push_back(Layer("cfom.waffleDrop", 22, 24));
 	layers.push_back(Layer("cmm5.waffleDrop", 117, 4));
 
-	models.push_back(Model(Model::NMOS, "sky130_fd_pr__nfet_01v8"));
+	models.push_back(Model(Model::NMOS, "sky130_fd_pr__nfet_01v8", 18, 26));
 	models.back().layers.push_back(Diffusion(findLayer("diff.drawing"), 50, 0));
 	models.back().layers.push_back(Diffusion(findLayer("nsdm.drawing"), 25, 25));
-	models.push_back(Model(Model::PMOS, "sky130_fd_pr__pfet_01v8"));
+	models.push_back(Model(Model::PMOS, "sky130_fd_pr__pfet_01v8", 18, 26));
 	models.back().layers.push_back(Diffusion(findLayer("diff.drawing"), 50, 0));
 	models.back().layers.push_back(Diffusion(findLayer("psdm.drawing"), 25, 25));
 	models.back().layers.push_back(Diffusion(findLayer("nwell.drawing"), 36, 36));
 
-	vias.push_back(Via(findLayer("diff.drawing"), findLayer("li1.drawing"), findLayer("licon1.drawing")));
-	vias.push_back(Via(findLayer("poly.drawing"), findLayer("li1.drawing"), findLayer("licon1.drawing")));
-	vias.push_back(Via(findLayer("li1.drawing"), findLayer("met1.drawing"), findLayer("mcon.drawing")));
-	vias.push_back(Via(findLayer("met1.drawing"), findLayer("met2.drawing"), findLayer("via.drawing")));
-	vias.push_back(Via(findLayer("met2.drawing"), findLayer("met3.drawing"), findLayer("via2.drawing")));
-	vias.push_back(Via(findLayer("met3.drawing"), findLayer("met4.drawing"), findLayer("via3.drawing")));
-	vias.push_back(Via(findLayer("met4.drawing"), findLayer("met5.drawing"), findLayer("via4.drawing")));
+	vias.push_back(Via(findLayer("diff.drawing"), findLayer("li1.drawing"), findLayer("licon1.drawing"), 8, 12, 16, 16));
+	vias.push_back(Via(findLayer("poly.drawing"), findLayer("li1.drawing"), findLayer("licon1.drawing"), 10, 16, 16, 16));
+	vias.push_back(Via(findLayer("li1.drawing"), findLayer("met1.drawing"), findLayer("mcon.drawing"), 0, 0, 6, 12));
+	vias.push_back(Via(findLayer("met1.drawing"), findLayer("met2.drawing"), findLayer("via.drawing"), 11, 11, 11, 17));
+	vias.push_back(Via(findLayer("met2.drawing"), findLayer("met3.drawing"), findLayer("via2.drawing"), 8, 17, 13, 13));
+	vias.push_back(Via(findLayer("met3.drawing"), findLayer("met4.drawing"), findLayer("via3.drawing"), 12, 18, 13, 13));
+	vias.push_back(Via(findLayer("met4.drawing"), findLayer("met5.drawing"), findLayer("via4.drawing"), 38, 38, 62, 62));
 
 	wires.push_back(Wire(findLayer("poly.drawing"), findLayer("poly.pin"), findLayer("poly.label")));
 	wires.push_back(Wire(findLayer("li1.drawing"), findLayer("li1.pin"), findLayer("li1.label")));

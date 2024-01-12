@@ -32,7 +32,7 @@ struct Diffusion {
 
 struct Model {
 	Model();
-	Model(int type, string name);
+	Model(int type, string name, int viaPolySpacing, int polyOverhang);
 	~Model();
 
 	enum {
@@ -45,6 +45,8 @@ struct Model {
 
 	// Start top down
 	vector<Diffusion> layers;
+	int viaPolySpacing;
+	int polyOverhang;
 };
 
 struct Wire {

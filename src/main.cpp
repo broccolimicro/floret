@@ -70,6 +70,7 @@ int main(int argc, char **argv) {
 	
 	Layout layout;
 	layout.drawCell(tech, Point(), cellLib.cells[0]);
+	layout.cleanup();
 	layout.emit(tech, "test");
 }
 

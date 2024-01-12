@@ -29,8 +29,12 @@ struct Rect {
 	int right;
 	int top;
 
+	bool merge(Rect r);
+
 	gdstk::Polygon *emit(const Tech &tech) const;
 };
+
+void mergeRects(vector<Rect> &rects);
 
 struct NetLayout {
 	NetLayout();
@@ -53,8 +57,11 @@ struct Layout {
 
 	void drawTransistor(const Tech &tech, Point pos, int model, const Gate &gate); 
 	Point drawTerm(const Tech &tech, Point pos, const Term &term, bool flip); 
+	void drawDiffContact(const Tech &tech, int net, int model, Point pos, int width, int flip);
 	void drawStack(const Tech &tech, Point pos, const Stack &stack);
 	void drawCell(const Tech &tech, Point pos, const Cell &cell);
+
+	void cleanup();
 
 	gdstk::Label *emitLabel(const Tech &tech, Point pos, int layer, string text) const;
 	void emit(const Tech &tech, string libName) const;
