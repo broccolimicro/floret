@@ -237,7 +237,7 @@ bool Cell::loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer
 		}
 	}
 
-	stack[type].mos.push_back(Term(ports[1], ports[2], ports[0], ports[3], (int)(width/tech.dbunit), (int)(length/tech.dbunit)));
+	stack[type].mos.push_back(Term(modelIdx, ports[1], ports[2], ports[0], ports[3], (int)(width/tech.dbunit), (int)(length/tech.dbunit)));
 	printf("%s %d %d %d %d %f %f\n", modelName.c_str(), ports[0], ports[1], ports[2], ports[3], width, length);
 
 	return true;

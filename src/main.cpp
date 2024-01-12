@@ -2,7 +2,9 @@
 #include <string>
 #include <vector>
 
+#include "Tech.h"
 #include "Library.h"
+#include "Layout.h"
 
 using namespace std;
 
@@ -65,5 +67,9 @@ int main(int argc, char **argv) {
 	Library cellLib;
 	cellLib.loadFile(tech, spiceFiles[0]);
 	cellLib.fullLayout();
+	
+	Layout layout;
+	layout.drawCell(tech, Point(), cellLib.cells[0]);
+	layout.emit(tech, "test");
 }
 

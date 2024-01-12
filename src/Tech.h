@@ -13,6 +13,20 @@ struct Layer {
 	string name;
 	int major;
 	int minor;
+
+	int minSpacing;
+	int minWidth;
+};
+
+struct Diffusion {
+	Diffusion();
+	Diffusion(int layer, int overhang);
+	~Diffusion();
+
+	// these index into Tech::layers
+	int layer;
+	
+	int overhang;
 };
 
 struct Model {
@@ -28,10 +42,35 @@ struct Model {
 	
 	string name;
 
-	// these index into Tech::layers
-	vector<int> diffLayers;
-	vector<int> polyLayers;
-	vector<int> contactLayers;
+	// Start top down
+	vector<Diffusion> layers;
+};
+
+struct Wire {
+	Wire();
+	Wire(int drawing, int pin, int label);
+	~Wire();
+	
+	// index into Tech::layers
+	int drawingLayer;
+	int pinLayer;
+	int labelLayer;
+};
+
+struct Via {
+	Via();
+	Via(int from, int to, int layer, int downLo = 0, int downHi = 0, int upLo = 0, int upHi = 0);
+	~Via();
+
+	// index into Tech::layers
+	int from;
+	int to;
+	int drawingLayer;
+
+	int downLo;
+	int downHi;
+	int upLo;
+	int upHi;
 };
 
 struct Tech {
@@ -40,8 +79,12 @@ struct Tech {
 	
 	double dbunit;
 
+	int boundary;
 	vector<Layer> layers;
 	vector<Model> models;
+	vector<Via> vias;
+	vector<Wire> wires;
+	
 
 	int findLayer(string name) const;
 	int findModel(string name) const;

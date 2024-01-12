@@ -6,6 +6,11 @@ Floret is a cell generator designed for advanced nodes.
 
 ## Build and Install
 
+Install all dependencies
+```
+sudo apt install libqhull-dev zlib1g-dev
+```
+
 This will build the `floret-linux` binary in the `build-linux` directory:
 ```
 git submodule update --init --recursive

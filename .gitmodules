@@ -1,3 +1,6 @@
 [submodule "deps/pgen"]
 	path = deps/pgen
 	url = https://github.com/nbingham1/pgen.git
+[submodule "deps/gdstk"]
+	path = deps/gdstk
+	url = git@github.com:heitzmann/gdstk.git

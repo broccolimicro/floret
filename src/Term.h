@@ -21,7 +21,7 @@ struct Gate
 
 struct Term
 {
-	Term(int gate, int source, int drain, int bulk, int width, int length);
+	Term(int model, int gate, int source, int drain, int bulk, int width, int length);
 	~Term();
 
 	vector<Gate> gate;
@@ -30,6 +30,8 @@ struct Term
 	int source;
 	int drain;
 	int bulk;
+
+	int model;
 
 	// whether or not this stack has been placed in the layout problem
 	bool selected;

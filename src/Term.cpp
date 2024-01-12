@@ -15,12 +15,14 @@ Gate::~Gate()
 {
 }
 
-Term::Term(int gate, int source, int drain, int bulk, int width, int length)
+Term::Term(int model, int gate, int source, int drain, int bulk, int width, int length)
 {
 	this->gate.push_back(Gate(gate, width, length));
 	this->source = source;
 	this->drain = drain;
 	this->bulk = bulk;
+
+	this->model = model;
 
 	this->selected = 0;
 }

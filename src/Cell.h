@@ -2,7 +2,6 @@
 
 #include <vector>
 #include <string>
-#include "Rect.h"
 #include "Stack.h"
 #include "spice.h"
 #include "Tech.h"
@@ -27,8 +26,6 @@ struct Cell
 	vector<Route> cols;
 	int stage[2];
 
-	vector<Rect> geo;
-	
 	void stash();
 	void commit();
 	void clear();
@@ -45,6 +42,4 @@ struct Cell
 	bool loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &dev);
 	void loadSubckt(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &subckt);
 };
-
-void processCell();
 

@@ -29,7 +29,7 @@ struct TermIndex
 	TermIndex(int idx, int flip);
 	~TermIndex();
 
-	// the device stack stack index
+	// the device stack stack index Stack::mos
 	int idx;
 
 	// unflipped is source on left, drain on right. Flipped is drain on left,
