@@ -123,52 +123,43 @@ Layout::Layout() {
 Layout::~Layout() {
 }
 
-void Layout::drawTransistor(const Tech &tech, Point pos, int model, const Gate &gate) {
-	int flip = 1;
+void Layout::drawTransistor(const Tech &tech, Point pos, Point dir, int model, const Gate &gate) {
 	int type = tech.models[model].type;
-	if (type == Model::NMOS) {
-		flip = -1;
-	}
-
-	pos.y *= flip;
-
 	int polyOverhang = tech.models[model].polyOverhang;
 	
 	// draw poly
-	nets[gate.net].rect.push_back(Rect(tech.wires[0].drawingLayer, Point(pos.x, pos.y - polyOverhang*flip), gate.length, (gate.width + 2*polyOverhang)*flip));
+	nets[gate.net].contacts[type].push_back(Rect(tech.wires[0].drawingLayer, Point(pos.x, pos.y - polyOverhang*dir.y), gate.length*dir.x, (gate.width + 2*polyOverhang)*dir.y));
 	
 	// draw diffusion
-	int length = gate.length;
-	int width = gate.width*flip;
+	int length = gate.length*dir.x;
+	int width = gate.width*dir.y;
 	for (auto layer = tech.models[model].layers.begin(); layer != tech.models[model].layers.end(); layer++) {
-		pos.x -= layer->overhangX;
-		pos.y -= layer->overhangY*flip;
-		length += 2*layer->overhangX;
-		width += 2*layer->overhangY*flip;
+		pos.x -= layer->overhangX*dir.x;
+		pos.y -= layer->overhangY*dir.y;
+		length += 2*layer->overhangX*dir.x;
+		width += 2*layer->overhangY*dir.y;
 		diff[type].push_back(Rect(layer->layer, pos, length, width));
 	}
 }
 
-Point Layout::drawTerm(const Tech &tech, Point pos, const Term &term, bool flip) {
+Point Layout::drawTerm(const Tech &tech, Point pos, Point dir, const Term &term, bool flip) {
 	int start = flip ? (int)term.gate.size()-1 : 0;
 	int end = (flip ? -1 : (int)term.gate.size());
 	int step = flip ? -1 : 1;
 
 	for (int i = start; i != end; i += step) {
 		// draw transistor
-		drawTransistor(tech, pos, term.model, term.gate[i]);
+		drawTransistor(tech, pos, dir, term.model, term.gate[i]);
 		
 		if (i+step != end) {		
-			pos.x += term.gate[i].length + tech.layers[tech.wires[0].drawingLayer].minSpacing;
+			pos.x += (term.gate[i].length + tech.layers[tech.wires[0].drawingLayer].minSpacing)*dir.x;
 		}
 	}
 
 	return pos;
 }
 
-void Layout::drawDiffContact(const Tech &tech, int net, int model, Point pos, int width, int flip) {
-	pos.y *= flip;
-
+void Layout::drawDiffContact(const Tech &tech, int net, int model, Point pos, Point dir, int width) {
 	int via = tech.vias[0].drawingLayer; 
 	int viaWidth = tech.layers[via].minWidth;
 	int viaSpacing = tech.layers[via].minSpacing;
@@ -186,34 +177,95 @@ void Layout::drawDiffContact(const Tech &tech, int net, int model, Point pos, in
 
 	// draw diffusion
 	int type = tech.models[model].type;
-	Point diffPos(pos.x-diffEncloseH, pos.y);
-	int diffLength = viaWidth + 2*diffEncloseH;
-	int diffWidth = width*flip;
+	Point diffPos(pos.x-diffEncloseH*dir.x, pos.y);
+	int diffLength = (viaWidth + 2*diffEncloseH)*dir.x;
+	int diffWidth = width*dir.y;
 	for (auto layer = tech.models[model].layers.begin(); layer != tech.models[model].layers.end(); layer++) {
 		if (layer != tech.models[model].layers.begin()) {
-			diffPos.x -= layer->overhangX;
-			diffPos.y -= layer->overhangY*flip;
-			diffLength += 2*layer->overhangX;
-			diffWidth += 2*layer->overhangY*flip;
+			diffPos.x -= layer->overhangX*dir.x;
+			diffPos.y -= layer->overhangY*dir.y;
+			diffLength += 2*layer->overhangX*dir.x;
+			diffWidth += 2*layer->overhangY*dir.y;
 		}
 		diff[type].push_back(Rect(layer->layer, diffPos, diffLength, diffWidth));
 	}
 
-	pos.y += flip*contactOffset;
-	if (flip < 0) {
-		pos.y += flip*contactWidth;
+	pos.y += dir.y*contactOffset;
+	if (dir.y < 0) {
+		pos.y += dir.y*contactWidth;
 	}
 
-	nets[net].rect.push_back(Rect(tech.wires[1].drawingLayer, pos, viaWidth, contactWidth));
+	nets[net].contacts[type].push_back(Rect(tech.wires[1].drawingLayer, pos, viaWidth, contactWidth));
 
 	for (int i = 0; i < numVias; i++) {
-		nets[net].rect.push_back(Rect(via, pos, viaWidth, viaWidth));
+		nets[net].routes.push_back(Rect(via, pos, viaWidth, viaWidth));
 
 		pos.y += viaWidth+viaSpacing;
 	}
 }
 
-void Layout::drawStack(const Tech &tech, Point pos, const Stack &stack) {
+void Layout::drawVia(const Tech &tech, int net, int layer, Point pos, Point dir, int sizeX, int sizeY) {
+	int via = tech.vias[layer].drawingLayer;
+	int down = tech.vias[layer].from;
+	int up = tech.vias[layer].to;
+	int viaWidth = tech.layers[via].minWidth;
+	int viaSpacing = tech.layers[via].minSpacing;
+	int dnLo = tech.vias[layer].downLo;
+	int dnHi = tech.vias[layer].downHi;
+	int upLo = tech.vias[layer].upLo;
+	int upHi = tech.vias[layer].upHi;
+
+	int numX = 1 + (sizeX-viaWidth - 2*dnLo) / (viaSpacing + viaWidth);
+	int numY = 1 + (sizeY-viaWidth - 2*dnLo) / (viaSpacing+viaWidth);
+
+	int widthX = numX*viaWidth + (numX-1)*viaSpacing;
+	int widthY = numY*viaWidth + (numY-1)*viaSpacing;
+
+	int offX = 0;
+	int offY = 0;
+	if (sizeX > widthX) {
+		offX = (sizeX - widthX)/2;
+	}
+	if (sizeY > widthY) {
+		offY = (sizeY - widthY)/2;
+	}
+
+	int dnH = dnHi;
+	int dnV = dnLo;
+	if (offX >= dnHi) {
+		dnH = dnLo;
+		dnV = dnHi;
+	}
+
+	int upH = upHi;
+	int upV = upLo;
+	if (offX >= upHi) {
+		upH = upLo;
+		upV = upHi;
+	}
+
+	if (offY < dnV) {
+		offY = dnV;
+	}
+	if (offY < upV) {
+		offY = upV;
+	}
+
+	// draw down
+	nets[net].routes.push_back(Rect(down, Point(pos.x+(offX-dnH)*dir.x, pos.y+(offY-dnV)*dir.y), (offX+widthX+dnH)*dir.x, (offY+widthY+dnV)*dir.y));
+
+	// draw via
+	for (int x = 0; x < numX; x++) {
+		for (int y = 0; y < numY; y++) {
+			nets[net].routes.push_back(Rect(via, Point(pos.x+(offX+x*(viaWidth+viaSpacing))*dir.x, pos.y+(offY+y*(viaWidth+viaSpacing))*dir.y), viaWidth*dir.x, viaWidth*dir.y));
+		}
+	}
+
+	// draw up
+	nets[net].routes.push_back(Rect(up, Point(pos.x+(offX-upH)*dir.x, pos.y+(offY-upV)*dir.y), (upH*2+widthX)*dir.x, (upV*2+widthY)*dir.y));
+}
+
+void Layout::drawStack(const Tech &tech, Point pos, Point dir, const Stack &stack) {
 	if (stack.sel.size() == 0) {
 		return;
 	}
@@ -226,7 +278,7 @@ void Layout::drawStack(const Tech &tech, Point pos, const Stack &stack) {
 	// draw li
 
 	int model = stack.mos[stack.sel[0].idx].model;
-	int coeff = tech.models[model].type == Model::NMOS ? -1 : 1;
+	int type = tech.models[model].type;
 	int viaPolySpacing = tech.models[model].viaPolySpacing;
 
 	int net = stack.mos[stack.sel[0].idx].source;
@@ -238,12 +290,12 @@ void Layout::drawStack(const Tech &tech, Point pos, const Stack &stack) {
 		length = stack.mos[stack.sel[0].idx].gate.back().length;
 	}
 
-	drawDiffContact(tech, net, model, Point(pos.x - viaWidth - viaPolySpacing, pos.y), width, coeff);
+	drawDiffContact(tech, net, model, Point(pos.x - (viaWidth+viaPolySpacing)*dir.x, pos.y), dir, width);
 
 	// draw transistors
 	for (auto i = stack.sel.begin(); i != stack.sel.end(); i++) {
 		model = stack.mos[i->idx].model;
-		coeff = tech.models[model].type == Model::NMOS ? -1 : 1;
+		type = tech.models[model].type;
 
 		net = stack.mos[i->idx].drain;
 		width = stack.mos[i->idx].gate.back().width;
@@ -274,14 +326,92 @@ void Layout::drawStack(const Tech &tech, Point pos, const Stack &stack) {
 			}
 		}
 
-		pos = drawTerm(tech, pos, stack.mos[i->idx], i->flip);
+		pos = drawTerm(tech, pos, dir, stack.mos[i->idx], i->flip);
 
-		drawDiffContact(tech, net, model, Point(pos.x + viaPolySpacing + length, pos.y), contactWidth, coeff);
+		drawDiffContact(tech, net, model, Point(pos.x + (viaPolySpacing+length)*dir.x, pos.y), dir, contactWidth);
 
-		pos.x += 2*viaPolySpacing + viaWidth + length;
+		pos.x += (2*viaPolySpacing + viaWidth + length)*dir.x;
 	}
 
 	// draw overcell routing
+	int poly = tech.wires[0].drawingLayer;
+	int polyWidth = tech.layers[poly].minWidth;
+	int polySpacing = tech.layers[poly].minSpacing;
+	int polyvia = tech.vias[1].drawingLayer;
+	int polyviaWidth = tech.layers[polyvia].minWidth;
+	int m1 = tech.wires[1].drawingLayer;	
+	int m1Width = tech.layers[m1].minWidth;
+	int m1Spacing = tech.layers[m1].minSpacing;
+	int m1via = tech.vias[2].drawingLayer;
+	int m1viaWidth = tech.layers[m1via].minWidth;
+	int m2 = tech.wires[2].drawingLayer;
+	int m2Width = tech.layers[m2].minWidth;
+	int m2Spacing = tech.layers[m2].minSpacing;
+
+	int maxColor = 0;
+	for (int net = 0; net < (int)stack.layer.color.size(); net++) {
+		if (stack.layer.color[net] > maxColor) {
+			maxColor = stack.layer.color[net];
+		}
+	}
+
+	vector<int> colors;
+	int maxOffset = pos.y;
+	for (int color = 0; color <= maxColor; color++) {
+		for (int net = 0; net < (int)nets.size(); net++) {
+			if (stack.layer.color[net] == color) {
+				while (color >= (int)colors.size()) {
+					colors.push_back(maxOffset);
+				}
+
+				int left = 0;
+				int right = 0;
+				for (auto c = nets[net].contacts[type].begin(); c != nets[net].contacts[type].end(); c++) {
+					if (left == right) {
+						left = c->left;
+						right = c->right;
+					} else {
+						if (c->left < left) {
+							left = c->left;
+						}
+						if (c->right > right) {
+							right = c->right;
+						}
+					}
+
+					int n1 = colors[color];
+					int n2 = n1+m2Width*dir.y;
+					int bottom = c->bottom;
+					int top = c->top;
+					if (n1 < bottom) {
+						bottom = n1;
+					}
+					if (n2 < bottom) {
+						bottom = n2;
+					}
+					if (n1 > top) {
+						top = n1;
+					}
+					if (n2 > top) {
+						top = n2;
+					}
+					
+					nets[net].routes.push_back(Rect(c->layer, c->left, bottom, c->right, top));
+					drawVia(tech, net, 2, Point(c->left, colors[color]), dir, c->right-c->left, 0);
+				}	
+
+				nets[net].routes.push_back(Rect(m2, left, colors[color], right, colors[color]+m2Width*dir.y));
+				for (auto r = nets[net].routes.begin(); r != nets[net].routes.end(); r++) {
+					if (r->layer == m2 and (r->top+m2Spacing*dir.y)*dir.y > maxOffset*dir.y) {
+						maxOffset = r->top+m2Spacing*dir.y;
+					}
+					if (r->layer == m2 and (r->bottom+m2Spacing*dir.y)*dir.y > maxOffset*dir.y) {
+						maxOffset = r->bottom+m2Spacing*dir.y;
+					}
+				} 
+			}
+		}
+	}
 }
 
 void Layout::drawCell(const Tech &tech, Point pos, const Cell &cell) {
@@ -292,10 +422,10 @@ void Layout::drawCell(const Tech &tech, Point pos, const Cell &cell) {
 	}
 
 	// draw pull-up
-	drawStack(tech, Point(0, 100), cell.stack[Model::PMOS]);
+	drawStack(tech, Point(0, 100), Point(1, 1), cell.stack[Model::PMOS]);
 
 	// draw pull-down
-	drawStack(tech, Point(0, 100), cell.stack[Model::NMOS]);
+	drawStack(tech, Point(0, -100), Point(1, -1), cell.stack[Model::NMOS]);
 
 	// draw channel routing
 
@@ -307,7 +437,10 @@ void Layout::cleanup() {
 	mergeRects(diff[0]);
 	mergeRects(diff[1]);
 	for (int i = 0; i < (int)nets.size(); i++) {
-		mergeRects(nets[i].rect);
+		mergeRects(nets[i].routes);
+		for (int j = 0; j < 2; j++) {
+			mergeRects(nets[i].contacts[j]);
+		}
 	}
 }
 
@@ -337,9 +470,15 @@ void Layout::emit(const Tech &tech, string libName) const {
 	}
 
 	for (auto n = nets.begin(); n != nets.end(); n++) {
-		for (auto r = n->rect.begin(); r != n->rect.end(); r++) {
+		for (int c = 0; c < 2; c++) {
+			for (auto r = n->contacts[c].begin(); r != n->contacts[c].end(); r++) {
+				cell->polygon_array.append(r->emit(tech));
+				cell->label_array.append(emitLabel(tech, Point((r->left+r->right)/2, (r->bottom+r->top)/2), r->layer, n->name));
+			}
+		}
+
+		for (auto r = n->routes.begin(); r != n->routes.end(); r++) {
 			cell->polygon_array.append(r->emit(tech));
-			cell->label_array.append(emitLabel(tech, Point((r->left+r->right)/2, (r->bottom+r->top)/2), r->layer, n->name));
 		}
 	}
 

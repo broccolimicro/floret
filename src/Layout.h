@@ -42,7 +42,11 @@ struct NetLayout {
 	~NetLayout();
 
 	string name;
-	vector<Rect> rect;
+	// These are the vias, overcell, and channel routing geometry
+	vector<Rect> routes;
+
+	// this is where overcell and channel routing hook up to the nets
+	vector<Rect> contacts[2];
 };
 
 struct Layout {
@@ -53,12 +57,16 @@ struct Layout {
 
 	vector<Rect> support;
 	vector<Rect> diff[2];
-	vector<NetLayout> nets; 
+	vector<NetLayout> nets;
 
-	void drawTransistor(const Tech &tech, Point pos, int model, const Gate &gate); 
-	Point drawTerm(const Tech &tech, Point pos, const Term &term, bool flip); 
-	void drawDiffContact(const Tech &tech, int net, int model, Point pos, int width, int flip);
-	void drawStack(const Tech &tech, Point pos, const Stack &stack);
+	// offset from bottom of transistor
+	vector<int> overRoutes[2];
+
+	void drawTransistor(const Tech &tech, Point pos, Point dir, int model, const Gate &gate); 
+	Point drawTerm(const Tech &tech, Point pos, Point dir, const Term &term, bool flip); 
+	void drawDiffContact(const Tech &tech, int net, int model, Point pos, Point dir, int width);
+	void drawVia(const Tech &tech, int net, int layer, Point pos, Point dir, int width, int length);
+	void drawStack(const Tech &tech, Point pos, Point dir, const Stack &stack);
 	void drawCell(const Tech &tech, Point pos, const Cell &cell);
 
 	void cleanup();

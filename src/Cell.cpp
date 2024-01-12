@@ -70,7 +70,7 @@ void Cell::collectStacks()
 void Cell::orderStacks()
 {
 	int j[2] = {0,0};
-	while (j[0] < (int)stack[0].mos.size() or j[1] < (int)stack[1].mos.size()) {
+	while (j[Model::NMOS] < (int)stack[Model::NMOS].mos.size() or j[Model::PMOS] < (int)stack[Model::PMOS].mos.size()) {
 		// Alternate picking PMOS/NMOS stacks
 		// Pick the stack that minimizes:
 		//   - The number of color assignments in the over-the-cell routing problems
@@ -78,9 +78,9 @@ void Cell::orderStacks()
 		//   - The total expected horizontal distance between nets connected between the nmos and pmos stacks
 		
 		// Pick whichever stack currently has fewer columns as long as there are transistors left to route in that stack
-		int i = 0;
-		if (j[0] >= (int)stack[0].mos.size() or (j[1] < (int)stack[1].mos.size() and stack[1].col.size() < stack[0].col.size())) {
-			i = 1;
+		int i = Model::NMOS;
+		if (j[Model::NMOS] >= (int)stack[Model::NMOS].mos.size() or (j[Model::PMOS] < (int)stack[Model::PMOS].mos.size() and stack[Model::PMOS].col.size() < stack[Model::NMOS].col.size())) {
+			i = Model::PMOS;
 		}
 
 		int chan_cost = 0;
@@ -93,13 +93,13 @@ void Cell::orderStacks()
 		}*/
 		for (int k = 0; k < (int)stack[i].mos.size(); k++) {
 			if (not stack[i].mos[k].selected) {
-				for (int f = 0; f < (int)2; f++) {
+				for (int flip = 0; flip < 2; flip++) {
 					int chan = 0;
 					int col = 0;
 					int edge = 0;
 					
 					// compute the cost of selecting this stack
-					col += stack[i].stageStack(k, f);
+					col += stack[i].stageStack(k, flip);
 				
 					edge += stack[i].layer.stashCost();
 
