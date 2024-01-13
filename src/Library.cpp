@@ -8,7 +8,7 @@ using namespace std;
 void Library::loadSpice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &spice) {
 	for (auto tok = spice.tokens.begin(); tok != spice.tokens.end(); tok++) {
 		if (tok->type == lang.SUBCKT) {
-			cells.push_back(Cell());
+			cells.push_back(Circuit());
 			cells.back().loadSubckt(tech, lang, lexer, *tok);
 		}
 	}
@@ -37,8 +37,8 @@ void Library::loadFile(const Tech &tech, string path) {
 	}
 }
 
-void Library::fullLayout() {
+void Library::build(const Tech &tech) {
 	for (int i = 0; i < (int)cells.size(); i++) {
-		cells[i].fullLayout();
+		cells[i].solve(tech);
 	}
 }

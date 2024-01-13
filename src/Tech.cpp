@@ -51,19 +51,19 @@ Model::Model(int type, string name, int viaPolySpacing, int polyOverhang) {
 Model::~Model() {
 }
 
-Wire::Wire() {
+Routing::Routing() {
 	drawingLayer = -1;
 	pinLayer = -1;
 	labelLayer = -1;
 }
 
-Wire::Wire(int drawing, int pin, int label) {
+Routing::Routing(int drawing, int pin, int label) {
 	drawingLayer = drawing;
 	pinLayer = pin;
 	labelLayer = label;
 }
 
-Wire::~Wire() {
+Routing::~Routing() {
 }
 
 Via::Via() {
@@ -376,13 +376,13 @@ Tech::Tech() {
 	vias.push_back(Via(findLayer("met3.drawing"), findLayer("met4.drawing"), findLayer("via3.drawing"), 12, 18, 13, 13));
 	vias.push_back(Via(findLayer("met4.drawing"), findLayer("met5.drawing"), findLayer("via4.drawing"), 38, 38, 62, 62));
 
-	wires.push_back(Wire(findLayer("poly.drawing"), findLayer("poly.pin"), findLayer("poly.label")));
-	wires.push_back(Wire(findLayer("li1.drawing"), findLayer("li1.pin"), findLayer("li1.label")));
-	wires.push_back(Wire(findLayer("met1.drawing"), findLayer("met1.pin"), findLayer("met1.label")));
-	wires.push_back(Wire(findLayer("met2.drawing"), findLayer("met2.pin"), findLayer("met2.label")));
-	wires.push_back(Wire(findLayer("met3.drawing"), findLayer("met3.pin"), findLayer("met3.label")));
-	wires.push_back(Wire(findLayer("met4.drawing"), findLayer("met4.pin"), findLayer("met4.label")));
-	wires.push_back(Wire(findLayer("met5.drawing"), findLayer("met5.pin"), findLayer("met5.label")));
+	wires.push_back(Routing(findLayer("poly.drawing"), findLayer("poly.pin"), findLayer("poly.label")));
+	wires.push_back(Routing(findLayer("li1.drawing"), findLayer("li1.pin"), findLayer("li1.label")));
+	wires.push_back(Routing(findLayer("met1.drawing"), findLayer("met1.pin"), findLayer("met1.label")));
+	wires.push_back(Routing(findLayer("met2.drawing"), findLayer("met2.pin"), findLayer("met2.label")));
+	wires.push_back(Routing(findLayer("met3.drawing"), findLayer("met3.pin"), findLayer("met3.label")));
+	wires.push_back(Routing(findLayer("met4.drawing"), findLayer("met4.pin"), findLayer("met4.label")));
+	wires.push_back(Routing(findLayer("met5.drawing"), findLayer("met5.pin"), findLayer("met5.label")));
 
 	boundary = findLayer("areaid.sc.identifier");
 

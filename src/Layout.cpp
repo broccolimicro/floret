@@ -403,7 +403,7 @@ void Layout::drawStack(const Tech &tech, vec2i pos, vec2i dir, const Stack &stac
 	}
 }
 
-void Layout::drawCell(const Tech &tech, vec2i pos, const Cell &cell) {
+void Layout::drawCell(const Tech &tech, vec2i pos, const Circuit &cell) {
 	name = cell.name;
 
 	for (int i = 0; i < (int)cell.nets.size(); i++) {

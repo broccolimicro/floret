@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Cell.h"
+#include "Circuit.h"
 #include "Tech.h"
 #include <iostream>
 #include <gdstk/gdstk.hpp>
@@ -59,7 +59,7 @@ struct Layout {
 	void drawDiffContact(const Tech &tech, int net, int model, vec2i pos, vec2i dir, int width);
 	void drawVia(const Tech &tech, int net, int layer, vec2i pos, vec2i dir, int width, int length);
 	void drawStack(const Tech &tech, vec2i pos, vec2i dir, const Stack &stack);
-	void drawCell(const Tech &tech, vec2i pos, const Cell &cell);
+	void drawCell(const Tech &tech, vec2i pos, const Circuit &cell);
 
 	void cleanup();
 

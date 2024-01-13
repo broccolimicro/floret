@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
 	Tech tech;
 	Library cellLib;
 	cellLib.loadFile(tech, spiceFiles[0]);
-	cellLib.fullLayout();
+	cellLib.build();
 	
 	Layout layout;
 	layout.drawCell(tech, vec2i(), cellLib.cells[0]);

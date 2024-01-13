@@ -49,10 +49,10 @@ struct Model {
 	int polyOverhang;
 };
 
-struct Wire {
-	Wire();
-	Wire(int drawing, int pin, int label);
-	~Wire();
+struct Routing {
+	Routing();
+	Routing(int drawing, int pin, int label);
+	~Routing();
 	
 	// index into Tech::layers
 	int drawingLayer;
@@ -86,7 +86,7 @@ struct Tech {
 	vector<Layer> layers;
 	vector<Model> models;
 	vector<Via> vias;
-	vector<Wire> wires;
+	vector<Routing> wires;
 	
 
 	int findLayer(string name) const;
