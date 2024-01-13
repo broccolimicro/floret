@@ -69,7 +69,7 @@ int main(int argc, char **argv) {
 	cellLib.fullLayout();
 	
 	Layout layout;
-	layout.drawCell(tech, Point(), cellLib.cells[0]);
+	layout.drawCell(tech, vec2i(), cellLib.cells[0]);
 	layout.cleanup();
 	layout.emit(tech, "test");
 }
