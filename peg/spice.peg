@@ -6,7 +6,7 @@ subckt_k ~= "\.subckt" | "\.SUBCKT";
 ends_k ~= "\.ends" | "\.ENDS";
 port_list = (name _)*;
 
-device = "[rRcClLdDqQjJmMxXfFhHeEgGkKvViI]" name _ param_list __;
+device = "[rRcClLdDqQjJmMxXfFhHeEgGkKvViI]" (integer | name) _ param_list __;
 param_list = (param | value _ | name _)*;
 
 model = model_k _ name _ name _ param* __;
@@ -24,12 +24,12 @@ ic_k ~= "\.ic" | "\.IC";
 initial = measure _ ~"=" _ value _;
 measure = "[vViI]" ~"\(" (integer | name) ~"\)";
 param = name _ ~"=" _ value _ (~"," _ value _)*;
-name = ~"[#_a-zA-Z][_a-zA-Z0-9]*";
+name = ~"[#_a-zA-Z][#_a-zA-Z0-9]*";
 value = constant unit?;
 
 unit = ~"[aAfFpPnNuUmMkKxXgG]";
 constant = bool | text | real;
-real = ~integer (~"\." ~integer)? (~"e" ~"-"? ~integer)?;
+real = ~integer (~"\." ~integer)? (~"e" ~"[-+]"? ~integer)?;
 bool = ~"true" | ~"false";
 integer = ~"[0-9]+";
 text = ~"\"([^\"\\]|\\.)*\"";

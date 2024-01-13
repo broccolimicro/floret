@@ -4,7 +4,10 @@
 #include <map>
 #include <utility>
 #include <stdint.h>
+#include <math.h>
 #include "Cell.h"
+
+using namespace std;
 
 Cell::Cell()
 {
@@ -173,9 +176,40 @@ int Cell::findNet(string name) {
 	return -1;
 }
 
+string lower(string str) {
+	for (auto c = str.begin(); c != str.end(); c++) {
+		*c = tolower(*c);
+	}
+	return str;
+}
+
+double parseValue(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &val) {
+	string constStr = "0.0";
+	if (val.tokens.size() == 0) {
+		constStr = lexer.read(val.begin, val.end);
+	} else {
+		constStr = lexer.read(val.tokens[0].begin, val.tokens[0].end);
+	}
+
+	string unitStr = "";
+	if (val.tokens.size() == 2) {
+		unitStr = lower(lexer.read(val.tokens[1].begin, val.tokens[1].end));
+	}
+
+	double value = stod(constStr);
+	int unit = (int)(string("afpnumkxg").find(unitStr));
+	if (unit >= 0) {
+		int exp = 3*unit - 18;
+		value *= pow(10.0, (double)exp);
+	}
+
+	return value;
+}
+
 bool Cell::loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &dev) {
 	// deviceType deviceName paramList
 	if (dev.tokens.size() < 3) {
+		printf("tokens %d\n", (int)dev.tokens.size());
 		return false;
 	}
 
@@ -184,6 +218,7 @@ bool Cell::loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer
 
 	// DESIGN(edward.bingham) Since we're focused on digital design, we'll only support transistor layout for now.
 	if (string("mMxX").find(devType) == string::npos) {
+		printf("devtype %s\n", devType.c_str());
 		return false;
 	}
 
@@ -191,11 +226,13 @@ bool Cell::loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer
 	// Transistors must have the following args
 	// drain gate source base modelName
 	if (args->tokens.size() < 5) {
+		printf("args %d\n", (int)args->tokens.size());
 		return false;
 	}
 
 	// modelName cannot be a number or assignment
 	if (args->tokens[4].type != lang.NAME) {
+		printf("name\n");
 		return false;
 	}
 
@@ -203,6 +240,7 @@ bool Cell::loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer
 	int modelIdx = tech.findModel(modelName);
 	// if the modelName isn't in the model list, then this is a non-transistor subckt
 	if (modelIdx < 0) {
+		printf("model %s\n", modelName.c_str());
 		return false;
 	}
 	int type = tech.models[modelIdx].type;
@@ -212,18 +250,14 @@ bool Cell::loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer
 	double width = 0.0, length = 0.0;
 	for (auto arg = args->tokens.begin(); arg != args->tokens.end(); arg++) {
 		if (arg->type == lang.PARAM) {
-			string paramName = lexer.read(arg->tokens[0].begin, arg->tokens[0].end);
+			string paramName = lower(lexer.read(arg->tokens[0].begin, arg->tokens[0].end));
 			vector<double> values;
 			for (auto value = arg->tokens.begin()+1; value != arg->tokens.end(); value++) {
-				string valueStr = lexer.read(value->begin, value->end);
-				printf("%s %s\n", paramName.c_str(), valueStr.c_str());
-				values.push_back(stod(valueStr));
+				values.push_back(parseValue(lang, lexer, *value));
 			}
-			// TODO(edward.bingham) implement a lower() function
-			// TODO(edward.bingham) implement a value parser that handles units
-			if (paramName == "w" or paramName == "W") {
+			if (paramName == "w") {
 				width = values[0];
-			} else if (paramName == "l" or paramName == "L") {
+			} else if (paramName == "l") {
 				length = values[0];
 			}
 		} else if (ports.size() < 4) {
