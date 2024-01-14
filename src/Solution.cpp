@@ -222,6 +222,13 @@ void Solution::delRoute(int route) {
 	for (int i = (int)horiz.size()-1; i >= 0; i--) {
 		if (horiz[i].wires[0] == route or horiz[i].wires[1] == route) {
 			horiz.erase(horiz.begin()+i);
+		} else {
+			if (horiz[i].wires[0] > route) {
+				horiz[i].wires[0]--;
+			}
+			if (horiz[i].wires[1] > route) {
+				horiz[i].wires[1]--;
+			}
 		}
 	}
 
