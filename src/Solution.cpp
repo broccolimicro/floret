@@ -69,27 +69,36 @@ Wire::Wire(int net) {
 Wire::~Wire() {
 }
 
-Constraint::Constraint() {
+VerticalConstraint::VerticalConstraint() {
+	from = -1;
+	to = -1;
+	off = 0;
+}
+
+VerticalConstraint::VerticalConstraint(int from, int to) {
+	this->from = from;
+	this->to = to;
+	this->off = 0;
+}
+
+VerticalConstraint::~VerticalConstraint() {
+}
+
+HorizontalConstraint::HorizontalConstraint() {
 	wires[0] = -1;
 	wires[1] = -1;
-	pins[0] = Index();
-	pins[1] = Index();
-	base = -1;
 	select = -1;
 	off = 0;
 }
 
-Constraint::Constraint(Index pin0, int wire0, Index pin1, int wire1, int base) {
-	this->wires[0] = wire0;
-	this->pins[0] = pin0;
-	this->wires[1] = wire1;
-	this->pins[1] = pin1;
-	this->base = base;
+HorizontalConstraint::HorizontalConstraint(int a, int b) {
+	this->wires[0] = a;
+	this->wires[1] = b;
 	this->select = -1;
 	this->off = 0;
 }
 
-Constraint::~Constraint() {
+HorizontalConstraint::~HorizontalConstraint() {
 }
 
 Solution::Solution() {
@@ -209,6 +218,16 @@ bool Solution::push(vector<Solution*> &dst, int type, int index) {
 	return true;
 }
 
+void Solution::delRoute(int route) {
+	for (int i = (int)horiz.size()-1; i >= 0; i--) {
+		if (horiz[i].wires[0] == route or horiz[i].wires[1] == route) {
+			horiz.erase(horiz.begin()+i);
+		}
+	}
+
+	routes.erase(routes.begin()+route);
+}
+
 void Solution::build(const Tech &tech) {
 	// Determine location of each pin
 	for (int type = 0; type < 2; type++) {
@@ -295,7 +314,7 @@ void Solution::build(const Tech &tech) {
 			int nNet = stack[Model::NMOS][n].outNet;
 
 			if (pNet != nNet and pLeft < nRight and nLeft < pRight) {
-				constraints.push_back(Constraint(Index(Model::PMOS, p), pNet, Index(Model::NMOS, n), nNet, 0));
+				vert.push_back(VerticalConstraint(p, n));
 			}
 		}
 	}
@@ -304,12 +323,18 @@ void Solution::build(const Tech &tech) {
 	for (int i = 0; i < (int)routes.size(); i++) {
 		for (int j = i+1; j < (int)routes.size(); j++) {
 			if (routes[i].left < routes[j].right and routes[j].left < routes[i].right) {
-				constraints.push_back(Constraint(Index(), i, Index(), j, -1));
+				horiz.push_back(HorizontalConstraint(i, j));
 			}
 		}
 	}
 
-	// TODO moving indexes, empty wires, spacing rules
+	for (int i = (int)routes.size()-1; i >= 0; i--) {
+		if (routes[i].pins.size() < 2) {
+			delRoute(i);
+		}
+	}
+
+	// TODO moving indexes, spacing rules
 	
 	printf("NMOS\n");
 	for (int i = 0; i < (int)stack[0].size(); i++) {
@@ -327,8 +352,11 @@ void Solution::build(const Tech &tech) {
 	}
 
 	printf("\nConstraints\n");
-	for (int i = 0; i < (int)constraints.size(); i++) {
-		printf("constraint %d %s %d\n", constraints[i].wires[0], (constraints[i].base < 0 ? "--" : "->"), constraints[i].wires[1]);
+	for (int i = 0; i < (int)vert.size(); i++) {
+		printf("vert %d -> %d\n", vert[i].from, vert[i].to);
+	}
+	for (int i = 0; i < (int)horiz.size(); i++) {
+		printf("horiz %d -- %d\n", horiz[i].wires[0], horiz[i].wires[1]);
 	}
 
 

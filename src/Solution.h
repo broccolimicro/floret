@@ -61,22 +61,30 @@ struct Wire {
 	int right;
 };
 
-struct Constraint {
-	Constraint();
-	Constraint(Index pin0, int wire0, Index pin1, int wire1, int base);
-	~Constraint();
+struct VerticalConstraint {
+	VerticalConstraint();
+	VerticalConstraint(int from, int to);
+	~VerticalConstraint();
+
+	int from; // index into Solution::stack[Model::PMOS]
+	int to;   // index into Solution::stack[Model::NMOS]
+
+	//-------------------------------
+	// Layout Information
+	//-------------------------------
+	int off;
+};
+
+struct HorizontalConstraint {
+	HorizontalConstraint();
+	HorizontalConstraint(int a, int b);
+	~HorizontalConstraint();
 
 	// index into Circuit::wires
 	int wires[2];
-	// index into Solution::stack
-	Index pins[2];
-
-	// index into wires
-	// undirected: base = -1
-	// directed: from = wires[base], to = wires[1-base]
-	int base;
 
 	// derived by Solution::solve
+	// from = wires[select], to = wires[1-select]
 	int select;
 
 	//-------------------------------
@@ -115,6 +123,7 @@ struct Solution {
 	bool push(vector<Solution*> &dst, int type, int index);
 
 	// Finish building the constraint graph, filling out vcon and hcon.
+	void delRoute(int route);
 	void build(const Tech &tech);
 
 	//-------------------------------------------
@@ -126,7 +135,8 @@ struct Solution {
 	vector<Wire> routes;
 
 	// channel routing constraint graph
-	vector<Constraint> constraints;
+	vector<VerticalConstraint> vert;
+	vector<HorizontalConstraint> horiz;
 
 	int cost;
 
