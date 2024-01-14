@@ -57,10 +57,10 @@ Wire::Wire() {
 	right = -1;
 }
 
-Wire::Wire(int net) {
+Wire::Wire(int net, int layer, int height) {
 	this->net = net;
-	this->layer = -1;
-	this->height = 0;
+	this->layer = layer;
+	this->height = height;
 	this->pos = 0;
 	this->left = -1;
 	this->right = -1;
@@ -75,10 +75,10 @@ VerticalConstraint::VerticalConstraint() {
 	off = 0;
 }
 
-VerticalConstraint::VerticalConstraint(int from, int to) {
+VerticalConstraint::VerticalConstraint(int from, int to, int off) {
 	this->from = from;
 	this->to = to;
-	this->off = 0;
+	this->off = off;
 }
 
 VerticalConstraint::~VerticalConstraint() {
@@ -91,11 +91,11 @@ HorizontalConstraint::HorizontalConstraint() {
 	off = 0;
 }
 
-HorizontalConstraint::HorizontalConstraint(int a, int b) {
+HorizontalConstraint::HorizontalConstraint(int a, int b, int off) {
 	this->wires[0] = a;
 	this->wires[1] = b;
 	this->select = -1;
-	this->off = 0;
+	this->off = off;
 }
 
 HorizontalConstraint::~HorizontalConstraint() {
@@ -292,7 +292,7 @@ void Solution::build(const Tech &tech) {
 	// Create initial routes and constraints
 	routes.reserve(base->nets.size());
 	for (int i = 0; i < (int)base->nets.size(); i++) {
-		routes.push_back(Wire(i));
+		routes.push_back(Wire(i, tech.wires[2].drawingLayer, tech.layers[tech.vias[2].drawingLayer].minWidth+max(tech.vias[2].upLo, tech.vias[2].downLo)));
 	}
 	for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < (int)stack[type].size(); i++) {
@@ -315,13 +315,15 @@ void Solution::build(const Tech &tech) {
 		int pRight = pLeft + stack[Model::PMOS][p].width;
 		int pNet = stack[Model::PMOS][p].outNet;
 
-		for (int n = 0; n < (int)stack[Model::NMOS].size(); n++) {
-			int nLeft = stack[Model::NMOS][n].pos;
-			int nRight = nLeft + stack[Model::NMOS][n].width;
-			int nNet = stack[Model::NMOS][n].outNet;
+		if (routes[pNet].pins.size() > 1) {
+			for (int n = 0; n < (int)stack[Model::NMOS].size(); n++) {
+				int nLeft = stack[Model::NMOS][n].pos;
+				int nRight = nLeft + stack[Model::NMOS][n].width;
+				int nNet = stack[Model::NMOS][n].outNet;
 
-			if (pNet != nNet and pLeft < nRight and nLeft < pRight) {
-				vert.push_back(VerticalConstraint(p, n));
+				if (pNet != nNet and pLeft < nRight and nLeft < pRight and routes[nNet].pins.size() > 1) {
+					vert.push_back(VerticalConstraint(p, n, tech.layers[tech.wires[2].drawingLayer].minSpacing));
+				}
 			}
 		}
 	}
@@ -330,7 +332,7 @@ void Solution::build(const Tech &tech) {
 	for (int i = 0; i < (int)routes.size(); i++) {
 		for (int j = i+1; j < (int)routes.size(); j++) {
 			if (routes[i].left < routes[j].right and routes[j].left < routes[i].right) {
-				horiz.push_back(HorizontalConstraint(i, j));
+				horiz.push_back(HorizontalConstraint(i, j, tech.layers[tech.wires[2].drawingLayer].minSpacing));
 			}
 		}
 	}
@@ -340,8 +342,28 @@ void Solution::build(const Tech &tech) {
 			delRoute(i);
 		}
 	}
+}
 
-	// TODO moving indexes, spacing rules
+void Solution::solve(const Tech &tech, int minCost) {
+	// TODO handle cycles with doglegs
+	// TODO search constraint graph
+
+	// set up initial tokens for evaluating vertical constraints
+	vector<int> tokens;
+	for (int i = 0; i < (int)routes.size(); i++) {
+		bool found = false;
+		for (int j = 0; j < (int)vert.size(); j++) {
+			if (vert[j].to == i) {
+				found = true;
+				break;
+			}
+		}
+		if (not found) {
+			tokens.push_back(i);
+		}
+	}
+
+	
 	
 	printf("NMOS\n");
 	for (int i = 0; i < (int)stack[0].size(); i++) {
@@ -355,26 +377,20 @@ void Solution::build(const Tech &tech) {
 
 	printf("\nRoutes\n");
 	for (int i = 0; i < (int)routes.size(); i++) {
-		printf("wire %d %d->%d\n", routes[i].net, routes[i].left, routes[i].right);
+		printf("wire %d %d->%d: %d\n", routes[i].net, routes[i].left, routes[i].right, routes[i].height);
 	}
 
 	printf("\nConstraints\n");
 	for (int i = 0; i < (int)vert.size(); i++) {
-		printf("vert %d -> %d\n", vert[i].from, vert[i].to);
+		printf("vert %d -> %d: %d\n", vert[i].from, vert[i].to, vert[i].off);
 	}
 	for (int i = 0; i < (int)horiz.size(); i++) {
-		printf("horiz %d -- %d\n", horiz[i].wires[0], horiz[i].wires[1]);
+		printf("horiz %d -- %d: %d\n", horiz[i].wires[0], horiz[i].wires[1], horiz[i].off);
 	}
-
 
 	printf("\n\n");
 }
 
-void Solution::solve(const Tech &tech, int minCost) {
-	// TODO handle cycles with doglegs
-	// TODO search constraint graph
-}
-
-void draw(const Tech &tech) {
+void Solution::draw(const Tech &tech) {
 	// TODO draw result
 }

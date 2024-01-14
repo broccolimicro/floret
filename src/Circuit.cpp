@@ -187,6 +187,8 @@ void Circuit::solve(const Tech &tech) {
 		if (not found) {
 			printf("we should never get here\n");
 		}
+
+		delete curr;
 	}
 
 	printf("Circuit::solve explored %d layouts for %s in %fms\n", count, name.c_str(), timer.since()*1e3);

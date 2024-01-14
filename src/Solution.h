@@ -43,7 +43,7 @@ struct Pin {
 // Represents a wire between two Devices
 struct Wire {
 	Wire();
-	Wire(int net);
+	Wire(int net, int layer=-1, int height=0);
 	~Wire();
 
 	int net;
@@ -63,7 +63,7 @@ struct Wire {
 
 struct VerticalConstraint {
 	VerticalConstraint();
-	VerticalConstraint(int from, int to);
+	VerticalConstraint(int from, int to, int off=0);
 	~VerticalConstraint();
 
 	int from; // index into Solution::stack[Model::PMOS]
@@ -77,7 +77,7 @@ struct VerticalConstraint {
 
 struct HorizontalConstraint {
 	HorizontalConstraint();
-	HorizontalConstraint(int a, int b);
+	HorizontalConstraint(int a, int b, int off=0);
 	~HorizontalConstraint();
 
 	// index into Circuit::wires
