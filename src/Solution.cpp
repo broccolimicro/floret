@@ -1,13 +1,49 @@
 #include "Solution.h"
 
-Wire::Wire() {
-	net = -1;
+Index::Index() {
+	type = -1;
+	pin = -1;
 }
 
-Wire::Wire(int net, Index from, Index to) {
+Index::Index(int type, int pin) {
+	this->type = type;
+	this->pin = pin;
+}
+
+Index::~Index() {
+}
+
+Pin::Pin() {
+	device = -1;
+	outNet = -1;
+	leftNet = -1;
+	rightNet = -1;
+}
+
+Pin::Pin(int device, int outNet, int leftNet, int rightNet) {
+	this->device = device;
+	this->outNet = outNet;
+	this->leftNet = leftNet;
+	if (leftNet < 0) {
+		this->leftNet = outNet;
+	}
+	this->rightNet = rightNet;
+	if (rightNet < 0) {
+		this->rightNet = outNet;
+	}
+}
+
+Pin::~Pin() {
+}
+
+Wire::Wire() {
+	net = -1;
+	layer = -1;
+}
+
+Wire::Wire(int net) {
 	this->net = net;
-	this->from = from;
-	this->to = to;
+	this->layer = -1;
 }
 
 Wire::~Wire() {
@@ -49,58 +85,35 @@ bool Solution::tryLink(vector<Solution*> &dst, int type, int index) {
 	// Get information about the previous transistor on the stack. First if
 	// statement in the funtion guarantees that there is at least one transistor
 	// already on the stack.
-	int prevNet = stack[type].back().net;
+	int prevNet = stack[type].back().rightNet;
 
 	// This does two things:
 	// 1. Determine if we can link this transistor to the previous one on the stack
 	// 2. Determine whether we need to flip this transistor to do so
-	int fromPort = Mos::SOURCE;
-	int toPort = Mos::DRAIN;
-	int fromNet = base->mos[device].ports[fromPort];
-	int toNet = base->mos[device].ports[toPort];
+	int fromNet = base->mos[device].ports[Mos::SOURCE];
+	int toNet = base->mos[device].ports[Mos::DRAIN];
+	int gateNet = base->mos[device].ports[Mos::GATE];
 	if (toNet == prevNet) {
 		toNet = fromNet;
 		fromNet = prevNet;
-		fromPort = Mos::DRAIN;
-		toPort = Mos::SOURCE;
 	} else if (fromNet != prevNet) {
 		return false;
 	}
 
 	// duplicate solution
 	Solution *next = new Solution(*this);
-
-	// TODO(edward.bingham) look for serial transistor stacks
-	//do {
-		// insert new wires
-		if (next->stack[type].size() == 0) {
-			// add a contact for the first net. This should never happen since it
-			// should be handled by Solution::push().
-			next->numContacts++;
-			next->stack[type].push_back(Wire(fromNet, Index(-next->numContacts), Index(device, fromPort)));
-		} else if (base->nets[fromNet].ports.size() > 2) {
-			// add a contact between the two transistors
-			next->numContacts++;
-			next->stack[type].back().to = Index(-next->numContacts);
-			next->stack[type].push_back(Wire(fromNet, Index(-next->numContacts), Index(device, fromPort)));
-		} else {
-			// no contact between
-			next->stack[type].back().to = Index(device, fromPort);
-		}
-
-		next->stack[type].push_back(Wire(toNet, Index(device, toPort), Index()));
-
-		// Check for a serial transistor stack
-		//if (base->nets[toNet].ports) == 2) {
-		//	Index dev0 = base->nets[toNet].ports[0].
-		//}
-	//} while (...);
+	if (next->stack[type].size() == 0 or base->nets[fromNet].ports > 2) {
+		// Add a contact for the first net or between two transistors.
+		next->numContacts++;
+		next->stack[type].push_back(Pin(-next->numContacts, fromNet));
+	}
+	next->stack[type].push_back(Pin(device, gateNet, fromNet, toNet));
 
 	// remove item from dangling
 	next->dangling[type].erase(next->dangling[type].begin()+index);
 	if (next->dangling[type].size() == 0) {
 		next->numContacts++;
-		next->stack[type].back().to = Index(-next->numContacts);
+		next->stack[type].push_back(Pin(-next->numContacts, toNet));
 	}
 
 	dst.push_back(next);
@@ -117,10 +130,9 @@ bool Solution::push(vector<Solution*> &dst, int type, int index) {
 		exit(1);
 	}
 
-	int fromPort = Mos::SOURCE;
-	int toPort = Mos::DRAIN;
-	int fromNet = base->mos[device].ports[fromPort];
-	int toNet = base->mos[device].ports[toPort];	
+	int fromNet = base->mos[device].ports[Mos::SOURCE];
+	int toNet = base->mos[device].ports[Mos::DRAIN];
+	int gateNet = base->mos[device].ports[Mos::GATE];
 
 	// We can't link this transistor to the previous one in the stack, so we
 	// need to cap off the stack with a contact, start a new stack with a new
@@ -128,108 +140,114 @@ bool Solution::push(vector<Solution*> &dst, int type, int index) {
 	// unflipped orderings.
 
 	// duplicate solution for the unflipped ordering
-	Solution *next = new Solution(*this);
+	for (int i = 0; i < 2; i++) {
+		Solution *next = new Solution(*this);
 
-	if (next->stack[type].size() > 0) {
+		if (next->stack[type].size() > 0) {
+			next->numContacts++;
+			next->stack[type].push_back(Pin(-next->numContacts, stack[type].back().rightNet));
+		}
 		next->numContacts++;
-		next->stack[type].back().to = Index(-next->numContacts);
-	}
-	next->numContacts++;
-	next->stack[type].push_back(Wire(fromNet, Index(-next->numContacts), Index(device, fromPort)));
-	next->stack[type].push_back(Wire(toNet, Index(device, toPort), Index()));
-	// remove item from dangling
-	next->dangling[type].erase(next->dangling[type].begin()+index);
-	if (next->dangling[type].size() == 0) {
-		next->numContacts++;
-		next->stack[type].back().to = Index(-next->numContacts);
-	}
-	dst.push_back(next);
+		next->stack[type].push_back(Pin(-next->numContacts, fromNet));
+		next->stack[type].push_back(Pin(device, gateNet, fromNet, toNet));
+		// remove item from dangling
+		next->dangling[type].erase(next->dangling[type].begin()+index);
+		if (next->dangling[type].size() == 0) {
+			next->numContacts++;
+			next->stack[type].push_back(Pin(-next->numContacts, toNet));
+		}
+		dst.push_back(next);
 
-	// duplicate solution for the flipped ordering
-	next = new Solution(*this);
-
-	if (next->stack[type].size() > 0) {
-		next->numContacts++;
-		next->stack[type].back().to = Index(-next->numContacts);
+		int tmp = fromNet;
+		fromNet = toNet;
+		toNet = tmp;
 	}
-	next->numContacts++;
-	next->stack[type].push_back(Wire(toNet, Index(-next->numContacts), Index(device, toPort)));
-	next->stack[type].push_back(Wire(fromNet, Index(device, fromPort), Index()));
-	// remove item from dangling
-	next->dangling[type].erase(next->dangling[type].begin()+index);
-	if (next->dangling[type].size() == 0) {
-		next->numContacts++;
-		next->stack[type].back().to = Index(-next->numContacts);
-	}
-	dst.push_back(next);
 
 	return true;
 }
 
-void Solution::build() {
+void Solution::build(const Tech &tech) {
+	// Determine location of each pin
 	for (int type = 0; type < 2; type++) {
-		vector<int> prevContact(base->nets.size(), -numContacts-1);
+		int pos = 0;
+		int lastModel = -1;
 		for (int i = 0; i < (int)stack[type].size(); i++) {
-			// if we happen upon a diffusion contact
-			if (stack[type][i].from.device < 0) {
-				int net = stack[type][i].net;
-				int port = 0;
-				if (prevContact[net] >= 0) {
-					// the previous connection was the gate of a transistor
-					port = Mos::GATE;
+			if (stack[type][i].device < 0) {
+				// this is a contact
+				stack[type][i].width = tech.layers[tech.vias[0].drawingLayer].minWidth;
+
+				// contact height is min of transistor widths on either side.
+				stack[type][i].height = 0;
+				if (i-1 >= 0 and stack[type][i-1].device >= 0 and (stack[type][i].height == 0 or base->mos[stack[type][i-1].device].width < stack[type][i].height)) {
+					stack[type][i].height = base->mos[stack[type][i-1].device].width;
 				}
-				if (prevContact[net] >= -numContacts) {
-					routes.push_back(Wire(net, Index(prevContact[net], port), Index(stack[type][i].from.device)));
-				}	
-				prevContact[net] = stack[type][i].from.device;
+				if (i+1 < (int)stack[type].size() and stack[type][i+1].device >= 0 and (stack[type][i].height == 0 or base->mos[stack[type][i+1].device].width < stack[type][i].height)) {
+					stack[type][i].height = base->mos[stack[type][i+1].device].width;
+				}
+
+				stack[type][i].off = 0;
+				if (i-1 >= 0 and lastModel >= 0) {
+					if (stack[type][i-1].device >= 0) {
+						// previous pin was a transistor
+						stack[type][i].off = tech.models[lastModel].viaPolySpacing;
+					} else {
+						// previous pin was a contact and there was a transistor before it
+						stack[type][i].off = tech.vias[0].downLo*2 + tech.layers[tech.models[lastModel].layers[0].layer].minSpacing;
+					}
+				}
+			} else {
+				// this is a transistor
+				lastModel = base->mos[stack[type][i].device].model;
+
+				stack[type][i].width = base->mos[stack[type][i].device].length;
+				stack[type][i].height = base->mos[stack[type][i].device].width;
+
+				stack[type][i].off = 0;
+				if (i-1 >= 0 and lastModel >= 0) {
+					if (stack[type][i-1].device >= 0) {
+						// previous pin was a transistor
+						stack[type][i].off = tech.layers[tech.wires[0].drawingLayer].minSpacing;
+					} else {
+						stack[type][i].off = tech.vias[0].downLo*2 + tech.layers[tech.models[lastModel].layers[0].layer].minSpacing;
+					}
+				}
 			}
 
-			// if we happen upon a transistor
-			if (stack[type][i].to.device >= 0) {
-				int net = base->mos[stack[type][i].to.device].ports[Mos::GATE];
-				int port = 0;
-				if (prevContact[net] >= 0) {
-					// the previous connection was the gate of a transistor
-					port = Mos::GATE;
-				}
-				if (prevContact[net] >= -numContacts) {
-					routes.push_back(Wire(net, Index(prevContact[net], port), Index(stack[type][i].to.device, Mos::GATE)));
-				}
-				prevContact[net] = stack[type][i].to.device;
-			}
-		}
-
-		// handle the last diffusion contact in the stack
-		if (stack[type].back().to.device < 0) {
-			int net = stack[type].back().net;
-			int port = 0;
-			if (prevContact[net] >= 0) {
-				// the previous connection was the gate of a transistor
-				port = Mos::GATE;
-			}
-			if (prevContact[net] >= -numContacts) {
-				routes.push_back(Wire(net, Index(prevContact[net], port), Index(stack[type].back().to.device)));
-			}
-			prevContact[net] = stack[type].back().to.device;
+			stack[type][i].pos = pos + stack[type][i].off;
+			pos = stack[type][i].pos + stack[type][i].width; 
 		}
 	}
 
-	/*printf("NMOS\n");
+	// Create initial routes
+	routes.reserve(base->nets.size());
+	for (int i = 0; i < (int)base->nets.size(); i++) {
+		routes.push_back(Wire(i));
+	}
+	for (int type = 0; type < 2; type++) {
+		for (int i = 0; i < (int)stack[type].size(); i++) {
+			routes[stack[type][i].outNet].pins.push_back(Index(type, i));
+		}
+	}
+
+	// Add vertical and horizontal constraints
+	//for (int i = 0; i < routes.size(); 
+
+	printf("NMOS\n");
 	for (int i = 0; i < (int)stack[0].size(); i++) {
-		printf("wire %d from %d:%d to %d:%d\n", stack[0][i].net, stack[0][i].from.device, stack[0][i].from.port, stack[0][i].to.device, stack[0][i].to.port);
+		printf("pin %d %d->%d->%d: %dx%d %d %d\n", stack[0][i].device, stack[0][i].leftNet, stack[0][i].outNet, stack[0][i].rightNet, stack[0][i].width, stack[0][i].height, stack[0][i].off, stack[0][i].pos);
 	}
 
 	printf("\nPMOS\n");
 	for (int i = 0; i < (int)stack[1].size(); i++) {
-		printf("wire %d from %d:%d to %d:%d\n", stack[1][i].net, stack[1][i].from.device, stack[1][i].from.port, stack[1][i].to.device, stack[1][i].to.port);
+		printf("pin %d %d->%d->%d: %dx%d %d %d\n", stack[1][i].device, stack[1][i].leftNet, stack[1][i].outNet, stack[1][i].rightNet, stack[1][i].width, stack[1][i].height, stack[1][i].off, stack[1][i].pos);
 	}
 
-	printf("\nRoutes\n");
+	/*printf("\nRoutes\n");
 	for (int i = 0; i < (int)routes.size(); i++) {
 		printf("wire %d from %d:%d to %d:%d\n", routes[i].net, routes[i].from.device, routes[i].from.port, routes[i].to.device, routes[i].to.port);
-	}
+	}*/
 
-	printf("\n\n");*/
+	//printf("\n\n");
 	
 }
 

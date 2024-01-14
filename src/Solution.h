@@ -2,46 +2,79 @@
 
 #include "Circuit.h"
 
+struct Index {
+	Index();
+	Index(int type, int pin);
+	~Index();
+
+	// index into Solution::stack (Model::NMOS or Model::PMOS)
+	int type;
+
+	// index into Solution::stack[type], pin number from left to right
+	int pin;
+};
+
+// Represents Transistors and Contacts
+struct Pin {
+	Pin();
+	Pin(int device, int outNet, int leftNet=-1, int rightNet=-1);
+	~Pin();
+
+	// inNet == outNet == gateNet for Contacts
+	// inNet and outNet represent source and drain depending on flip for Transistors
+	int leftNet;
+	int outNet;
+	int rightNet;
+
+	// index into Circuit::mos for Transistors
+	// negative for Contacts
+	int device;
+
+	//-------------------------------
+	// Layout Information
+	//-------------------------------
+	int width;
+	int height;
+	int off; // from previous pin
+	int pos; // absolute position in stack, computed from off
+};
+
 // Represents a wire between two Devices
 struct Wire {
 	Wire();
-	Wire(int net, Index from, Index to);
+	Wire(int net);
 	~Wire();
 
 	int net;
-	Index from;
-	Index to;
+	// index into Solution::stack
+	vector<Index> pins;
+
+	//-------------------------------
+	// Layout Information
+	//-------------------------------
+	int layer;
+	int height;
+	int pos; // absolute vertical position in cell, top down
 };
 
-struct VerticalConstraint {
+struct Constraint {
 	// index into Circuit::wires
 	int wires[2];
+	// index into Solution::stack
+	Index pins[2];
 
 	// index into wires
 	// undirected: base = -1
 	// directed: from = wires[base], to = wires[1-base]
 	int base;
-};
 
-struct HorizontalConstraint {
-	// index into Circuit::devs
-	int devices[2];
-
-	// TODO
-};
-
-struct LayerAssignment {
-	// index into OrderingSolution::wires
-	int wire;
-
-	int layer;
-};
-
-struct ConstraintAssignment {
-	// index into OrderingSolution::vcon
-	int constraint;
-
+	// derived by Solution::solve
 	int select;
+
+	//-------------------------------
+	// Layout Information
+	//-------------------------------
+	int off;
 };
 
 struct Solution {
@@ -74,25 +107,18 @@ struct Solution {
 	bool push(vector<Solution*> &dst, int type, int index);
 
 	// Finish building the constraint graph, filling out vcon and hcon.
-	void build();
+	void build(const Tech &tech);
 
 	//-------------------------------------------
 	// CONSTRAINT GRAPH
 	//-------------------------------------------
 	// This is determined by device ordering
 	// stack is indexed by transistor type: Model::NMOS, Model::PMOS
-	vector<Wire> stack[2];
+	vector<Pin> stack[2];
 	vector<Wire> routes;
 
 	// channel routing constraint graph
-	vector<VerticalConstraint> vcon;
-	vector<HorizontalConstraint> hcon;
-
-	//-------------------------------------------
-	// CONSTRAINT GRAPH SOLVING
-	//-------------------------------------------
-	vector<LayerAssignment> layers;
-	vector<ConstraintAssignment> constraints;
+	vector<Constraint> constraints;
 
 	int cost;
 

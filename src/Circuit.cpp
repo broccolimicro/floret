@@ -7,27 +7,18 @@
 Mos::Mos() {
 	model = -1;
 	type = -1;
+	width = 0;
+	length = 0;
 }
 
 Mos::Mos(int model, int type) {
 	this->model = model;
 	this->type = type;
+	this->width = 0;
+	this->length = 0;
 }
 
 Mos::~Mos() {
-}
-
-Index::Index() {
-	device = -1;
-	port = 0;
-}
-
-Index::Index(int device, int port) {
-	this->device = device;
-	this->port = port;
-}
-
-Index::~Index() {
 }
 
 Net::Net() {
@@ -103,7 +94,6 @@ bool Circuit::loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &le
 		return false;
 	}
 
-	int index = (int)this->mos.size();
 	this->mos.push_back(Mos(modelIdx, tech.models[modelIdx].type));
 	for (auto arg = args->tokens.begin(); arg != args->tokens.end(); arg++) {
 		int port = (int)this->mos.back().ports.size();
@@ -113,11 +103,17 @@ bool Circuit::loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &le
 			for (auto value = arg->tokens.begin()+1; value != arg->tokens.end(); value++) {
 				values.push_back(loadValue(lang, lexer, *value));
 			}
-			this->mos.back().params.insert(pair<string, vector<double> >(paramName, values));
+			if (paramName == "w") {
+				this->mos.back().width = int(values[0]/tech.dbunit);
+			} else if (paramName == "l") {
+				this->mos.back().length = int(values[0]/tech.dbunit);
+			} else {
+				this->mos.back().params.insert(pair<string, vector<double> >(paramName, values));
+			}
 		} else if (port < 4) {
 			string netName = lexer.read(arg->begin, arg->end);
 			int net = this->findNet(netName, true);
-			this->nets[net].ports.push_back(Index(index, port));
+			this->nets[net].ports++;
 			this->mos.back().ports.push_back(net);
 		}
 	}
@@ -161,7 +157,7 @@ void Circuit::solve(const Tech &tech) {
 
 		if (curr->dangling[Model::NMOS].size() == 0 and 
 		    curr->dangling[Model::PMOS].size() == 0) {
-			curr->build();
+			curr->build(tech);
 			curr->solve(tech, minCost);
 			if (minCost < 0 or (curr->cost > 0 and curr->cost < minCost)) {
 				if (layout != nullptr) {

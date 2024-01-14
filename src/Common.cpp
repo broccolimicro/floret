@@ -26,6 +26,10 @@ double loadValue(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &val) {
 	}
 
 	double value = stod(constStr);
+	if (unitStr.size() == 0) {
+		return value;
+	}
+
 	int unit = (int)(string("afpnumkxg").find(unitStr));
 	if (unit >= 0) {
 		int exp = 3*unit - 18;

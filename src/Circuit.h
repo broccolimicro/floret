@@ -32,19 +32,8 @@ struct Mos {
 
 	// loaded in from spice
 	map<string, vector<double> > params;
-};
-
-struct Index {
-	Index();
-	Index(int device, int port = 0);
-	~Index();
-
-	// index into Circuit::mos
-	// negative numbers for vias
-	int device;
-
-	// See Mos::Port, use 0 for vias
-	int port;
+	int width;
+	int length;
 };
 
 struct Net {
@@ -53,7 +42,7 @@ struct Net {
 	~Net();
 
 	string name;
-	vector<Index> ports;
+	int ports;
 };
 
 struct Solution;
