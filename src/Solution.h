@@ -4,6 +4,10 @@
 
 // Represents a wire between two Devices
 struct Wire {
+	Wire();
+	Wire(int net, Index from, Index to);
+	~Wire();
+
 	int net;
 	Index from;
 	Index to;

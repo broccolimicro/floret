@@ -2,6 +2,7 @@
 #include "Common.h"
 #include "spice.h"
 #include "Solution.h"
+#include "Timer.h"
 
 Mos::Mos() {
 	model = -1;
@@ -144,6 +145,9 @@ void Circuit::solve(const Tech &tech) {
 	vector<Solution*> stack;
 	stack.push_back(new Solution(this));
 	
+	int count = 0;
+	Timer timer;
+
 	// DESIGN(edward.bingham) Depth first search through all useful
 	// orderings. These are orderings that try to keep the transistor
 	// stacks fully connected. Prioritise orderings that better align
@@ -166,6 +170,7 @@ void Circuit::solve(const Tech &tech) {
 				layout = curr;
 				minCost = curr->cost;
 			}
+			count++;
 			continue;
 		}
 
@@ -175,7 +180,7 @@ void Circuit::solve(const Tech &tech) {
 		bool found = false;
 		for (int type = 0; type < 2 and not found; type++) {
 			for (int link = 1; link >= 0 and not found; link--) {
-				for (int i = 0; i < curr->dangling[type].size(); i++) {
+				for (int i = 0; i < (int)curr->dangling[type].size(); i++) {
 					found = found or (link ?
 						curr->tryLink(stack, type, i) :
 						curr->push(stack, type, i));
@@ -187,5 +192,7 @@ void Circuit::solve(const Tech &tech) {
 			printf("we should never get here\n");
 		}
 	}
+
+	printf("Circuit::solve explored %d layouts for %s in %fms\n", count, name.c_str(), timer.since()*1e3);
 }
 
