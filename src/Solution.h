@@ -33,6 +33,7 @@ struct Pin {
 	//-------------------------------
 	// Layout Information
 	//-------------------------------
+	int layer;
 	int width;
 	int height;
 	int off; // from previous pin
@@ -55,9 +56,16 @@ struct Wire {
 	int layer;
 	int height;
 	int pos; // absolute vertical position in cell, top down
+
+	int left;
+	int right;
 };
 
 struct Constraint {
+	Constraint();
+	Constraint(Index pin0, int wire0, Index pin1, int wire1, int base);
+	~Constraint();
+
 	// index into Circuit::wires
 	int wires[2];
 	// index into Solution::stack

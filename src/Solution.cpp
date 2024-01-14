@@ -18,6 +18,12 @@ Pin::Pin() {
 	outNet = -1;
 	leftNet = -1;
 	rightNet = -1;
+	
+	layer = -1;
+	width = 0;
+	height = 0;
+	off = 0;
+	pos = 0;
 }
 
 Pin::Pin(int device, int outNet, int leftNet, int rightNet) {
@@ -31,6 +37,12 @@ Pin::Pin(int device, int outNet, int leftNet, int rightNet) {
 	if (rightNet < 0) {
 		this->rightNet = outNet;
 	}
+
+	layer = -1;
+	width = 0;
+	height = 0;
+	off = 0;
+	pos = 0;
 }
 
 Pin::~Pin() {
@@ -39,14 +51,45 @@ Pin::~Pin() {
 Wire::Wire() {
 	net = -1;
 	layer = -1;
+	height = 0;
+	pos = 0;
+	left = -1;
+	right = -1;
 }
 
 Wire::Wire(int net) {
 	this->net = net;
 	this->layer = -1;
+	this->height = 0;
+	this->pos = 0;
+	this->left = -1;
+	this->right = -1;
 }
 
 Wire::~Wire() {
+}
+
+Constraint::Constraint() {
+	wires[0] = -1;
+	wires[1] = -1;
+	pins[0] = Index();
+	pins[1] = Index();
+	base = -1;
+	select = -1;
+	off = 0;
+}
+
+Constraint::Constraint(Index pin0, int wire0, Index pin1, int wire1, int base) {
+	this->wires[0] = wire0;
+	this->pins[0] = pin0;
+	this->wires[1] = wire1;
+	this->pins[1] = pin1;
+	this->base = base;
+	this->select = -1;
+	this->off = 0;
+}
+
+Constraint::~Constraint() {
 }
 
 Solution::Solution() {
@@ -173,6 +216,7 @@ void Solution::build(const Tech &tech) {
 		int lastModel = -1;
 		for (int i = 0; i < (int)stack[type].size(); i++) {
 			if (stack[type][i].device < 0) {
+				stack[type][i].layer = tech.wires[1].drawingLayer;
 				// this is a contact
 				stack[type][i].width = tech.layers[tech.vias[0].drawingLayer].minWidth;
 
@@ -199,6 +243,7 @@ void Solution::build(const Tech &tech) {
 				// this is a transistor
 				lastModel = base->mos[stack[type][i].device].model;
 
+				stack[type][i].layer = tech.wires[0].drawingLayer;
 				stack[type][i].width = base->mos[stack[type][i].device].length;
 				stack[type][i].height = base->mos[stack[type][i].device].width;
 
@@ -218,7 +263,7 @@ void Solution::build(const Tech &tech) {
 		}
 	}
 
-	// Create initial routes
+	// Create initial routes and constraints
 	routes.reserve(base->nets.size());
 	for (int i = 0; i < (int)base->nets.size(); i++) {
 		routes.push_back(Wire(i));
@@ -226,12 +271,46 @@ void Solution::build(const Tech &tech) {
 	for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < (int)stack[type].size(); i++) {
 			routes[stack[type][i].outNet].pins.push_back(Index(type, i));
+			if (routes[stack[type][i].outNet].left < 0 or
+			    stack[type][i].pos < routes[stack[type][i].outNet].left) {
+				routes[stack[type][i].outNet].left = stack[type][i].pos;
+			}
+			if (routes[stack[type][i].outNet].right < 0 or
+			    stack[type][i].pos+stack[type][i].width > routes[stack[type][i].outNet].right) {
+				routes[stack[type][i].outNet].right = stack[type][i].pos + stack[type][i].width;
+			}
 		}
 	}
 
-	// Add vertical and horizontal constraints
-	//for (int i = 0; i < routes.size(); 
+	// Compute the vertical constraints
+	// TODO(edward.bingham) this could be more efficiently done as a 1d rectangle overlap problem
+	for (int p = 0; p < (int)stack[Model::PMOS].size(); p++) {
+		int pLeft = stack[Model::PMOS][p].pos;
+		int pRight = pLeft + stack[Model::PMOS][p].width;
+		int pNet = stack[Model::PMOS][p].outNet;
 
+		for (int n = 0; n < (int)stack[Model::NMOS].size(); n++) {
+			int nLeft = stack[Model::NMOS][n].pos;
+			int nRight = nLeft + stack[Model::NMOS][n].width;
+			int nNet = stack[Model::NMOS][n].outNet;
+
+			if (pNet != nNet and pLeft < nRight and nLeft < pRight) {
+				constraints.push_back(Constraint(Index(Model::PMOS, p), pNet, Index(Model::NMOS, n), nNet, 0));
+			}
+		}
+	}
+
+	// Compute horizontal constraints
+	for (int i = 0; i < (int)routes.size(); i++) {
+		for (int j = i+1; j < (int)routes.size(); j++) {
+			if (routes[i].left < routes[j].right and routes[j].left < routes[i].right) {
+				constraints.push_back(Constraint(Index(), i, Index(), j, -1));
+			}
+		}
+	}
+
+	// TODO moving indexes, empty wires, spacing rules
+	
 	printf("NMOS\n");
 	for (int i = 0; i < (int)stack[0].size(); i++) {
 		printf("pin %d %d->%d->%d: %dx%d %d %d\n", stack[0][i].device, stack[0][i].leftNet, stack[0][i].outNet, stack[0][i].rightNet, stack[0][i].width, stack[0][i].height, stack[0][i].off, stack[0][i].pos);
@@ -242,18 +321,25 @@ void Solution::build(const Tech &tech) {
 		printf("pin %d %d->%d->%d: %dx%d %d %d\n", stack[1][i].device, stack[1][i].leftNet, stack[1][i].outNet, stack[1][i].rightNet, stack[1][i].width, stack[1][i].height, stack[1][i].off, stack[1][i].pos);
 	}
 
-	/*printf("\nRoutes\n");
+	printf("\nRoutes\n");
 	for (int i = 0; i < (int)routes.size(); i++) {
-		printf("wire %d from %d:%d to %d:%d\n", routes[i].net, routes[i].from.device, routes[i].from.port, routes[i].to.device, routes[i].to.port);
-	}*/
+		printf("wire %d %d->%d\n", routes[i].net, routes[i].left, routes[i].right);
+	}
 
-	//printf("\n\n");
-	
+	printf("\nConstraints\n");
+	for (int i = 0; i < (int)constraints.size(); i++) {
+		printf("constraint %d %s %d\n", constraints[i].wires[0], (constraints[i].base < 0 ? "--" : "->"), constraints[i].wires[1]);
+	}
+
+
+	printf("\n\n");
 }
 
 void Solution::solve(const Tech &tech, int minCost) {
-
+	// TODO handle cycles with doglegs
+	// TODO search constraint graph
 }
 
 void draw(const Tech &tech) {
+	// TODO draw result
 }
