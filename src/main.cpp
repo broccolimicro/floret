@@ -4,7 +4,7 @@
 
 #include "Tech.h"
 #include "Library.h"
-#include "Layout.h"
+//#include "Layout.h"
 
 using namespace std;
 
@@ -66,11 +66,11 @@ int main(int argc, char **argv) {
 	Tech tech;
 	Library cellLib;
 	cellLib.loadFile(tech, spiceFiles[0]);
-	cellLib.build();
+	cellLib.build(tech);
 	
-	Layout layout;
+	/*Layout layout;
 	layout.drawCell(tech, vec2i(), cellLib.cells[0]);
 	layout.cleanup();
-	layout.emit(tech, "test");
+	layout.emit(tech, "test");*/
 }
 

@@ -8,13 +8,17 @@
 
 using namespace std;
 
-struct Transistor {
-	Transistor();
-	Transistor(int model);
-	~Transistor();
+struct Mos {
+	Mos();
+	Mos(int model, int type);
+	~Mos();
 
 	// index into Tech::models
 	int model;
+
+	// derived from model
+	// Model::NMOS or Model::PMOS
+	int type;
 
 	enum Port {
 		DRAIN = 0,
@@ -22,6 +26,9 @@ struct Transistor {
 		SOURCE = 2,
 		BULK = 3
 	};
+
+	// index into Circuit::nets
+	vector<int> ports;
 
 	// loaded in from spice
 	map<string, vector<double> > params;
@@ -32,10 +39,11 @@ struct Index {
 	Index(int device, int port = 0);
 	~Index();
 
-	// index into Circuit::mos or Solution::nodes
+	// index into Circuit::mos
+	// negative numbers for vias
 	int device;
 
-	// See Transistor::Port, use 0 for vias
+	// See Mos::Port, use 0 for vias
 	int port;
 };
 
@@ -58,7 +66,7 @@ struct Circuit {
 
 	// Loaded directly from the spice file
 	vector<Net> nets;
-	vector<Transistor> mos;
+	vector<Mos> mos;
 
 	Solution *layout;
 
