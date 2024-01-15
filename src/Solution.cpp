@@ -423,6 +423,13 @@ vector<int> Solution::next(int r) {
 
 
 vector<vector<int> > Solution::findCycles(bool searchHoriz) {
+	// DESIGN(edward.bingham) There can be multiple cycles with the same set of
+	// nodes as a result of multiple vertical constraints. This function does not
+	// differentiate between those cycles. Doing so could introduce an
+	// exponential blow up, and we can ensure that we split those cycles by
+	// splitting on the node in the cycle that has the most vertical constraints
+	// (maximising min(in.size(), out.size()))
+
 	vector<vector<int> > tokens;
 	vector<vector<int> > cycles;
 	for (int i = 0; i < (int)routes.size(); i++) {
@@ -517,13 +524,13 @@ void Solution::solve(const Tech &tech, int minCost) {
 		//  a1 -> a0 <--- d    a b a b a c b d   nodes
 		//  \\\   ^^      ^    | | | | | | | |
 		//   vvv //       |  o-o-|-o-|-o | | |     a1
-		//      b ------> c  |   |   |   | | |
-		//                   | o-o-o-o-o-|-o |     b
-		//                   | |   |   | |   |
-		//                   | |   |   | o-o |     c
-		//                   | |   |   |   | |
-		//                   | |   |   | o-|-o     d
-		//                   | |   |   | | |
+		//      b ------> c  |   |   |   | | |    vvv\
+		//                   | o-o-o-o-o-|-o |     b  \
+		//                   | |   |   | |   |     v\\|
+		//                   | |   |   | o-o |     c|||
+		//                   | |   |   |   | |     v|||
+		//                   | |   |   | o-|-o     d|||
+		//                   | |   |   | | |       vvvv
 		//                   o---o-|-o-|-|-|-o     a0
 		//                     | | | | | | | |
 		//                     b a b a b d c a
