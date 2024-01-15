@@ -1,6 +1,7 @@
 #include "Solution.h"
 #include <algorithm>
 #include <unordered_set>
+#include <set>
 
 Index::Index() {
 	type = -1;
@@ -82,7 +83,7 @@ Wire::Wire(int net, int layer, int height) {
 Wire::~Wire() {
 }
 
-void Wire::add(const Solution *s, Index pin) {
+void Wire::addPin(const Solution *s, Index pin) {
 	auto pos = lower_bound(pins.begin(), pins.end(), pin, CompareIndex(s));
 	pins.insert(pos, pin);
 	if (left < 0 or s->stack[pin.type][pin.pin].pos < left) {
@@ -91,6 +92,14 @@ void Wire::add(const Solution *s, Index pin) {
 	if (right < 0 or s->stack[pin.type][pin.pin].pos+s->stack[pin.type][pin.pin].width > right) {
 		right = s->stack[pin.type][pin.pin].pos + s->stack[pin.type][pin.pin].width;
 	}
+}
+
+bool Wire::hasPin(const Solution *s, Index pin, vector<Index>::iterator *out) {
+	auto pos = lower_bound(pins.begin(), pins.end(), pin, CompareIndex(s));
+	if (out != nullptr) {
+		*out = pos;
+	}
+	return pos != pins.end() and pos->type == pin.type and pos->pin == pin.pin;
 }
 
 VerticalConstraint::VerticalConstraint() {
@@ -313,14 +322,14 @@ void Solution::build(const Tech &tech) {
 		}
 	}
 
-	// Create initial routes and constraints
+	// Create initial routes
 	routes.reserve(base->nets.size());
 	for (int i = 0; i < (int)base->nets.size(); i++) {
 		routes.push_back(Wire(i, tech.wires[2].drawingLayer, tech.layers[tech.vias[2].drawingLayer].minWidth+max(tech.vias[2].upLo, tech.vias[2].downLo)));
 	}
 	for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < (int)stack[type].size(); i++) {
-			routes[stack[type][i].outNet].add(this, Index(type, i));
+			routes[stack[type][i].outNet].addPin(this, Index(type, i));
 		}
 	}
 
@@ -340,15 +349,6 @@ void Solution::build(const Tech &tech) {
 				if (pNet != nNet and pLeft < nRight and nLeft < pRight and routes[nNet].pins.size() > 1) {
 					vert.push_back(VerticalConstraint(p, n, tech.layers[tech.wires[2].drawingLayer].minSpacing));
 				}
-			}
-		}
-	}
-
-	// Compute horizontal constraints
-	for (int i = 0; i < (int)routes.size(); i++) {
-		for (int j = i+1; j < (int)routes.size(); j++) {
-			if (routes[i].left < routes[j].right and routes[j].left < routes[i].right) {
-				horiz.push_back(HorizontalConstraint(i, j, tech.layers[tech.wires[2].drawingLayer].minSpacing));
 			}
 		}
 	}
@@ -505,19 +505,261 @@ vector<int> Solution::initialTokens(bool searchHoriz) {
 	return tokens;
 }
 
-void Solution::solve(const Tech &tech, int minCost) {
-	vector<vector<int> > cycles = findCycles();
+void Solution::breakRoute(int route, set<int> cycleRoutes) {
+	// DESIGN(edward.bingham) There are two obvious options to mitigate cycles
+	// in the constraint graph by splitting a route. Either way, one pin needs
+	// to be shared across the two routes to handle the vertical connection
+	// between them.
+	// 1. Split the net vertically, putting all nmos pins in one route and all
+	//    pmos in the other. We can really pick any pin to be the split point for
+	//    this strategy.
+	// 2. Split the net horizontally, picking a pin to be the split point and
+	//    putting all the left pins in one and right pins in the other. The
+	//    split point will be the shared pin.
+	//
+	// Either way, we should share the pin with the fewest vertical constraints
+	// as the vertical route. We may also want to check the number of
+	// horizontal constraints and distance to other pins in the new net.
 
-	// count up cycle participation for heuristic
-	vector<int> cycleCount(routes.size(), 0);
-	for (int i = 0; i < (int)cycles.size(); i++) {
-		for (int j = 0; j < (int)cycles[i].size(); j++) {
-			cycleCount[cycles[i][j]]++;
+	int left = min(stack[0][0].pos, stack[1][0].pos);
+	int right = max(stack[0].back().pos, stack[1].back().pos);
+	int center = (left + right)/2;
+
+	Wire wp(routes[route].net, routes[route].layer, routes[route].height);
+	Wire wn(routes[route].net, routes[route].layer, routes[route].height);
+	vector<int> count(routes[route].pins.size(), 0);
+	bool wpHasGate = false;
+	bool wnHasGate = false;
+
+	// Move all of the pins that participate in vertical constraints associated
+	// with the cycle.	
+	for (int i = 0; i < (int)vert.size(); i++) {
+		vector<Index>::iterator from = routes[route].pins.end();
+		vector<Index>::iterator to = routes[route].pins.end();
+		// A pin cannot have both a vertical constraint in and a vertical
+		// constraint out because a pin is either PMOS or NMOS and vertical
+		// constraints always go out PMOS pins and in NMOS pins.
+
+		// First, check if this vertical constraint is connected to any of the pins
+		// in this route.
+		bool hasFrom = routes[route].hasPin(this, Index(Model::PMOS, vert[i].from), &from);
+		bool hasTo = false;
+		if (not hasFrom) {
+			hasTo = routes[route].hasPin(this, Index(Model::NMOS, vert[i].to), &to);
+			if (not hasTo) {
+				continue;
+			}
+		}
+		int fromIdx = from-routes[route].pins.begin();
+		int toIdx = to-routes[route].pins.begin();
+
+		if (hasFrom) {
+			count[fromIdx]++;
+		}
+		if (hasTo) {
+			count[toIdx]++;
+		}
+
+		// Second, check if this vertical constraint is connected to any of the
+		// pins in any of the other routes that were found in the cycle.
+		bool found = false;
+		for (auto other = cycleRoutes.begin(); not found and other != cycleRoutes.end(); other++) {
+			found = ((hasFrom and routes[*other].hasPin(this, Index(Model::NMOS, vert[i].to))) or
+							 (hasTo and routes[*other].hasPin(this, Index(Model::PMOS, vert[i].from))));
+		}
+		if (not found) {
+			continue;
+		}
+
+		// Move the pin to wp or wn depending on hasFrom and hasTo
+		if (hasFrom) {
+			wp.addPin(this, Index(Model::PMOS, vert[i].from));
+			count.erase(count.begin()+fromIdx);
+			routes[route].pins.erase(from);
+			wpHasGate = wpHasGate or stack[Model::PMOS][vert[i].from].device >= 0;
+		} else if (hasTo) {
+			wn.addPin(this, Index(Model::NMOS, vert[i].to));
+			count.erase(count.begin()+toIdx);
+			routes[route].pins.erase(to);
+			wnHasGate = wnHasGate or stack[Model::NMOS][vert[i].to].device >= 0;
 		}
 	}
 
-	// TODO Insert doglegs to break cycles
+	// DESIGN(edward.bingham) Pick one of the remaining pins to be a shared pin.
+	// Pick the remaining pin that has the fewest vertical constraints, is not a
+	// gate, and is furthest toward the outer edge of the cell. Break ties
+	// arbitrarily. This will move the vertical route out of the way as much as
+	// possible from all of the other constraint problems. If there are no
+	// remaining pins, then we need to record wp and wn for routing with A*
+	int sharedPin = -1;
+	int sharedCount = -1;
+	bool sharedIsGate = true;
+	int sharedDistanceFromCenter = 0;
+	for (int i = 0; i < (int)routes[route].pins.size(); i++) {
+		bool isGate = stack[routes[route].pins[i].type][routes[route].pins[i].pin].device >= 0;
+		int pinPosition = stack[routes[route].pins[i].type][routes[route].pins[i].pin].pos;
+		int distanceFromCenter = abs(pinPosition-center);
+
+		if ((sharedCount < 0 or count[i] < sharedCount) or
+		    (count[i] == sharedCount and ((sharedIsGate and not isGate) or
+		    distanceFromCenter > sharedDistanceFromCenter))) {
+			sharedPin = i;
+			sharedCount = count[i];
+			sharedIsGate = isGate;
+			sharedDistanceFromCenter = distanceFromCenter;
+		}
+	}
+
+	if (sharedPin >= 0) {
+		wp.addPin(this, routes[route].pins[sharedPin]);
+		wn.addPin(this, routes[route].pins[sharedPin]);
+		routes[route].pins.erase(routes[route].pins.begin()+sharedPin);
+		count.erase(count.begin()+sharedPin);
+		wpHasGate = wpHasGate or sharedIsGate;
+		wnHasGate = wnHasGate or sharedIsGate;
+	} else {
+		// TODO(edward.bingham) record this for A* routing later
+		printf("unable to find shared pin, need A* routing\n");
+	}
+
+	// DESIGN(edward.bingham) If it is possible to avoid putting a gate pin in
+	// one of wp or wn and put all of the PMOS in wp and all of the NMOS in wn,
+	// try to do so. This will allow us to route whichever route it is over the
+	// transistor stack.
+	
+	// DESIGN(edward.bingham) prefer routing overtop the pmos stack since it is
+	// often wider as a result of the PN ratio.
+	if (not wpHasGate) {
+		// Put all non-gate PMOS pins into wp and all remaining pins into wn
+		for (int i = (int)routes[route].pins.size()-1; i >= 0; i--) {
+			bool isGate = stack[routes[route].pins[i].type][routes[route].pins[i].pin].device < 0;
+			if (routes[route].pins[i].type == Model::PMOS and not isGate) {
+				wp.addPin(this, routes[route].pins[i]);
+			} else {
+				wn.addPin(this, routes[route].pins[i]);
+				wnHasGate = wnHasGate or isGate;
+			}
+			routes.pop_back();
+			count.pop_back();
+		}
+	}	else if (not wnHasGate) {
+		// Put all non-gate NMOS pins into wn and all remaining pins into wp
+		for (int i = (int)routes[route].pins.size()-1; i >= 0; i--) {
+			bool isGate = stack[routes[route].pins[i].type][routes[route].pins[i].pin].device < 0;
+			if (routes[route].pins[i].type == Model::NMOS and not isGate) {
+				wn.addPin(this, routes[route].pins[i]);
+			} else {
+				wp.addPin(this, routes[route].pins[i]);
+				wpHasGate = wpHasGate or isGate;
+			}
+			routes.pop_back();
+			count.pop_back();
+		}
+	} else {
+		for (int i = (int)routes[route].pins.size()-1; i >= 0; i--) {
+			// Determine horizontal location of wp and wn relative to sharedPin, then
+			// place all pins on same side of sharedPin as wp or wn into that wp or wn
+			// respectively.
+			bool isGate = stack[routes[route].pins[i].type][routes[route].pins[i].pin].device < 0;
+			int pinPos = stack[routes[route].pins[i].type][routes[route].pins[i].pin].pos;
+			if (pinPos >= wn.left and pinPos >= wp.left and pinPos <= wn.right and pinPos <= wp.right) {
+				if (routes[route].pins[i].type == Model::PMOS) {
+					wp.addPin(this, routes[route].pins[i]);
+					wpHasGate = wpHasGate or isGate;
+				} else {
+					wn.addPin(this, routes[route].pins[i]);
+					wnHasGate = wnHasGate or isGate;
+				}
+			} else if (pinPos >= wn.left and pinPos <= wn.right) {
+				wn.addPin(this, routes[route].pins[i]);
+				wnHasGate = wnHasGate or isGate;
+			} else if (pinPos >= wp.left and pinPos <= wp.right) {
+				wp.addPin(this, routes[route].pins[i]);
+				wpHasGate = wpHasGate or isGate;
+			} else if (min(abs(pinPos-wn.right),abs(pinPos-wn.left)) < min(abs(pinPos-wp.right),abs(pinPos-wp.left))) {
+				wn.addPin(this, routes[route].pins[i]);
+				wnHasGate = wnHasGate or isGate;
+			} else {
+				wp.addPin(this, routes[route].pins[i]);
+				wpHasGate = wpHasGate or isGate;
+			}
+			routes.pop_back();
+			count.pop_back();
+		}
+	}
+
+	routes[route].net = wp.net;
+	routes[route].pins = wp.pins;
+	routes[route].layer = wp.layer;
+	routes[route].height = wp.height;
+	routes[route].pos = wp.pos;
+	routes[route].left = wp.left;
+	routes[route].right = wp.right;
+	routes.push_back(wn);
+}
+
+void Solution::breakCycles() {
+	vector<vector<int> > cycles = findCycles();
+
+	printf("Cycles\n");
+	for (int i = 0; i < (int)cycles.size(); i++) {
+		printf("cycle {");
+		for (int j = 0; j < (int)cycles[i].size(); j++) {
+			if (j != 0) {
+				printf(" ");
+			}
+			printf("%d", cycles[i][j]);
+		}
+		printf("}\n");
+	}
+
+	// count up cycle participation for heuristic
+	vector<vector<int> > cycleCount(routes.size(), vector<int>());
+	for (int i = 0; i < (int)cycles.size(); i++) {
+		for (int j = 0; j < (int)cycles[i].size(); j++) {
+			cycleCount[cycles[i][j]].push_back(i);
+		}
+	}
+
+	// compute vertical constraint density for heuristic
+	vector<int> numIn(routes.size(), 0);
+	vector<int> numOut(routes.size(), 0);
+	for (int i = 0; i < (int)vert.size(); i++) {
+		for (int j = 0; j < (int)routes.size(); j++) {
+			if (routes[j].hasPin(this, Index(Model::PMOS, vert[i].from))) {
+				numOut[j]++;
+			}
+			if (routes[j].hasPin(this, Index(Model::NMOS, vert[i].to))) {
+				numIn[j]++;
+			}
+		}
+	}
+
 	while (cycles.size() > 0) {
+		printf("Cycles\n");
+		for (int i = 0; i < (int)cycles.size(); i++) {
+			printf("cycle {");
+			for (int j = 0; j < (int)cycles[i].size(); j++) {
+				if (j != 0) {
+					printf(" ");
+				}
+				printf("%d", cycles[i][j]);
+			}
+			printf("}\n");
+		}
+		printf("CycleCount\n");
+		for (int i = 0; i < (int)cycleCount.size(); i++) {
+			printf("cycles {");
+			for (int j = 0; j < (int)cycleCount[i].size(); j++) {
+				if (j != 0) {
+					printf(" ");
+				}
+				printf("%d", cycleCount[i][j]);
+			}
+			printf("}\n");
+		}
+
+
 		// DESIGN(edward.bingham) We have multiple cycles and a route may
 		// participate in more than one. It's unclear whether we want to minimize
 		// the number of doglegs or not. Introducing a dogleg requires adding
@@ -560,65 +802,60 @@ void Solution::solve(const Tech &tech, int minCost) {
 		int maxDensity = -1;
 		int route = -1;
 		for (int i = 0; i < (int)cycleCount.size(); i++) {
-			int density = 0;//min(inVerts, outVerts);
-			if (cycleCount[i] > maxCycleCount or
-					(cycleCount[i] == maxCycleCount and density > maxDensity)) {
+			int density = min(numIn[i], numOut[i]);
+			if ((int)cycleCount[i].size() > maxCycleCount or
+					((int)cycleCount[i].size() == maxCycleCount and density > maxDensity)) {
 				route = i;
-				maxCycleCount = cycleCount[i];
+				maxCycleCount = cycleCount[i].size();
 				maxDensity = density;
 			}
 		}
 
-		// DESIGN(edward.bingham) There are two obvious options to mitigate cycles
-		// in the constraint graph by splitting a route. Either way, one pin needs
-		// to be shared across the two routes to handle the vertical connection
-		// between them.
-		// 1. Split the net vertically, putting all nmos pins in one route and all
-		//    pmos in the other. We can really pick any pin to be the split point for
-		//    this strategy.
-		// 2. Split the net horizontally, picking a pin to be the split point and
-		//    putting all the left pins in one and right pins in the other. The
-		//    split point will be the shared pin.
-		//
-		// Either way, we should share the pin with the fewest vertical constraints
-		// as the vertical route. We may also want to check the number of
-		// horizontal constraints and distance to other pins in the new net.
-		//routes.push_back(routes[route]);
-		//for (int i = 0; i < 
-		
-		// TODO Break route
+		printf("route = %d, %d cycles, %d verts\n", route, maxCycleCount, maxDensity);
+
+		set<int> cycleRoutes;
+		for (int i = 0; i < (int)cycleCount[route].size(); i++) {
+			cycleRoutes.insert(cycles[cycleCount[route][i]].begin(), cycles[cycleCount[route][i]].end());
+		}
+		cycleRoutes.erase(route);
+
+		breakRoute(route, cycleRoutes);
 
 		// recompute cycles and cycleCount
 		for (int i = (int)cycles.size()-1; i >= 0; i--) {
 			if (find(cycles[i].begin(), cycles[i].end(), route) != cycles[i].end()) {
 				for (int j = 0; j < (int)cycles[i].size(); j++) {
-					cycleCount[cycles[i][j]]--;
+					cycleCount[cycles[i][j]].erase(
+					  remove(cycleCount[cycles[i][j]].begin(),
+						       cycleCount[cycles[i][j]].end(), i),
+					  cycleCount[cycles[i][j]].end());
 				}
 				cycles.erase(cycles.begin()+i);
 			}
 		}
 	}
+}
 
-	// TODO compute distances from vertical constraints
+void Solution::solve(const Tech &tech, int minCost) {
+	breakCycles();
+
+	// Compute horizontal constraints
+	for (int i = 0; i < (int)routes.size(); i++) {
+		for (int j = i+1; j < (int)routes.size(); j++) {
+			if (routes[i].left < routes[j].right and routes[j].left < routes[i].right) {
+				horiz.push_back(HorizontalConstraint(i, j, tech.layers[tech.wires[2].drawingLayer].minSpacing));
+			}
+		}
+	}
+
+	// TODO(edward.bingham) compute distances from vertical constraints
 	vector<int> tokens = initialTokens();
 	/*printf("Initial Tokens\n");
 	for (int i = 0; i < (int)tokens.size(); i++) {
 		printf("token %d\n", tokens[i]);
 	}*/
 
-	// TODO elaborate horizontal constraints and compute distances
-
-	printf("Cycles\n");
-	for (int i = 0; i < (int)cycles.size(); i++) {
-		printf("cycle {");
-		for (int j = 0; j < (int)cycles[i].size(); j++) {
-			if (j != 0) {
-				printf(" ");
-			}
-			printf("%d", cycles[i][j]);
-		}
-		printf("}\n");
-	}
+	// TODO(edward.bingham) elaborate horizontal constraints and compute distances
 
 
 	printf("NMOS\n");
@@ -648,5 +885,5 @@ void Solution::solve(const Tech &tech, int minCost) {
 }
 
 void Solution::draw(const Tech &tech) {
-	// TODO draw result
+	// TODO(edward.bingham) draw result
 }

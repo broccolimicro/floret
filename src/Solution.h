@@ -1,6 +1,9 @@
 #pragma once
 
 #include "Circuit.h"
+#include <set>
+
+using namespace std;
 
 struct Solution;
 
@@ -75,7 +78,8 @@ struct Wire {
 	int left;
 	int right;
 
-	void add(const Solution *s, Index pin);
+	void addPin(const Solution *s, Index pin);
+	bool hasPin(const Solution *s, Index pin, vector<Index>::iterator *out = nullptr);
 };
 
 struct VerticalConstraint {
@@ -168,6 +172,9 @@ struct Solution {
 	vector<int> vertIn(int v);
 
 	vector<vector<int> > findCycles(bool searchHoriz=false);
+	void breakRoute(int route, set<int> cycleRoutes);
+	void breakCycles();
+
 	vector<int> initialTokens(bool searchHoriz=false);
 
 	int cost;
