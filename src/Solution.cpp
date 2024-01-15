@@ -15,6 +15,17 @@ Index::Index(int type, int pin) {
 Index::~Index() {
 }
 
+CompareIndex::CompareIndex(const Solution *s) {
+	this->s = s;
+}
+
+CompareIndex::~CompareIndex() {
+}
+
+bool CompareIndex::operator()(const Index &i0, const Index &i1) {
+	return s->stack[i0.type][i0.pin].pos < s->stack[i1.type][i1.pin].pos;
+}
+
 Pin::Pin() {
 	device = -1;
 	outNet = -1;
@@ -69,6 +80,17 @@ Wire::Wire(int net, int layer, int height) {
 }
 
 Wire::~Wire() {
+}
+
+void Wire::add(const Solution *s, Index pin) {
+	auto pos = lower_bound(pins.begin(), pins.end(), pin, CompareIndex(s));
+	pins.insert(pos, pin);
+	if (left < 0 or s->stack[pin.type][pin.pin].pos < left) {
+		left = s->stack[pin.type][pin.pin].pos;
+	}
+	if (right < 0 or s->stack[pin.type][pin.pin].pos+s->stack[pin.type][pin.pin].width > right) {
+		right = s->stack[pin.type][pin.pin].pos + s->stack[pin.type][pin.pin].width;
+	}
 }
 
 VerticalConstraint::VerticalConstraint() {
@@ -298,15 +320,7 @@ void Solution::build(const Tech &tech) {
 	}
 	for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < (int)stack[type].size(); i++) {
-			routes[stack[type][i].outNet].pins.push_back(Index(type, i));
-			if (routes[stack[type][i].outNet].left < 0 or
-			    stack[type][i].pos < routes[stack[type][i].outNet].left) {
-				routes[stack[type][i].outNet].left = stack[type][i].pos;
-			}
-			if (routes[stack[type][i].outNet].right < 0 or
-			    stack[type][i].pos+stack[type][i].width > routes[stack[type][i].outNet].right) {
-				routes[stack[type][i].outNet].right = stack[type][i].pos + stack[type][i].width;
-			}
+			routes[stack[type][i].outNet].add(this, Index(type, i));
 		}
 	}
 

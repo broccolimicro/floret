@@ -2,6 +2,8 @@
 
 #include "Circuit.h"
 
+struct Solution;
+
 struct Index {
 	Index();
 	Index(int type, int pin);
@@ -12,6 +14,16 @@ struct Index {
 
 	// index into Solution::stack[type], pin number from left to right
 	int pin;
+};
+
+// DESIGN(edward.bingham) use this to keep Wire::pins sorted
+struct CompareIndex {
+	CompareIndex(const Solution *s);
+	~CompareIndex();
+
+	const Solution *s;
+
+	bool operator()(const Index &i0, const Index &i1);
 };
 
 // Represents Transistors and Contacts
@@ -48,6 +60,9 @@ struct Wire {
 
 	int net;
 	// index into Solution::stack
+	// DESIGN(edward.bingham) We should always keep this array sorted based on
+	// horizontal location of the pin in the cell from left to right. This helps
+	// us pick pins to dogleg when breaking cycles.
 	vector<Index> pins;
 
 	//-------------------------------
@@ -59,6 +74,8 @@ struct Wire {
 
 	int left;
 	int right;
+
+	void add(const Solution *s, Index pin);
 };
 
 struct VerticalConstraint {
