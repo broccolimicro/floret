@@ -1,4 +1,5 @@
 #include "Solution.h"
+#include <algorithm>
 
 Index::Index() {
 	type = -1;
@@ -344,27 +345,175 @@ void Solution::build(const Tech &tech) {
 	}
 }
 
-void Solution::solve(const Tech &tech, int minCost) {
-	// TODO handle cycles with doglegs
-	// TODO search constraint graph
+vector<int> Solution::outVert(int r) {
+	vector<int> result;
+	for (int i = 0; i < (int)vert.size(); i++) {
+		for (int j = 0; j < (int)routes[r].pins.size(); j++) {
+			if (routes[r].pins[j].type == Model::PMOS and vert[i].from == routes[r].pins[j].pin) {
+				result.push_back(i);
+				break;
+			}
+		}
+	}
+	return result;
+}
 
+vector<int> Solution::inVert(int r) {
+	vector<int> result;
+	for (int i = 0; i < (int)vert.size(); i++) {
+		for (int j = 0; j < (int)routes[r].pins.size(); j++) {
+			if (routes[r].pins[j].type == Model::NMOS and vert[i].to == routes[r].pins[j].pin) {
+				result.push_back(i);
+				break;
+			}
+		}
+	}
+	return result;
+}
+
+vector<int> Solution::vertOut(int v) {
+	vector<int> result;
+	for (int i = 0; i < (int)routes.size(); i++) {
+		for (int j = 0; j < (int)routes[i].pins.size(); j++) {
+			if (routes[i].pins[j].type == Model::NMOS and vert[v].to == routes[i].pins[j].pin) {
+				result.push_back(i);
+				break;
+			}
+		}
+	}
+	return result;
+}
+
+vector<int> Solution::vertIn(int v) {
+	vector<int> result;
+	for (int i = 0; i < (int)routes.size(); i++) {
+		for (int j = 0; j < (int)routes[i].pins.size(); j++) {
+			if (routes[i].pins[j].type == Model::PMOS and vert[v].from == routes[i].pins[j].pin) {
+				result.push_back(i);
+				break;
+			}
+		}
+	}
+	return result;
+}
+
+vector<int> Solution::next(int r) {
+	vector<int> pins;
+	for (int i = 0; i < (int)vert.size(); i++) {
+		for (int j = 0; j < (int)routes[r].pins.size(); j++) {
+			if (routes[r].pins[j].type == Model::PMOS and vert[i].from == routes[r].pins[j].pin) {
+				pins.push_back(vert[i].to);
+				break;
+			}
+		}
+	}
+
+	vector<int> result;
+	for (int i = 0; i < (int)routes.size(); i++) {
+		for (int j = 0; j < (int)routes[i].pins.size(); j++) {
+			if (routes[i].pins[j].type == Model::NMOS and find(pins.begin(), pins.end(), routes[i].pins[j].pin) != pins.end()) {
+				result.push_back(i);
+				break;
+			}
+		}
+	}
+	return result;
+}
+
+
+vector<vector<int> > Solution::findCycles(bool searchHoriz) {
+	vector<vector<int> > tokens;
+	vector<vector<int> > cycles;
+	for (int i = 0; i < (int)routes.size(); i++) {
+		tokens.push_back(vector<int>(1, i));
+	}
+
+	while (tokens.size() > 0) {
+		vector<int> curr = tokens.back();
+		tokens.pop_back();
+		// check to make sure this token hasn't entered a loop we've already found
+		bool found = false;
+		for (int i = 0; not found and i < (int)cycles.size(); i++) {
+			found = find(cycles[i].begin(), cycles[i].end(), curr.back()) != cycles[i].end();
+		}
+		if (found) {
+			continue;
+		}
+
+		vector<int> n = next(curr.back());
+		for (int j = 0; j < (int)n.size(); j++) {
+			tokens.push_back(curr);
+
+			// check to see if we've eaten our tail
+			auto token = find(tokens.back().begin(), tokens.back().end(), n[j]);
+			if (token != tokens.back().end()) {
+				// extract the cycle from our trace
+				tokens.back().erase(tokens.back().begin(), token);
+				vector<int>::iterator minElem = min_element(tokens.back().begin(), tokens.back().end());
+				rotate(tokens.back().begin(), minElem, tokens.back().end());
+				//if (find(cycles.begin(), cycles.end(), tokens.back()) == cycles.end()) {
+					cycles.push_back(tokens.back());
+				//}
+				tokens.pop_back();
+			} else {
+				tokens.back().push_back(n[j]);
+			}
+		}
+	}
+	return cycles;
+}
+
+// make sure the graph is acyclic before running this
+vector<int> Solution::initialTokens(bool searchHoriz) {
 	// set up initial tokens for evaluating vertical constraints
 	vector<int> tokens;
 	for (int i = 0; i < (int)routes.size(); i++) {
 		bool found = false;
-		for (int j = 0; j < (int)vert.size(); j++) {
-			if (vert[j].to == i) {
-				found = true;
-				break;
+		for (int j = 0; not found and j < (int)vert.size(); j++) {
+			for (int k = 0; not found and k < (int)routes[i].pins.size(); k++) {
+				found = found or (vert[j].to == routes[i].pins[k].pin);
+			}
+		}
+		if (searchHoriz) {
+			for (int j = 0; not found and j < (int)horiz.size(); j++) {
+				found = found or (horiz[j].select >= 0 and horiz[j].wires[1-horiz[j].select] == i);
 			}
 		}
 		if (not found) {
 			tokens.push_back(i);
 		}
 	}
+	
+	return tokens;
+}
 
-	
-	
+void Solution::solve(const Tech &tech, int minCost) {
+	// Cycles can show up in the vertical constraints without ever looking at the horizontal constraints
+
+	// TODO handle cycles with doglegs
+	// TODO search constraint graph
+
+	vector<vector<int> > cycles = findCycles();
+
+	/*vector<int> tokens = initialTokens();
+	printf("Initial Tokens\n");
+	for (int i = 0; i < (int)tokens.size(); i++) {
+		printf("token %d\n", tokens[i]);
+	}*/
+
+	printf("Cycles\n");
+	for (int i = 0; i < (int)cycles.size(); i++) {
+		printf("cycle {");
+		for (int j = 0; j < (int)cycles[i].size(); j++) {
+			if (j != 0) {
+				printf(" ");
+			}
+			printf("%d", cycles[i][j]);
+		}
+		printf("}\n");
+	}
+
+
 	printf("NMOS\n");
 	for (int i = 0; i < (int)stack[0].size(); i++) {
 		printf("pin %d %d->%d->%d: %dx%d %d %d\n", stack[0][i].device, stack[0][i].leftNet, stack[0][i].outNet, stack[0][i].rightNet, stack[0][i].width, stack[0][i].height, stack[0][i].off, stack[0][i].pos);

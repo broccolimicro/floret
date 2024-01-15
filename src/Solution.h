@@ -80,7 +80,7 @@ struct HorizontalConstraint {
 	HorizontalConstraint(int a, int b, int off=0);
 	~HorizontalConstraint();
 
-	// index into Circuit::wires
+	// index into Solution::wires
 	int wires[2];
 
 	// derived by Solution::solve
@@ -137,6 +137,21 @@ struct Solution {
 	// channel routing constraint graph
 	vector<VerticalConstraint> vert;
 	vector<HorizontalConstraint> horiz;
+
+	vector<int> next(int r);
+
+	// index into Solution::routes
+	// result indexes into Solution::vert
+	vector<int> outVert(int r);
+	vector<int> inVert(int r);
+
+	// index into Solution::vert
+	// result indexes into Solution::routes
+	vector<int> vertOut(int v);
+	vector<int> vertIn(int v);
+
+	vector<vector<int> > findCycles(bool searchHoriz=false);
+	vector<int> initialTokens(bool searchHoriz=false);
 
 	int cost;
 
