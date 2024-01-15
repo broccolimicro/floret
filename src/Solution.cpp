@@ -1,5 +1,6 @@
 #include "Solution.h"
 #include <algorithm>
+#include <unordered_set>
 
 Index::Index() {
 	type = -1;
@@ -427,16 +428,13 @@ vector<vector<int> > Solution::findCycles(bool searchHoriz) {
 	for (int i = 0; i < (int)routes.size(); i++) {
 		tokens.push_back(vector<int>(1, i));
 	}
-
+	
+	unordered_set<int> seen;
 	while (tokens.size() > 0) {
 		vector<int> curr = tokens.back();
 		tokens.pop_back();
 		// check to make sure this token hasn't entered a loop we've already found
-		bool found = false;
-		for (int i = 0; not found and i < (int)cycles.size(); i++) {
-			found = find(cycles[i].begin(), cycles[i].end(), curr.back()) != cycles[i].end();
-		}
-		if (found) {
+		if (seen.find(curr.back()) != seen.end()) {
 			continue;
 		}
 
@@ -451,9 +449,8 @@ vector<vector<int> > Solution::findCycles(bool searchHoriz) {
 				tokens.back().erase(tokens.back().begin(), token);
 				vector<int>::iterator minElem = min_element(tokens.back().begin(), tokens.back().end());
 				rotate(tokens.back().begin(), minElem, tokens.back().end());
-				//if (find(cycles.begin(), cycles.end(), tokens.back()) == cycles.end()) {
-					cycles.push_back(tokens.back());
-				//}
+				cycles.push_back(tokens.back());
+				seen.insert(tokens.back().begin(), tokens.back().end());
 				tokens.pop_back();
 			} else {
 				tokens.back().push_back(n[j]);
@@ -490,10 +487,10 @@ vector<int> Solution::initialTokens(bool searchHoriz) {
 void Solution::solve(const Tech &tech, int minCost) {
 	// Cycles can show up in the vertical constraints without ever looking at the horizontal constraints
 
+	vector<vector<int> > cycles = findCycles();
+
 	// TODO handle cycles with doglegs
 	// TODO search constraint graph
-
-	vector<vector<int> > cycles = findCycles();
 
 	/*vector<int> tokens = initialTokens();
 	printf("Initial Tokens\n");
@@ -501,7 +498,7 @@ void Solution::solve(const Tech &tech, int minCost) {
 		printf("token %d\n", tokens[i]);
 	}*/
 
-	printf("Cycles\n");
+	/*printf("Cycles\n");
 	for (int i = 0; i < (int)cycles.size(); i++) {
 		printf("cycle {");
 		for (int j = 0; j < (int)cycles[i].size(); j++) {
@@ -537,7 +534,7 @@ void Solution::solve(const Tech &tech, int minCost) {
 		printf("horiz %d -- %d: %d\n", horiz[i].wires[0], horiz[i].wires[1], horiz[i].off);
 	}
 
-	printf("\n\n");
+	printf("\n\n");*/
 }
 
 void Solution::draw(const Tech &tech) {
