@@ -485,18 +485,58 @@ vector<int> Solution::initialTokens(bool searchHoriz) {
 }
 
 void Solution::solve(const Tech &tech, int minCost) {
-	// Cycles can show up in the vertical constraints without ever looking at the horizontal constraints
-
 	vector<vector<int> > cycles = findCycles();
 
-	// TODO handle cycles with doglegs
-	// TODO search constraint graph
+	// count up cycle participation for heuristic
+	vector<int> cycleCount(routes.size(), 0);
+	for (int i = 0; i < (int)cycles.size(); i++) {
+		for (int j = 0; j < (int)cycles[i].size(); j++) {
+			cycleCount[cycles[i][j]]++;
+		}
+	}
 
-	/*vector<int> tokens = initialTokens();
-	printf("Initial Tokens\n");
+	// TODO Insert doglegs to break cycles
+	while (cycles.size() > 0) {
+		int maxCycleCount = -1;
+		int maxDensity = -1;
+		int route = -1;
+		for (int i = 0; i < (int)cycleCount.size(); i++) {
+			int density = 0;//min(inVerts, outVerts);
+			if (cycleCount[i] > maxCycleCount or
+					(cycleCount[i] == maxCycleCount and density > maxDensity)) {
+				route = i;
+				maxCycleCount = cycleCount[i];
+				maxDensity = density;
+			}
+		}
+
+		// Put all nmos pins in one route and all pmos in the other. Save the pin
+		// with the fewest vertical constraints to share between the two as the
+		// vertical route
+		// gate pins mess up that plan
+		// routes.push_back(routes[route]);
+		
+		// TODO Break route
+
+		// recompute cycles and cycleCount
+		for (int i = (int)cycles.size()-1; i >= 0; i--) {
+			if (find(cycles[i].begin(), cycles[i].end(), route) != cycles[i].end()) {
+				for (int j = 0; j < (int)cycles[i].size(); j++) {
+					cycleCount[cycles[i][j]]--;
+				}
+				cycles.erase(cycles.begin()+i);
+			}
+		}
+	}
+
+	// TODO compute distances from vertical constraints
+	vector<int> tokens = initialTokens();
+	/*printf("Initial Tokens\n");
 	for (int i = 0; i < (int)tokens.size(); i++) {
 		printf("token %d\n", tokens[i]);
 	}*/
+
+	// TODO elaborate horizontal constraints and compute distances
 
 	/*printf("Cycles\n");
 	for (int i = 0; i < (int)cycles.size(); i++) {
