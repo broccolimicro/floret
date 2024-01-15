@@ -25,7 +25,9 @@ CompareIndex::~CompareIndex() {
 }
 
 bool CompareIndex::operator()(const Index &i0, const Index &i1) {
-	return s->stack[i0.type][i0.pin].pos < s->stack[i1.type][i1.pin].pos;
+	return s->stack[i0.type][i0.pin].pos < s->stack[i1.type][i1.pin].pos or
+		(s->stack[i0.type][i0.pin].pos == s->stack[i1.type][i1.pin].pos and (i0.type > i1.type or
+		(i0.type == i1.type and i0.pin < i1.pin)));
 }
 
 Pin::Pin() {
@@ -490,30 +492,6 @@ vector<vector<int> > Solution::findCycles(bool searchHoriz) {
 	return cycles;
 }
 
-// make sure the graph is acyclic before running this
-vector<int> Solution::initialTokens(bool searchHoriz) {
-	// set up initial tokens for evaluating vertical constraints
-	vector<int> tokens;
-	for (int i = 0; i < (int)routes.size(); i++) {
-		bool found = false;
-		for (int j = 0; not found and j < (int)vert.size(); j++) {
-			for (int k = 0; not found and k < (int)routes[i].pins.size(); k++) {
-				found = found or (vert[j].to == routes[i].pins[k].pin);
-			}
-		}
-		if (searchHoriz) {
-			for (int j = 0; not found and j < (int)horiz.size(); j++) {
-				found = found or (horiz[j].select >= 0 and horiz[j].wires[1-horiz[j].select] == i);
-			}
-		}
-		if (not found) {
-			tokens.push_back(i);
-		}
-	}
-	
-	return tokens;
-}
-
 void Solution::breakRoute(int route, set<int> cycleRoutes) {
 	// DESIGN(edward.bingham) There are two obvious options to mitigate cycles
 	// in the constraint graph by splitting a route. Either way, one pin needs
@@ -604,9 +582,19 @@ void Solution::breakRoute(int route, set<int> cycleRoutes) {
 		}
 	}
 
-	// TODO(edward.bingham) deal with pins that would create a cycle between wp and wn
-
-	
+	//printf("Step 1: w={");
+	//for (int i = 0; i < (int)routes[route].pins.size(); i++) {
+	//	printf("(%d,%d) ", routes[route].pins[i].type, routes[route].pins[i].pin);
+	//}
+	//printf("} wp={");
+	//for (int i = 0; i < (int)wp.pins.size(); i++) {
+	//	printf("(%d,%d) ", wp.pins[i].type, wp.pins[i].pin);
+	//}
+	//printf("} wn={");
+	//for (int i = 0; i < (int)wn.pins.size(); i++) {
+	//	printf("(%d,%d) ", wn.pins[i].type, wn.pins[i].pin);
+	//}
+	//printf("}\n");
 
 	// DESIGN(edward.bingham) Pick one of the remaining pins to be a shared pin.
 	// Pick the remaining pin that has the fewest vertical constraints, is not a
@@ -614,7 +602,7 @@ void Solution::breakRoute(int route, set<int> cycleRoutes) {
 	// arbitrarily. This will move the vertical route out of the way as much as
 	// possible from all of the other constraint problems. If there are no
 	// remaining pins, then we need to record wp and wn for routing with A*
-	/*int sharedPin = -1;
+	int sharedPin = -1;
 	int sharedCount = -1;
 	bool sharedIsGate = true;
 	int sharedDistanceFromCenter = 0;
@@ -644,6 +632,20 @@ void Solution::breakRoute(int route, set<int> cycleRoutes) {
 		// TODO(edward.bingham) record this for A* routing later
 		//printf("unable to find shared pin, need A* routing\n");
 	}
+
+	//printf("Step 2: w={");
+	//for (int i = 0; i < (int)routes[route].pins.size(); i++) {
+	//	printf("(%d,%d) ", routes[route].pins[i].type, routes[route].pins[i].pin);
+	//}
+	//printf("} wp={");
+	//for (int i = 0; i < (int)wp.pins.size(); i++) {
+	//	printf("(%d,%d) ", wp.pins[i].type, wp.pins[i].pin);
+	//}
+	//printf("} wn={");
+	//for (int i = 0; i < (int)wn.pins.size(); i++) {
+	//	printf("(%d,%d) ", wn.pins[i].type, wn.pins[i].pin);
+	//}
+	//printf("}\n");
 
 	// DESIGN(edward.bingham) If it is possible to avoid putting a gate pin in
 	// one of wp or wn and put all of the PMOS in wp and all of the NMOS in wn,
@@ -712,7 +714,21 @@ void Solution::breakRoute(int route, set<int> cycleRoutes) {
 			routes[route].pins.pop_back();
 			count.pop_back();
 		}
-	}*/
+	}
+
+	//printf("Step 3: w={");
+	//for (int i = 0; i < (int)routes[route].pins.size(); i++) {
+	//	printf("(%d,%d) ", routes[route].pins[i].type, routes[route].pins[i].pin);
+	//}
+	//printf("} wp={");
+	//for (int i = 0; i < (int)wp.pins.size(); i++) {
+	//	printf("(%d,%d) ", wp.pins[i].type, wp.pins[i].pin);
+	//}
+	//printf("} wn={");
+	//for (int i = 0; i < (int)wn.pins.size(); i++) {
+	//	printf("(%d,%d) ", wn.pins[i].type, wn.pins[i].pin);
+	//}
+	//printf("}\n");
 
 	routes[route].net = wp.net;
 	routes[route].pins = wp.pins;
@@ -726,7 +742,6 @@ void Solution::breakRoute(int route, set<int> cycleRoutes) {
 
 void Solution::breakCycles() {
 	vector<vector<int> > cycles = findCycles();
-	vector<vector<int> > startingCycles = cycles;
 	int startingRoutes = (int)routes.size();
 
 	// count up cycle participation for heuristic
@@ -750,6 +765,45 @@ void Solution::breakCycles() {
 			}
 		}
 	}
+
+	//printf("Starting Cycles\n");
+	//for (int i = 0; i < (int)cycles.size(); i++) {
+	//	printf("cycle {");
+	//	for (int j = 0; j < (int)cycles[i].size(); j++) {
+	//		if (j != 0) {
+	//			printf(" ");
+	//		}
+	//		printf("%d", cycles[i][j]);
+	//	}
+	//	printf("}\n");
+	//}
+
+	//printf("NMOS\n");
+	//for (int i = 0; i < (int)stack[0].size(); i++) {
+	//	printf("pin %d %d->%d->%d: %dx%d %d %d\n", stack[0][i].device, stack[0][i].leftNet, stack[0][i].outNet, stack[0][i].rightNet, stack[0][i].width, stack[0][i].height, stack[0][i].off, stack[0][i].pos);
+	//}
+
+	//printf("\nPMOS\n");
+	//for (int i = 0; i < (int)stack[1].size(); i++) {
+	//	printf("pin %d %d->%d->%d: %dx%d %d %d\n", stack[1][i].device, stack[1][i].leftNet, stack[1][i].outNet, stack[1][i].rightNet, stack[1][i].width, stack[1][i].height, stack[1][i].off, stack[1][i].pos);
+	//}
+
+	//printf("\nRoutes\n");
+	//for (int i = 0; i < (int)routes.size(); i++) {
+	//	printf("wire %d %d->%d: ", routes[i].net, routes[i].left, routes[i].right);
+	//	for (int j = 0; j < (int)routes[i].pins.size(); j++) {
+	//		printf("(%d,%d) ", routes[i].pins[j].type, routes[i].pins[j].pin);
+	//	}
+	//	printf("\n");
+	//}
+
+	//printf("\nConstraints\n");
+	//for (int i = 0; i < (int)vert.size(); i++) {
+	//	printf("vert %d -> %d: %d\n", vert[i].from, vert[i].to, vert[i].off);
+	//}
+	//for (int i = 0; i < (int)horiz.size(); i++) {
+	//	printf("horiz %d -- %d: %d\n", horiz[i].wires[0], horiz[i].wires[1], horiz[i].off);
+	//}
 
 	while (cycles.size() > 0) {
 		// DESIGN(edward.bingham) We have multiple cycles and a route may
@@ -809,7 +863,22 @@ void Solution::breakCycles() {
 		}
 		cycleRoutes.erase(route);
 
+		//printf("Breaking Route %d: ", route);
+		//for (auto i = cycleRoutes.begin(); i != cycleRoutes.end(); i++) {
+		//	printf("%d ", *i);
+		//}
+		//printf("\n");
 		breakRoute(route, cycleRoutes);
+		//printf("wire %d %d->%d: ", routes[route].net, routes[route].left, routes[route].right);
+		//for (int j = 0; j < (int)routes[route].pins.size(); j++) {
+		//	printf("(%d,%d) ", routes[route].pins[j].type, routes[route].pins[j].pin);
+		//}
+		//printf("\n");
+		//printf("wire %d %d->%d: ", routes.back().net, routes.back().left, routes.back().right);
+		//for (int j = 0; j < (int)routes.back().pins.size(); j++) {
+		//	printf("(%d,%d) ", routes.back().pins[j].type, routes.back().pins[j].pin);
+		//}
+		//printf("\n");
 
 		// recompute cycles and cycleCount
 		while (cycleCount[route].size() > 0) {		
@@ -830,17 +899,6 @@ void Solution::breakCycles() {
 	cycles = findCycles();
 	if (cycles.size() > 0) {
 		printf("error: cycles not broken %d -> %d\n", startingRoutes, (int)routes.size());
-		for (int i = 0; i < (int)startingCycles.size(); i++) {
-			printf("cycle {");
-			for (int j = 0; j < (int)startingCycles[i].size(); j++) {
-				if (j != 0) {
-					printf(" ");
-				}
-				printf("%d", startingCycles[i][j]);
-			}
-			printf("}\n");
-		}
-		printf("after\n");
 		for (int i = 0; i < (int)cycles.size(); i++) {
 			printf("cycle {");
 			for (int j = 0; j < (int)cycles[i].size(); j++) {
@@ -851,32 +909,56 @@ void Solution::breakCycles() {
 			}
 			printf("}\n");
 		}
+
+		printf("\n\n");
 	}
+}
+
+// make sure the graph is acyclic before running this
+vector<int> Solution::initialTokens(bool searchHoriz) {
+	// set up initial tokens for evaluating vertical constraints
+	vector<int> tokens;
+	for (int i = 0; i < (int)routes.size(); i++) {
+		bool found = false;
+		for (int j = 0; not found and j < (int)vert.size(); j++) {
+			found = found or routes[i].hasPin(this, Index(Model::NMOS, vert[j].to));
+		}
+		if (searchHoriz) {
+			for (int j = 0; not found and j < (int)horiz.size(); j++) {
+				found = found or (horiz[j].select >= 0 and horiz[j].wires[1-horiz[j].select] == i);
+			}
+		}
+		if (not found) {
+			tokens.push_back(i);
+		}
+	}
+	
+	return tokens;
 }
 
 void Solution::solve(const Tech &tech, int minCost) {
 	breakCycles();
 
 	// Compute horizontal constraints
-	/*for (int i = 0; i < (int)routes.size(); i++) {
+	for (int i = 0; i < (int)routes.size(); i++) {
 		for (int j = i+1; j < (int)routes.size(); j++) {
 			if (routes[i].left < routes[j].right and routes[j].left < routes[i].right) {
 				horiz.push_back(HorizontalConstraint(i, j, tech.layers[tech.wires[2].drawingLayer].minSpacing));
 			}
 		}
-	}*/
+	}
 
 	// TODO(edward.bingham) compute distances from vertical constraints
-	//vector<int> tokens = initialTokens();
-	/*printf("Initial Tokens\n");
+	vector<int> tokens = initialTokens();
+	printf("Initial Tokens\n");
 	for (int i = 0; i < (int)tokens.size(); i++) {
 		printf("token %d\n", tokens[i]);
-	}*/
+	}
 
 	// TODO(edward.bingham) elaborate horizontal constraints and compute distances
 
 
-	/*printf("NMOS\n");
+	printf("NMOS\n");
 	for (int i = 0; i < (int)stack[0].size(); i++) {
 		printf("pin %d %d->%d->%d: %dx%d %d %d\n", stack[0][i].device, stack[0][i].leftNet, stack[0][i].outNet, stack[0][i].rightNet, stack[0][i].width, stack[0][i].height, stack[0][i].off, stack[0][i].pos);
 	}
@@ -888,7 +970,11 @@ void Solution::solve(const Tech &tech, int minCost) {
 
 	printf("\nRoutes\n");
 	for (int i = 0; i < (int)routes.size(); i++) {
-		printf("wire %d %d->%d: %d\n", routes[i].net, routes[i].left, routes[i].right, routes[i].height);
+		printf("wire %d %d->%d: ", routes[i].net, routes[i].left, routes[i].right);
+		for (int j = 0; j < (int)routes[i].pins.size(); j++) {
+			printf("(%d,%d) ", routes[i].pins[j].type, routes[i].pins[j].pin);
+		}
+		printf("\n");
 	}
 
 	printf("\nConstraints\n");
@@ -899,7 +985,7 @@ void Solution::solve(const Tech &tech, int minCost) {
 		printf("horiz %d -- %d: %d\n", horiz[i].wires[0], horiz[i].wires[1], horiz[i].off);
 	}
 
-	printf("\n\n");*/
+	printf("\n\n");
 }
 
 void Solution::draw(const Tech &tech) {
