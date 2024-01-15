@@ -497,6 +497,44 @@ void Solution::solve(const Tech &tech, int minCost) {
 
 	// TODO Insert doglegs to break cycles
 	while (cycles.size() > 0) {
+		// DESIGN(edward.bingham) We have multiple cycles and a route may
+		// participate in more than one. It's unclear whether we want to minimize
+		// the number of doglegs or not. Introducing a dogleg requires adding
+		// another via, which may make some layouts more difficult, but it also
+		// frees up constraints which may make other layouts easier. What we do
+		// know is that cycles consist of two types of pins: PMOS and NMOS, and all
+		// the PMOS pins are closer to eachother than they are to the NMOS pins and
+		// visa versa. We also know that there can be multiple constraint arcs from
+		// one node to another or back, and we ultimately need to break all of the
+		// cycles represented by those constraint arcs.
+		//
+		//     a <--- d        a b a b a c b d
+		//   ^^ |||   ^        | | | | | | | |
+		//   || vvv   |        v v v v v v v v
+		//     b ---> c        b a b a b d c a
+		//
+		//
+		//  a1 -> a0 <--- d    a b a b a c b d   nodes
+		//  \\\   ^^      ^    | | | | | | | |
+		//   vvv //       |  o-o-|-o-|-o | | |     a1
+		//      b ------> c  |   |   |   | | |
+		//                   | o-o-o-o-o-|-o |     b
+		//                   | |   |   | |   |
+		//                   | |   |   | o-o |     c
+		//                   | |   |   |   | |
+		//                   | |   |   | o-|-o     d
+		//                   | |   |   | | |
+		//                   o---o-|-o-|-|-|-o     a0
+		//                     | | | | | | | |
+		//                     b a b a b d c a
+		//
+		// In this example, there were no pins in a that we could share between a0
+		// and a1 to connect the two nets. Sharing any of the pins would have
+		// re-introduced the cycle. In this case, we need to use A* to route the
+		// connection from a1 to a0, expanding the width of the cell if necessary.
+		//
+		// Therefore, we prefer to share pins if we can, but we can only share pins
+		// if they themselves don't participate in the cycle.
 		int maxCycleCount = -1;
 		int maxDensity = -1;
 		int route = -1;
@@ -510,11 +548,22 @@ void Solution::solve(const Tech &tech, int minCost) {
 			}
 		}
 
-		// Put all nmos pins in one route and all pmos in the other. Save the pin
-		// with the fewest vertical constraints to share between the two as the
-		// vertical route
-		// gate pins mess up that plan
-		// routes.push_back(routes[route]);
+		// DESIGN(edward.bingham) There are two obvious options to mitigate cycles
+		// in the constraint graph by splitting a route. Either way, one pin needs
+		// to be shared across the two routes to handle the vertical connection
+		// between them.
+		// 1. Split the net vertically, putting all nmos pins in one route and all
+		//    pmos in the other. We can really pick any pin to be the split point for
+		//    this strategy.
+		// 2. Split the net horizontally, picking a pin to be the split point and
+		//    putting all the left pins in one and right pins in the other. The
+		//    split point will be the shared pin.
+		//
+		// Either way, we should share the pin with the fewest vertical constraints
+		// as the vertical route. We may also want to check the number of
+		// horizontal constraints and distance to other pins in the new net.
+		//routes.push_back(routes[route]);
+		//for (int i = 0; i < 
 		
 		// TODO Break route
 
@@ -538,7 +587,7 @@ void Solution::solve(const Tech &tech, int minCost) {
 
 	// TODO elaborate horizontal constraints and compute distances
 
-	/*printf("Cycles\n");
+	printf("Cycles\n");
 	for (int i = 0; i < (int)cycles.size(); i++) {
 		printf("cycle {");
 		for (int j = 0; j < (int)cycles[i].size(); j++) {
@@ -574,7 +623,7 @@ void Solution::solve(const Tech &tech, int minCost) {
 		printf("horiz %d -- %d: %d\n", horiz[i].wires[0], horiz[i].wires[1], horiz[i].off);
 	}
 
-	printf("\n\n");*/
+	printf("\n\n");
 }
 
 void Solution::draw(const Tech &tech) {
