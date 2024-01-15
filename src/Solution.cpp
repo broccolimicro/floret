@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <unordered_set>
 #include <set>
+#include <list>
 
 Index::Index() {
 	type = -1;
@@ -443,41 +444,49 @@ vector<vector<int> > Solution::findCycles(bool searchHoriz) {
 	// exponential blow up, and we can ensure that we split those cycles by
 	// splitting on the node in the cycle that has the most vertical constraints
 	// (maximising min(in.size(), out.size()))
-
-	vector<vector<int> > tokens;
 	vector<vector<int> > cycles;
-	for (int i = 0; i < (int)routes.size(); i++) {
-		tokens.push_back(vector<int>(1, i));
-	}
 	
 	unordered_set<int> seen;
-	while (tokens.size() > 0) {
-		vector<int> curr = tokens.back();
-		tokens.pop_back();
-		// check to make sure this token hasn't entered a loop we've already found
-		if (seen.find(curr.back()) != seen.end()) {
-			continue;
+	unordered_set<int> staged;
+	
+	list<vector<int> > tokens;
+	tokens.push_back(vector<int>(1, 0));
+	staged.insert(0);
+	while (not tokens.empty()) {
+		while (not tokens.empty()) {
+			vector<int> curr = tokens.front();
+			tokens.pop_front();
+
+			vector<int> n = next(curr.back());
+			for (int i = 0; i < (int)n.size(); i++) {
+				auto loop = find(curr.begin(), curr.end(), n[i]);
+				if (loop != curr.end()) {
+					cycles.push_back(curr);
+					cycles.back().erase(cycles.back().begin(), cycles.back().begin()+(loop-curr.begin()));
+					vector<int>::iterator minElem = min_element(cycles.back().begin(), cycles.back().end());
+					rotate(cycles.back().begin(), minElem, cycles.back().end());
+					if (find(cycles.begin(), (cycles.end()-1), cycles.back()) != (cycles.end()-1)) {
+						cycles.pop_back();
+					}
+				} else if (seen.find(n[i]) == seen.end()) {
+					tokens.push_back(curr);
+					tokens.back().push_back(n[i]);
+					staged.insert(n[i]);
+				}
+			}
 		}
 
-		vector<int> n = next(curr.back());
-		for (int j = 0; j < (int)n.size(); j++) {
-			tokens.push_back(curr);
-
-			// check to see if we've eaten our tail
-			auto token = find(tokens.back().begin(), tokens.back().end(), n[j]);
-			if (token != tokens.back().end()) {
-				// extract the cycle from our trace
-				tokens.back().erase(tokens.back().begin(), token);
-				vector<int>::iterator minElem = min_element(tokens.back().begin(), tokens.back().end());
-				rotate(tokens.back().begin(), minElem, tokens.back().end());
-				cycles.push_back(tokens.back());
-				seen.insert(tokens.back().begin(), tokens.back().end());
-				tokens.pop_back();
-			} else {
-				tokens.back().push_back(n[j]);
+		seen.insert(staged.begin(), staged.end());
+		staged.clear();
+		for (int i = 0; i < (int)routes.size(); i++) {
+			if (seen.find(i) == seen.end()) {
+				tokens.push_back(vector<int>(1, i));
+				staged.insert(i);
+				break;
 			}
 		}
 	}
+
 	return cycles;
 }
 
@@ -543,6 +552,15 @@ void Solution::breakRoute(int route, set<int> cycleRoutes) {
 		// First, check if this vertical constraint is connected to any of the pins
 		// in this route.
 		bool hasFrom = routes[route].hasPin(this, Index(Model::PMOS, vert[i].from), &from);
+		// error checking version
+		//bool hasTo = routes[route].hasPin(this, Index(Model::NMOS, vert[i].to), &to);
+		//if (not hasFrom and not hasTo) {
+		//	continue;
+		//} else if (hasFrom and hasTo) {
+		//	printf("unitary cycle\n");
+		//}
+
+		// optimized version
 		bool hasTo = false;
 		if (not hasFrom) {
 			hasTo = routes[route].hasPin(this, Index(Model::NMOS, vert[i].to), &to);
@@ -550,6 +568,7 @@ void Solution::breakRoute(int route, set<int> cycleRoutes) {
 				continue;
 			}
 		}
+
 		int fromIdx = from-routes[route].pins.begin();
 		int toIdx = to-routes[route].pins.begin();
 
@@ -573,17 +592,21 @@ void Solution::breakRoute(int route, set<int> cycleRoutes) {
 
 		// Move the pin to wp or wn depending on hasFrom and hasTo
 		if (hasFrom) {
-			wp.addPin(this, Index(Model::PMOS, vert[i].from));
+			wp.addPin(this, *from);
+			wpHasGate = wpHasGate or stack[from->type][from->pin].device >= 0;
 			count.erase(count.begin()+fromIdx);
 			routes[route].pins.erase(from);
-			wpHasGate = wpHasGate or stack[Model::PMOS][vert[i].from].device >= 0;
 		} else if (hasTo) {
-			wn.addPin(this, Index(Model::NMOS, vert[i].to));
+			wn.addPin(this, *to);
+			wnHasGate = wnHasGate or stack[to->type][to->pin].device >= 0;
 			count.erase(count.begin()+toIdx);
 			routes[route].pins.erase(to);
-			wnHasGate = wnHasGate or stack[Model::NMOS][vert[i].to].device >= 0;
 		}
 	}
+
+	// TODO(edward.bingham) deal with pins that would create a cycle between wp and wn
+
+	
 
 	// DESIGN(edward.bingham) Pick one of the remaining pins to be a shared pin.
 	// Pick the remaining pin that has the fewest vertical constraints, is not a
@@ -591,7 +614,7 @@ void Solution::breakRoute(int route, set<int> cycleRoutes) {
 	// arbitrarily. This will move the vertical route out of the way as much as
 	// possible from all of the other constraint problems. If there are no
 	// remaining pins, then we need to record wp and wn for routing with A*
-	int sharedPin = -1;
+	/*int sharedPin = -1;
 	int sharedCount = -1;
 	bool sharedIsGate = true;
 	int sharedDistanceFromCenter = 0;
@@ -619,7 +642,7 @@ void Solution::breakRoute(int route, set<int> cycleRoutes) {
 		wnHasGate = wnHasGate or sharedIsGate;
 	} else {
 		// TODO(edward.bingham) record this for A* routing later
-		printf("unable to find shared pin, need A* routing\n");
+		//printf("unable to find shared pin, need A* routing\n");
 	}
 
 	// DESIGN(edward.bingham) If it is possible to avoid putting a gate pin in
@@ -632,61 +655,64 @@ void Solution::breakRoute(int route, set<int> cycleRoutes) {
 	if (not wpHasGate) {
 		// Put all non-gate PMOS pins into wp and all remaining pins into wn
 		for (int i = (int)routes[route].pins.size()-1; i >= 0; i--) {
-			bool isGate = stack[routes[route].pins[i].type][routes[route].pins[i].pin].device < 0;
-			if (routes[route].pins[i].type == Model::PMOS and not isGate) {
-				wp.addPin(this, routes[route].pins[i]);
+			Index pin = routes[route].pins[i];
+			bool isGate = stack[pin.type][pin.pin].device < 0;
+			if (pin.type == Model::PMOS and not isGate) {
+				wp.addPin(this, pin);
 			} else {
-				wn.addPin(this, routes[route].pins[i]);
+				wn.addPin(this, pin);
 				wnHasGate = wnHasGate or isGate;
 			}
-			routes.pop_back();
+			routes[route].pins.pop_back();
 			count.pop_back();
 		}
 	}	else if (not wnHasGate) {
 		// Put all non-gate NMOS pins into wn and all remaining pins into wp
 		for (int i = (int)routes[route].pins.size()-1; i >= 0; i--) {
-			bool isGate = stack[routes[route].pins[i].type][routes[route].pins[i].pin].device < 0;
-			if (routes[route].pins[i].type == Model::NMOS and not isGate) {
-				wn.addPin(this, routes[route].pins[i]);
+			Index pin = routes[route].pins[i];
+			bool isGate = stack[pin.type][pin.pin].device < 0;
+			if (pin.type == Model::NMOS and not isGate) {
+				wn.addPin(this, pin);
 			} else {
-				wp.addPin(this, routes[route].pins[i]);
+				wp.addPin(this, pin);
 				wpHasGate = wpHasGate or isGate;
 			}
-			routes.pop_back();
+			routes[route].pins.pop_back();
 			count.pop_back();
 		}
 	} else {
 		for (int i = (int)routes[route].pins.size()-1; i >= 0; i--) {
+			Index pin = routes[route].pins[i];
 			// Determine horizontal location of wp and wn relative to sharedPin, then
 			// place all pins on same side of sharedPin as wp or wn into that wp or wn
 			// respectively.
-			bool isGate = stack[routes[route].pins[i].type][routes[route].pins[i].pin].device < 0;
-			int pinPos = stack[routes[route].pins[i].type][routes[route].pins[i].pin].pos;
+			bool isGate = stack[pin.type][pin.pin].device < 0;
+			int pinPos = stack[pin.type][pin.pin].pos;
 			if (pinPos >= wn.left and pinPos >= wp.left and pinPos <= wn.right and pinPos <= wp.right) {
-				if (routes[route].pins[i].type == Model::PMOS) {
-					wp.addPin(this, routes[route].pins[i]);
+				if (pin.type == Model::PMOS) {
+					wp.addPin(this, pin);
 					wpHasGate = wpHasGate or isGate;
 				} else {
-					wn.addPin(this, routes[route].pins[i]);
+					wn.addPin(this, pin);
 					wnHasGate = wnHasGate or isGate;
 				}
 			} else if (pinPos >= wn.left and pinPos <= wn.right) {
-				wn.addPin(this, routes[route].pins[i]);
+				wn.addPin(this, pin);
 				wnHasGate = wnHasGate or isGate;
 			} else if (pinPos >= wp.left and pinPos <= wp.right) {
-				wp.addPin(this, routes[route].pins[i]);
+				wp.addPin(this, pin);
 				wpHasGate = wpHasGate or isGate;
 			} else if (min(abs(pinPos-wn.right),abs(pinPos-wn.left)) < min(abs(pinPos-wp.right),abs(pinPos-wp.left))) {
-				wn.addPin(this, routes[route].pins[i]);
+				wn.addPin(this, pin);
 				wnHasGate = wnHasGate or isGate;
 			} else {
-				wp.addPin(this, routes[route].pins[i]);
+				wp.addPin(this, pin);
 				wpHasGate = wpHasGate or isGate;
 			}
-			routes.pop_back();
+			routes[route].pins.pop_back();
 			count.pop_back();
 		}
-	}
+	}*/
 
 	routes[route].net = wp.net;
 	routes[route].pins = wp.pins;
@@ -700,18 +726,8 @@ void Solution::breakRoute(int route, set<int> cycleRoutes) {
 
 void Solution::breakCycles() {
 	vector<vector<int> > cycles = findCycles();
-
-	printf("Cycles\n");
-	for (int i = 0; i < (int)cycles.size(); i++) {
-		printf("cycle {");
-		for (int j = 0; j < (int)cycles[i].size(); j++) {
-			if (j != 0) {
-				printf(" ");
-			}
-			printf("%d", cycles[i][j]);
-		}
-		printf("}\n");
-	}
+	vector<vector<int> > startingCycles = cycles;
+	int startingRoutes = (int)routes.size();
 
 	// count up cycle participation for heuristic
 	vector<vector<int> > cycleCount(routes.size(), vector<int>());
@@ -736,30 +752,6 @@ void Solution::breakCycles() {
 	}
 
 	while (cycles.size() > 0) {
-		printf("Cycles\n");
-		for (int i = 0; i < (int)cycles.size(); i++) {
-			printf("cycle {");
-			for (int j = 0; j < (int)cycles[i].size(); j++) {
-				if (j != 0) {
-					printf(" ");
-				}
-				printf("%d", cycles[i][j]);
-			}
-			printf("}\n");
-		}
-		printf("CycleCount\n");
-		for (int i = 0; i < (int)cycleCount.size(); i++) {
-			printf("cycles {");
-			for (int j = 0; j < (int)cycleCount[i].size(); j++) {
-				if (j != 0) {
-					printf(" ");
-				}
-				printf("%d", cycleCount[i][j]);
-			}
-			printf("}\n");
-		}
-
-
 		// DESIGN(edward.bingham) We have multiple cycles and a route may
 		// participate in more than one. It's unclear whether we want to minimize
 		// the number of doglegs or not. Introducing a dogleg requires adding
@@ -811,8 +803,6 @@ void Solution::breakCycles() {
 			}
 		}
 
-		printf("route = %d, %d cycles, %d verts\n", route, maxCycleCount, maxDensity);
-
 		set<int> cycleRoutes;
 		for (int i = 0; i < (int)cycleCount[route].size(); i++) {
 			cycleRoutes.insert(cycles[cycleCount[route][i]].begin(), cycles[cycleCount[route][i]].end());
@@ -822,16 +812,44 @@ void Solution::breakCycles() {
 		breakRoute(route, cycleRoutes);
 
 		// recompute cycles and cycleCount
-		for (int i = (int)cycles.size()-1; i >= 0; i--) {
-			if (find(cycles[i].begin(), cycles[i].end(), route) != cycles[i].end()) {
-				for (int j = 0; j < (int)cycles[i].size(); j++) {
-					cycleCount[cycles[i][j]].erase(
-					  remove(cycleCount[cycles[i][j]].begin(),
-						       cycleCount[cycles[i][j]].end(), i),
-					  cycleCount[cycles[i][j]].end());
+		while (cycleCount[route].size() > 0) {		
+			int cycle = cycleCount[route].back();
+			cycles.erase(cycles.begin()+cycle);
+			for (int i = 0; i < (int)cycleCount.size(); i++) {
+				for (int j = (int)cycleCount[i].size()-1; j >= 0; j--) {
+					if (cycleCount[i][j] > cycle) {
+						cycleCount[i][j]--;
+					} else if (cycleCount[i][j] == cycle) {
+						cycleCount[i].erase(cycleCount[i].begin()+j);
+					}
 				}
-				cycles.erase(cycles.begin()+i);
 			}
+		}
+	}
+
+	cycles = findCycles();
+	if (cycles.size() > 0) {
+		printf("error: cycles not broken %d -> %d\n", startingRoutes, (int)routes.size());
+		for (int i = 0; i < (int)startingCycles.size(); i++) {
+			printf("cycle {");
+			for (int j = 0; j < (int)startingCycles[i].size(); j++) {
+				if (j != 0) {
+					printf(" ");
+				}
+				printf("%d", startingCycles[i][j]);
+			}
+			printf("}\n");
+		}
+		printf("after\n");
+		for (int i = 0; i < (int)cycles.size(); i++) {
+			printf("cycle {");
+			for (int j = 0; j < (int)cycles[i].size(); j++) {
+				if (j != 0) {
+					printf(" ");
+				}
+				printf("%d", cycles[i][j]);
+			}
+			printf("}\n");
 		}
 	}
 }
@@ -840,16 +858,16 @@ void Solution::solve(const Tech &tech, int minCost) {
 	breakCycles();
 
 	// Compute horizontal constraints
-	for (int i = 0; i < (int)routes.size(); i++) {
+	/*for (int i = 0; i < (int)routes.size(); i++) {
 		for (int j = i+1; j < (int)routes.size(); j++) {
 			if (routes[i].left < routes[j].right and routes[j].left < routes[i].right) {
 				horiz.push_back(HorizontalConstraint(i, j, tech.layers[tech.wires[2].drawingLayer].minSpacing));
 			}
 		}
-	}
+	}*/
 
 	// TODO(edward.bingham) compute distances from vertical constraints
-	vector<int> tokens = initialTokens();
+	//vector<int> tokens = initialTokens();
 	/*printf("Initial Tokens\n");
 	for (int i = 0; i < (int)tokens.size(); i++) {
 		printf("token %d\n", tokens[i]);
@@ -858,7 +876,7 @@ void Solution::solve(const Tech &tech, int minCost) {
 	// TODO(edward.bingham) elaborate horizontal constraints and compute distances
 
 
-	printf("NMOS\n");
+	/*printf("NMOS\n");
 	for (int i = 0; i < (int)stack[0].size(); i++) {
 		printf("pin %d %d->%d->%d: %dx%d %d %d\n", stack[0][i].device, stack[0][i].leftNet, stack[0][i].outNet, stack[0][i].rightNet, stack[0][i].width, stack[0][i].height, stack[0][i].off, stack[0][i].pos);
 	}
@@ -881,7 +899,7 @@ void Solution::solve(const Tech &tech, int minCost) {
 		printf("horiz %d -- %d: %d\n", horiz[i].wires[0], horiz[i].wires[1], horiz[i].off);
 	}
 
-	printf("\n\n");
+	printf("\n\n");*/
 }
 
 void Solution::draw(const Tech &tech) {
