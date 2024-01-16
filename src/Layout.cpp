@@ -179,6 +179,10 @@ void Layout::drawVia(const Tech &tech, int net, int level, vec2i size, vec2i pos
 		off[1] = max(dn[1], up[1]);
 	}
 
+	if (level == 0) {
+		dn[1] = off[1];
+	}
+
 	// draw down
 	geometry.push_back(Rect(downLayer, net, pos+(off-dn)*dir, pos+(off+width+dn)*dir));
 
