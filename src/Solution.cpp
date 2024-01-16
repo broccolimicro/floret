@@ -1075,6 +1075,81 @@ void Solution::solve(const Tech &tech, int minCost) {
 	buildOutWeights(findBottom(), true);
 	// TODO(edward.bingham) elaborate horizontal constraints and compute distances
 
+	bool done = false;
+	while (not done) {
+		done = true;
+
+		// handle critical constraints, that would create cycles if assigned the wrong direction.
+		vector<int> inTokens, outTokens;
+		for (int i = 0; i < (int)horiz.size(); i++) {
+			if (horiz[i].select < 0) {
+				if (routes[horiz[i].wires[0]].prevNodes.find(horiz[i].wires[1]) != routes[horiz[i].wires[0]].prevNodes.end()) {
+					horiz[i].select = 1;
+					inTokens.push_back(horiz[i].wires[1]);
+					outTokens.push_back(horiz[i].wires[0]);
+					continue;
+				}
+				if (routes[horiz[i].wires[1]].prevNodes.find(horiz[i].wires[0]) != routes[horiz[i].wires[1]].prevNodes.end()) {
+					horiz[i].select = 0;
+					inTokens.push_back(horiz[i].wires[0]);
+					outTokens.push_back(horiz[i].wires[1]);
+					continue;
+				}
+			}
+		}
+		if (inTokens.size() + outTokens.size() > 0) {
+			buildInWeights(inTokens);
+			buildOutWeights(outTokens);
+			done = false;
+			continue;
+		}
+
+		// find the largest label
+		int maxLabel = -1;
+		int index = -1;
+		for (int i = 0; i < (int)horiz.size(); i++) {
+			if (horiz[i].select < 0) {
+				int label = max(
+					routes[horiz[i].wires[0]].inWeight + routes[horiz[i].wires[1]].outWeight, 
+					routes[horiz[i].wires[1]].inWeight + routes[horiz[i].wires[0]].outWeight
+				) + horiz[i].off;
+
+				if (label > maxLabel) {
+					maxLabel = label;
+					index = i;
+				}
+			}
+		}
+
+		if (index >= 0) {
+			int label0 = routes[horiz[index].wires[0]].inWeight + routes[horiz[index].wires[1]].outWeight;
+			int label1 = routes[horiz[index].wires[1]].inWeight + routes[horiz[index].wires[0]].outWeight;
+
+			if (label0 < label1) {
+				horiz[index].select = 0;
+				inTokens.push_back(horiz[index].wires[0]);
+				outTokens.push_back(horiz[index].wires[1]);
+			} else {
+				horiz[index].select = 1;
+				inTokens.push_back(horiz[index].wires[1]);
+				outTokens.push_back(horiz[index].wires[0]);
+			}
+			buildInWeights(inTokens);
+			buildOutWeights(outTokens);
+			done = false;
+			continue;
+		}
+	}
+
+	cost = 0;
+	for (int i = 0; i < (int)routes.size(); i++) {
+		if (routes[i].inWeight > cost) {
+			cost = routes[i].inWeight;
+		}
+	}
+}
+
+void Solution::draw(const Tech &tech) {
 	printf("NMOS\n");
 	for (int i = 0; i < (int)stack[0].size(); i++) {
 		printf("pin %d %d->%d->%d: %dx%d %d %d\n", stack[0][i].device, stack[0][i].leftNet, stack[0][i].outNet, stack[0][i].rightNet, stack[0][i].width, stack[0][i].height, stack[0][i].off, stack[0][i].pos);
@@ -1099,12 +1174,10 @@ void Solution::solve(const Tech &tech, int minCost) {
 		printf("vert %d -> %d: %d\n", vert[i].from, vert[i].to, vert[i].off);
 	}
 	for (int i = 0; i < (int)horiz.size(); i++) {
-		printf("horiz %d -- %d: %d\n", horiz[i].wires[0], horiz[i].wires[1], horiz[i].off);
+		printf("horiz %d %s %d: %d\n", horiz[i].wires[0], (horiz[i].select == 0 ? "->" : (horiz[i].select == 1 ? "<-" : "--")), horiz[i].wires[1], horiz[i].off);
 	}
 
 	printf("\n\n");
-}
 
-void Solution::draw(const Tech &tech) {
 	// TODO(edward.bingham) draw result
 }
