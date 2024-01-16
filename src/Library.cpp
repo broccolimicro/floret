@@ -1,5 +1,6 @@
 #include "Library.h"
 #include "Solution.h"
+#include "Layout.h"
 
 #include <vector>
 

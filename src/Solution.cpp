@@ -286,11 +286,11 @@ void Solution::build(const Tech &tech) {
 
 				// contact height is min of transistor widths on either side.
 				stack[type][i].height = 0;
-				if (i-1 >= 0 and stack[type][i-1].device >= 0 and (stack[type][i].height == 0 or base->mos[stack[type][i-1].device].width < stack[type][i].height)) {
-					stack[type][i].height = base->mos[stack[type][i-1].device].width;
+				if (i-1 >= 0 and stack[type][i-1].device >= 0 and (stack[type][i].height == 0 or base->mos[stack[type][i-1].device].size[1] < stack[type][i].height)) {
+					stack[type][i].height = base->mos[stack[type][i-1].device].size[1];
 				}
-				if (i+1 < (int)stack[type].size() and stack[type][i+1].device >= 0 and (stack[type][i].height == 0 or base->mos[stack[type][i+1].device].width < stack[type][i].height)) {
-					stack[type][i].height = base->mos[stack[type][i+1].device].width;
+				if (i+1 < (int)stack[type].size() and stack[type][i+1].device >= 0 and (stack[type][i].height == 0 or base->mos[stack[type][i+1].device].size[1] < stack[type][i].height)) {
+					stack[type][i].height = base->mos[stack[type][i+1].device].size[1];
 				}
 
 				stack[type][i].off = 0;
@@ -308,8 +308,8 @@ void Solution::build(const Tech &tech) {
 				lastModel = base->mos[stack[type][i].device].model;
 
 				stack[type][i].layer = tech.wires[0].drawingLayer;
-				stack[type][i].width = base->mos[stack[type][i].device].length;
-				stack[type][i].height = base->mos[stack[type][i].device].width;
+				stack[type][i].width = base->mos[stack[type][i].device].size[0];
+				stack[type][i].height = base->mos[stack[type][i].device].size[1];
 
 				stack[type][i].off = 0;
 				if (i-1 >= 0 and lastModel >= 0) {

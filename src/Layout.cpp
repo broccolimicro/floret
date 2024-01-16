@@ -2,38 +2,19 @@
 
 Rect::Rect() {
 	layer = -1;
+	net = -1;
 	left = 0;
 	bottom = 0;
 	right = 0;
 	top = 0;
 }
 
-Rect::Rect(int layer, int left, int bottom, int right, int top) {
+Rect::Rect(int layer, int net, vec2i ll, vec2i ur) {
 	this->layer = layer;
-	this->left = left;
-	this->bottom = bottom;
-	this->right = right;
-	this->top = top;
-
-	if (this->top < this->bottom) {
-		int tmp = this->top;
-		this->top = this->bottom;
-		this->bottom = tmp;
-	}
-
-	if (this->right < this->left) {
-		int tmp = this->right;
-		this->right = this->left;
-		this->left = tmp;
-	}
-}
-
-Rect::Rect(int layer, vec2i pos, int width, int height) {
-	this->layer = layer;
-	this->left = pos[0];
-	this->bottom = pos[1];
-	this->right = pos[0]+width;
-	this->top = pos[1]+height;
+	this->left = ll[0];
+	this->bottom = ll[1];
+	this->right = ur[0];
+	this->top = ur[1];
 
 	if (this->top < this->bottom) {
 		int tmp = this->top;
@@ -52,7 +33,7 @@ Rect::~Rect() {
 }
 
 bool Rect::merge(Rect r) {
-	if (layer == r.layer and left == r.left and right == r.right and bottom <= r.top and top >= r.bottom) {
+	if (layer == r.layer and net == r.net and left == r.left and right == r.right and bottom <= r.top and top >= r.bottom) {
 		if (r.bottom < bottom) {
 			bottom = r.bottom;
 		}
@@ -60,7 +41,7 @@ bool Rect::merge(Rect r) {
 			top = r.top;
 		}
 		return true;
-	} else if (layer == r.layer and bottom == r.bottom and top == r.top and left <= r.right and right >= r.left) {
+	} else if (layer == r.layer and net == r.net and bottom == r.bottom and top == r.top and left <= r.right and right >= r.left) {
 		if (r.left < left) {
 			left = r.left;
 		}
@@ -68,9 +49,9 @@ bool Rect::merge(Rect r) {
 			right = r.right;
 		}
 		return true;
-	} else if (layer == r.layer and bottom <= r.bottom and top >= r.top and left <= r.left and right >= r.right) {
+	} else if (layer == r.layer and net == r.net and bottom <= r.bottom and top >= r.top and left <= r.left and right >= r.right) {
 		return true;
-	} else if (layer == r.layer and bottom >= r.bottom and top <= r.top and left >= r.left and right <= r.right) {
+	} else if (layer == r.layer and net == r.net and bottom >= r.bottom and top <= r.top and left >= r.left and right <= r.right) {
 		left = r.left;
 		right = r.right;
 		bottom = r.bottom;
@@ -100,44 +81,25 @@ Layout::Layout() {
 Layout::~Layout() {
 }
 
-void Layout::drawTransistor(const Tech &tech, vec2i pos, vec2i dir, int model, const Gate &gate) {
-	int type = tech.models[model].type;
-	int polyOverhang = tech.models[model].polyOverhang;
-	
+void Layout::drawTransistor(const Tech &tech, const Mos &mos, vec2i pos, vec2i dir) {
+	vec2i ll = pos;
+	vec2i ur = pos + mos.size*dir;
+
 	// draw poly
-	nets[gate.net].contacts[type].push_back(Rect(tech.wires[0].drawingLayer, vec2i(pos[0], pos[1] - polyOverhang*dir[1]), gate.length*dir[0], (gate.width + 2*polyOverhang)*dir[1]));
+	vec2i polyOverhang = vec2i(0, tech.models[mos.model].polyOverhang)*dir;
+	geometry.push_back(Rect(tech.wires[0].drawingLayer, mos.ports[Mos::GATE], ll - polyOverhang, ur + polyOverhang));
 	
 	// draw diffusion
-	int length = gate.length*dir[0];
-	int width = gate.width*dir[1];
-	for (auto layer = tech.models[model].layers.begin(); layer != tech.models[model].layers.end(); layer++) {
-		pos[0] -= layer->overhangX*dir[0];
-		pos[1] -= layer->overhangY*dir[1];
-		length += 2*layer->overhangX*dir[0];
-		width += 2*layer->overhangY*dir[1];
-		diff[type].push_back(Rect(layer->layer, pos, length, width));
+	for (auto layer = tech.models[mos.model].layers.begin(); layer != tech.models[mos.model].layers.end(); layer++) {
+		vec2i diffOverhang = vec2i(layer->overhangX, layer->overhangY)*dir;
+		ll -= diffOverhang;
+		ur += diffOverhang;
+		geometry.push_back(Rect(layer->layer, -1, ll, ur));
 	}
 }
 
-vec2i Layout::drawTerm(const Tech &tech, vec2i pos, vec2i dir, const Term &term, bool flip) {
-	int start = flip ? (int)term.gate.size()-1 : 0;
-	int end = (flip ? -1 : (int)term.gate.size());
-	int step = flip ? -1 : 1;
-
-	for (int i = start; i != end; i += step) {
-		// draw transistor
-		drawTransistor(tech, pos, dir, term.model, term.gate[i]);
-		
-		if (i+step != end) {		
-			pos[0] += (term.gate[i].length + tech.layers[tech.wires[0].drawingLayer].minSpacing)*dir[0];
-		}
-	}
-
-	return pos;
-}
-
-void Layout::drawDiffContact(const Tech &tech, int net, int model, vec2i pos, vec2i dir, int width) {
-	int via = tech.vias[0].drawingLayer; 
+/*void Layout::drawDiffContact(const Tech &tech, const Pin &pin, vec2i pos, vec2i dir) {
+	int via = tech.vias[0].drawingLayer;
 	int viaWidth = tech.layers[via].minWidth;
 	int viaSpacing = tech.layers[via].minSpacing;
 	int diffEncloseLo = tech.vias[0].downLo;
@@ -391,25 +353,27 @@ void Layout::drawStack(const Tech &tech, vec2i pos, vec2i dir, const Stack &stac
 			}
 		}
 	}
-}
+}*/
 
 void Layout::drawCell(const Tech &tech, const Solution *ckt) {
 	name = ckt->base->name;
 
-	for (int i = 0; i < (int)stack[Model::PMOS].size(); i++) {
-		if (stack[Model::PMOS][i].device < 0) {
-			drawDiffContact(tech, );
-		} else {
-			drawTransistor(tech, );
+	for (int type = 0; type < 2; type++) {
+		for (auto pin = ckt->stack[type].begin(); pin != ckt->stack[type].end(); pin++) {
+			if (pin->device < 0) {
+				//drawDiffContact(tech, );
+			} else {
+				drawTransistor(tech, ckt->base->mos[pin->device], vec2i(pin->pos, type == Model::PMOS ? 0 : ckt->cost), vec2i(1,type == Model::PMOS ? 1 : -1));
+			}
 		}
 	}
 
-	for (int i = 0; i < (int)routes.size(); i++) {
+	/*for (int i = 0; i < (int)routes.size(); i++) {
 	}
 
 	for (int i = 0; i < (int)cell.nets.size(); i++) {
 		nets.push_back(NetLayout(cell.nets[i].name));
-	}
+	}*/
 
 	mergeRects(geometry);
 }
@@ -429,11 +393,11 @@ void Layout::emit(const Tech &tech, string libName) const {
 
 	gdstk::Cell *cell = new gdstk::Cell();
 	cell->init(name.c_str());
-	for (auto r = support.begin(); r != support.end(); r++) {
+	for (auto r = geometry.begin(); r != geometry.end(); r++) {
 		cell->polygon_array.append(r->emit(tech));
 	}
 
-	for (int i = 0; i < 2; i++) {
+	/*for (int i = 0; i < 2; i++) {
 		for (auto r = diff[i].begin(); r != diff[i].end(); r++) {
 			cell->polygon_array.append(r->emit(tech));
 		}
@@ -450,7 +414,7 @@ void Layout::emit(const Tech &tech, string libName) const {
 		for (auto r = n->routes.begin(); r != n->routes.end(); r++) {
 			cell->polygon_array.append(r->emit(tech));
 		}
-	}
+	}*/
 
 	lib.cell_array.append(cell);
 	lib.write_gds((libName+".gds").c_str(), 0, NULL);

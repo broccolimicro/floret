@@ -5,6 +5,7 @@
 #include <vector>
 #include "Tech.h"
 #include "spice.h"
+#include "vector.h"
 
 using namespace std;
 
@@ -32,8 +33,7 @@ struct Mos {
 
 	// loaded in from spice
 	map<string, vector<double> > params;
-	int width;
-	int length;
+	vec2i size; // length x width
 };
 
 struct Net {

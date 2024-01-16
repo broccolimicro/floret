@@ -7,15 +7,13 @@
 Mos::Mos() {
 	model = -1;
 	type = -1;
-	width = 0;
-	length = 0;
+	size = vec2i(0,0);
 }
 
 Mos::Mos(int model, int type) {
 	this->model = model;
 	this->type = type;
-	this->width = 0;
-	this->length = 0;
+	this->size = vec2i(0,0);
 }
 
 Mos::~Mos() {
@@ -104,9 +102,9 @@ bool Circuit::loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &le
 				values.push_back(loadValue(lang, lexer, *value));
 			}
 			if (paramName == "w") {
-				this->mos.back().width = int(values[0]/tech.dbunit);
+				this->mos.back().size[1] = int(values[0]/tech.dbunit);
 			} else if (paramName == "l") {
-				this->mos.back().length = int(values[0]/tech.dbunit);
+				this->mos.back().size[0] = int(values[0]/tech.dbunit);
 			} else {
 				this->mos.back().params.insert(pair<string, vector<double> >(paramName, values));
 			}

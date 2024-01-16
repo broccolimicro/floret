@@ -12,11 +12,11 @@ using namespace std;
 
 struct Rect {
 	Rect();
-	Rect(int layer, int left, int bottom, int right, int top);
-	Rect(int layer, vec2i pos, int width, int height);
+	Rect(int layer, int net, vec2i ll, vec2i ur);
 	~Rect();
 
 	int layer;
+	int net;
 
 	int left;
 	int bottom;
@@ -37,10 +37,10 @@ struct Layout {
 	string name;
 	vector<Rect> geometry;
 
-	void drawTransistor(const Tech &tech, vec2i pos, vec2i dir, int model, const Gate &gate); 
-	void drawDiffContact(const Tech &tech, int net, int model, vec2i pos, vec2i dir, int width);
+	void drawTransistor(const Tech &tech, const Mos &mos, vec2i pos=vec2i(0,0), vec2i dir=vec2i(1,1)); 
+	/*void drawDiffContact(const Tech &tech, const Pin &pin, vec2i pos, vec2i dir, int width);
 	void drawVia(const Tech &tech, int net, int layer, vec2i pos, vec2i dir, int width, int length);
-	void drawRoute(const Tech &tech, const Solution *ckt, int route);
+	void drawRoute(const Tech &tech, const Solution *ckt, int route);*/
 	void drawCell(const Tech &tech, const Solution *ckt);
 
 	gdstk::Label *emitLabel(const Tech &tech, vec2i pos, int layer, string text) const;
