@@ -141,70 +141,61 @@ void Layout::drawTransistor(const Tech &tech, const Mos &mos, vec2i pos, vec2i d
 
 		pos[1] += viaWidth+viaSpacing;
 	}
-}
+}*/
 
-void Layout::drawVia(const Tech &tech, int net, int layer, vec2i pos, vec2i dir, int sizeX, int sizeY) {
-	int via = tech.vias[layer].drawingLayer;
-	int down = tech.vias[layer].from;
-	int up = tech.vias[layer].to;
-	int viaWidth = tech.layers[via].minWidth;
-	int viaSpacing = tech.layers[via].minSpacing;
-	int dnLo = tech.vias[layer].downLo;
-	int dnHi = tech.vias[layer].downHi;
-	int upLo = tech.vias[layer].upLo;
-	int upHi = tech.vias[layer].upHi;
+void Layout::drawVia(const Tech &tech, int net, int level, vec2i size, vec2i pos, vec2i dir) {
+	// layers
+	int viaLayer = tech.vias[level].drawingLayer;
+	int downLayer = tech.vias[level].from;
+	int upLayer = tech.vias[level].to;
 
-	int numX = 1 + (sizeX-viaWidth - 2*dnLo) / (viaSpacing + viaWidth);
-	int numY = 1 + (sizeY-viaWidth - 2*dnLo) / (viaSpacing+viaWidth);
+	// spacing and width of a via
+	int viaWidth = tech.layers[viaLayer].minWidth;
+	int viaSpacing = tech.layers[viaLayer].minSpacing;
 
-	int widthX = numX*viaWidth + (numX-1)*viaSpacing;
-	int widthY = numY*viaWidth + (numY-1)*viaSpacing;
+	// enclosure rules
+	vec2i dn(tech.vias[level].downLo, tech.vias[level].downHi);
+	vec2i up(tech.vias[level].upLo, tech.vias[level].upHi);
 
-	int offX = 0;
-	int offY = 0;
-	if (sizeX > widthX) {
-		offX = (sizeX - widthX)/2;
+	vec2i num = 1 + (size-viaWidth - 2*dn[0]) / (viaSpacing + viaWidth);
+	vec2i width = num * viaWidth + (num-1)*viaSpacing;
+
+	vec2i off(0,0);
+	if (size[0] > width[0]) {
+		off[0] = (size[0] - width[0])/2;
 	}
-	if (sizeY > widthY) {
-		offY = (sizeY - widthY)/2;
-	}
-
-	int dnH = dnHi;
-	int dnV = dnLo;
-	if (offX >= dnHi) {
-		dnH = dnLo;
-		dnV = dnHi;
+	if (size[1] > width[1]) {
+		off[1] = (size[1] - width[1])/2;
 	}
 
-	int upH = upHi;
-	int upV = upLo;
-	if (offX >= upHi) {
-		upH = upLo;
-		upV = upHi;
+	if (off[0] < dn[1]) {
+		swap(dn[0], dn[1]);
 	}
-
-	if (offY < dnV) {
-		offY = dnV;
+	if (off[0] < up[1]) {
+		swap(up[0], up[1]);
 	}
-	if (offY < upV) {
-		offY = upV;
+	
+	if (off[1] < max(dn[1], up[1])) {
+		off[1] = max(dn[1], up[1]);
 	}
 
 	// draw down
-	nets[net].routes.push_back(Rect(down, vec2i(pos[0]+(offX-dnH)*dir[0], pos[1]+(offY-dnV)*dir[1]), (offX+widthX+dnH)*dir[0], (offY+widthY+dnV)*dir[1]));
+	geometry.push_back(Rect(downLayer, net, pos+(off-dn)*dir, pos+(off+width+dn)*dir));
 
 	// draw via
-	for (int x = 0; x < numX; x++) {
-		for (int y = 0; y < numY; y++) {
-			nets[net].routes.push_back(Rect(via, vec2i(pos[0]+(offX+x*(viaWidth+viaSpacing))*dir[0], pos[1]+(offY+y*(viaWidth+viaSpacing))*dir[1]), viaWidth*dir[0], viaWidth*dir[1]));
+	vec2i idx;
+	int step = viaWidth+viaSpacing;
+	for (idx[0] = 0; idx[0] < num[0]; idx[0]++) {
+		for (idx[1] = 0; idx[1] < num[1]; idx[1]++) {
+			geometry.push_back(Rect(viaLayer, net, pos+(off+idx*step)*dir, pos+(off+idx*step+viaWidth)*dir));
 		}
 	}
 
 	// draw up
-	nets[net].routes.push_back(Rect(up, vec2i(pos[0]+(offX-upH)*dir[0], pos[1]+(offY-upV)*dir[1]), (upH*2+widthX)*dir[0], (upV*2+widthY)*dir[1]));
+	geometry.push_back(Rect(upLayer, net, pos+(off-up)*dir, pos+(off+width+up)*dir));
 }
 
-void Layout::drawStack(const Tech &tech, vec2i pos, vec2i dir, const Stack &stack) {
+/*void Layout::drawStack(const Tech &tech, vec2i pos, vec2i dir, const Stack &stack) {
 	if (stack.sel.size() == 0) {
 		return;
 	}
@@ -360,20 +351,24 @@ void Layout::drawCell(const Tech &tech, const Solution *ckt) {
 
 	for (int type = 0; type < 2; type++) {
 		for (auto pin = ckt->stack[type].begin(); pin != ckt->stack[type].end(); pin++) {
+			vec2i pos(pin->pos, 0);
+			vec2i dir(1,1);
+			if (type == Model::NMOS) {
+				pos[1] = -ckt->cost;
+				dir[1] = -1;
+			}
+
 			if (pin->device < 0) {
-				//drawDiffContact(tech, );
+				drawVia(tech, pin->outNet, 0, vec2i(pin->width, pin->height), pos, dir);
 			} else {
-				drawTransistor(tech, ckt->base->mos[pin->device], vec2i(pin->pos, type == Model::PMOS ? 0 : ckt->cost), vec2i(1,type == Model::PMOS ? 1 : -1));
+				drawTransistor(tech, ckt->base->mos[pin->device], pos, dir);
 			}
 		}
 	}
 
-	/*for (int i = 0; i < (int)routes.size(); i++) {
+	for (int i = 0; i < (int)ckt->routes.size(); i++) {
+		
 	}
-
-	for (int i = 0; i < (int)cell.nets.size(); i++) {
-		nets.push_back(NetLayout(cell.nets[i].name));
-	}*/
 
 	mergeRects(geometry);
 }

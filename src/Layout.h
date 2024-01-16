@@ -38,9 +38,9 @@ struct Layout {
 	vector<Rect> geometry;
 
 	void drawTransistor(const Tech &tech, const Mos &mos, vec2i pos=vec2i(0,0), vec2i dir=vec2i(1,1)); 
-	/*void drawDiffContact(const Tech &tech, const Pin &pin, vec2i pos, vec2i dir, int width);
-	void drawVia(const Tech &tech, int net, int layer, vec2i pos, vec2i dir, int width, int length);
-	void drawRoute(const Tech &tech, const Solution *ckt, int route);*/
+	/*void drawDiffContact(const Tech &tech, const Pin &pin, vec2i pos, vec2i dir, int width);*/
+	void drawVia(const Tech &tech, int net, int idx, vec2i size=vec2i(0,0), vec2i pos=vec2i(0,0), vec2i dir=vec2i(1,1));
+	/*void drawRoute(const Tech &tech, const Solution *ckt, int route);*/
 	void drawCell(const Tech &tech, const Solution *ckt);
 
 	gdstk::Label *emitLabel(const Tech &tech, vec2i pos, int layer, string text) const;
