@@ -1149,7 +1149,7 @@ void Solution::solve(const Tech &tech, int minCost) {
 	}
 }
 
-void Solution::draw(const Tech &tech) {
+void Solution::print() {
 	printf("NMOS\n");
 	for (int i = 0; i < (int)stack[0].size(); i++) {
 		printf("pin %d %d->%d->%d: %dx%d %d %d\n", stack[0][i].device, stack[0][i].leftNet, stack[0][i].outNet, stack[0][i].rightNet, stack[0][i].width, stack[0][i].height, stack[0][i].off, stack[0][i].pos);
@@ -1177,7 +1177,5 @@ void Solution::draw(const Tech &tech) {
 		printf("horiz %d %s %d: %d\n", horiz[i].wires[0], (horiz[i].select == 0 ? "->" : (horiz[i].select == 1 ? "<-" : "--")), horiz[i].wires[1], horiz[i].off);
 	}
 
-	printf("\n\n");
-
-	// TODO(edward.bingham) draw result
+	printf("\n");
 }

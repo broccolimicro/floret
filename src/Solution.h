@@ -189,6 +189,6 @@ struct Solution {
 	// Solve the constraint and circuit graph, filling out layers and constraints
 	void solve(const Tech &tech, int minCost);
 
-	// Draw the solution by walking the circuit graph
-	void draw(const Tech &tech);
+	// Print the solution description
+	void print();
 };

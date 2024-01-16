@@ -42,7 +42,9 @@ void Library::build(const Tech &tech) {
 	for (int i = 0; i < (int)cells.size(); i++) {
 		cells[i].solve(tech);
 		if (cells[i].layout != nullptr) {
-			cells[i].layout->draw(tech);
+			Layout layout;
+			layout.drawCell(tech, cells[i].layout);
+			layout.emit(tech, "test");
 		}
 	}
 }
