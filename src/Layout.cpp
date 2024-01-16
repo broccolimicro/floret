@@ -195,156 +195,25 @@ void Layout::drawVia(const Tech &tech, int net, int level, vec2i size, vec2i pos
 	geometry.push_back(Rect(upLayer, net, pos+(off-up)*dir, pos+(off+width+up)*dir));
 }
 
-/*void Layout::drawStack(const Tech &tech, vec2i pos, vec2i dir, const Stack &stack) {
-	if (stack.sel.size() == 0) {
-		return;
-	}
+void Layout::drawWire(const Tech &tech, const Solution *ckt, const Wire &wire, vec2i pos, vec2i dir) {
+	vec2i ll = pos+vec2i(wire.left,wire.inWeight)*dir;
+	vec2i ur = pos+vec2i(wire.right,wire.inWeight+wire.height)*dir;
 
-	int via = tech.vias[0].drawingLayer; 
-	int viaWidth = tech.layers[via].minWidth;
+	geometry.push_back(Rect(wire.layer, wire.net, ll, ur));
 
-	// draw li contacts
-		
-	// draw li
-
-	int model = stack.mos[stack.sel[0].idx].model;
-	int type = tech.models[model].type;
-	int viaPolySpacing = tech.models[model].viaPolySpacing;
-
-	int net = stack.mos[stack.sel[0].idx].source;
-	int width = stack.mos[stack.sel[0].idx].gate[0].width;
-	int length = stack.mos[stack.sel[0].idx].gate[0].length;
-	if (stack.sel[0].flip) {
-		net = stack.mos[stack.sel[0].idx].drain;
-		width = stack.mos[stack.sel[0].idx].gate.back().width;
-		length = stack.mos[stack.sel[0].idx].gate.back().length;
-	}
-
-	drawDiffContact(tech, net, model, vec2i(pos[0] - (viaWidth+viaPolySpacing)*dir[0], pos[1]), dir, width);
-
-	// draw transistors
-	for (auto i = stack.sel.begin(); i != stack.sel.end(); i++) {
-		model = stack.mos[i->idx].model;
-		type = tech.models[model].type;
-
-		net = stack.mos[i->idx].drain;
-		width = stack.mos[i->idx].gate.back().width;
-		length = stack.mos[i->idx].gate.back().length;
-		if (i->flip) {
-			net = stack.mos[i->idx].source;
-			width = stack.mos[i->idx].gate[0].width;
-			length = stack.mos[i->idx].gate[0].length;
+	for (auto pin = wire.pins.begin(); pin != wire.pins.end(); pin++) {
+		int layer = ckt->stack[pin->type][pin->pin].layer;
+		vec2i pp(ckt->stack[pin->type][pin->pin].pos, 0);
+		vec2i ps(tech.layers[layer].minWidth,ckt->stack[pin->type][pin->pin].height);
+		if (pin->type == Model::NMOS) {
+			pp[1] = -ckt->cost;
+			ps *= dir;
 		}
 
-		bool connect = false;
-
-		int contactWidth = width;
-		auto j = i+1;
-		if (j != stack.sel.end()) {
-			int net2 = stack.mos[j->idx].source;
-			int width2 = stack.mos[j->idx].gate[0].width;
-			if (j->flip) {
-				net2 = stack.mos[j->idx].drain;
-				width2 = stack.mos[j->idx].gate.back().width;
-			}
-
-			if (net2 == net) {
-				connect = true;
-				if (width2 < contactWidth) {
-					contactWidth = width2;
-				}
-			}
-		}
-
-		pos = drawTerm(tech, pos, dir, stack.mos[i->idx], i->flip);
-
-		drawDiffContact(tech, net, model, vec2i(pos[0] + (viaPolySpacing+length)*dir[0], pos[1]), dir, contactWidth);
-
-		pos[0] += (2*viaPolySpacing + viaWidth + length)*dir[0];
+		drawVia(tech, wire.net, 2, vec2i(0, wire.height), vec2i(pp[0], ll[1]), dir);
+		geometry.push_back(Rect(layer, wire.net, vec2i(pp[0], ll[1]), pp+ps));
 	}
-
-	// draw overcell routing
-	int poly = tech.wires[0].drawingLayer;
-	int polyWidth = tech.layers[poly].minWidth;
-	int polySpacing = tech.layers[poly].minSpacing;
-	int polyvia = tech.vias[1].drawingLayer;
-	int polyviaWidth = tech.layers[polyvia].minWidth;
-	int m1 = tech.wires[1].drawingLayer;	
-	int m1Width = tech.layers[m1].minWidth;
-	int m1Spacing = tech.layers[m1].minSpacing;
-	int m1via = tech.vias[2].drawingLayer;
-	int m1viaWidth = tech.layers[m1via].minWidth;
-	int m2 = tech.wires[2].drawingLayer;
-	int m2Width = tech.layers[m2].minWidth;
-	int m2Spacing = tech.layers[m2].minSpacing;
-
-	vector<int> nonPolyColors;
-	vector<int> polyColors;
-	int maxColor = 0;
-	for (int net = 0; net < (int)stack.layer.color.size(); net++) {
-		if (stack.layer.color[net] > maxColor) {
-			maxColor = stack.layer.color[net];
-		}
-	}
-
-	vector<int> colors;
-	int maxOffset = pos[1];
-	for (int color = 0; color <= maxColor; color++) {
-		for (int net = 0; net < (int)nets.size(); net++) {
-			if (stack.layer.color[net] == color) {
-				while (color >= (int)colors.size()) {
-					colors.push_back(maxOffset);
-				}
-
-				int left = 0;
-				int right = 0;
-				for (auto c = nets[net].contacts[type].begin(); c != nets[net].contacts[type].end(); c++) {
-					if (left == right) {
-						left = c->left;
-						right = c->right;
-					} else {
-						if (c->left < left) {
-							left = c->left;
-						}
-						if (c->right > right) {
-							right = c->right;
-						}
-					}
-
-					int n1 = colors[color];
-					int n2 = n1+m2Width*dir[1];
-					int bottom = c->bottom;
-					int top = c->top;
-					if (n1 < bottom) {
-						bottom = n1;
-					}
-					if (n2 < bottom) {
-						bottom = n2;
-					}
-					if (n1 > top) {
-						top = n1;
-					}
-					if (n2 > top) {
-						top = n2;
-					}
-					
-					nets[net].routes.push_back(Rect(c->layer, c->left, bottom, c->right, top));
-					drawVia(tech, net, 2, vec2i(c->left, colors[color]), dir, c->right-c->left, 0);
-				}	
-
-				nets[net].routes.push_back(Rect(m2, left, colors[color], right, colors[color]+m2Width*dir[1]));
-				for (auto r = nets[net].routes.begin(); r != nets[net].routes.end(); r++) {
-					if (r->layer == m2 and (r->top+m2Spacing*dir[1])*dir[1] > maxOffset*dir[1]) {
-						maxOffset = r->top+m2Spacing*dir[1];
-					}
-					if (r->layer == m2 and (r->bottom+m2Spacing*dir[1])*dir[1] > maxOffset*dir[1]) {
-						maxOffset = r->bottom+m2Spacing*dir[1];
-					}
-				} 
-			}
-		}
-	}
-}*/
+}
 
 void Layout::drawCell(const Tech &tech, const Solution *ckt) {
 	name = ckt->base->name;
@@ -366,8 +235,10 @@ void Layout::drawCell(const Tech &tech, const Solution *ckt) {
 		}
 	}
 
+	vec2i pos(0,0);
+	vec2i dir(1,-1);
 	for (int i = 0; i < (int)ckt->routes.size(); i++) {
-		
+		drawWire(tech, ckt, ckt->routes[i], pos, dir);
 	}
 
 	mergeRects(geometry);

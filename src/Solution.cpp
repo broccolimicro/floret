@@ -985,7 +985,7 @@ void Solution::buildInWeights(vector<int> start, bool zero) {
 		
 		for (int i = 0; i < (int)vert.size(); i++) {
 			if (routes[curr].hasPin(this, Index(Model::PMOS, vert[i].from))) {
-				int weight = routes[curr].inWeight + vert[i].off;
+				int weight = routes[curr].inWeight + routes[curr].height + vert[i].off;
 				for (int j = 0; j < (int)routes.size(); j++) {
 					if (j != curr and routes[j].hasPin(this, Index(Model::NMOS, vert[i].to))) {
 						bool change = routes[j].prevNodes.insert(curr).second;
@@ -1007,7 +1007,7 @@ void Solution::buildInWeights(vector<int> start, bool zero) {
 		}
 		for (int i = 0; i < (int)horiz.size(); i++) {
 			if (horiz[i].select >= 0 and curr == horiz[i].wires[horiz[i].select]) {
-				int weight = routes[curr].inWeight + horiz[i].off;
+				int weight = routes[curr].inWeight + routes[curr].height + horiz[i].off;
 				int out = horiz[i].wires[1-horiz[i].select];
 				bool change = routes[out].prevNodes.insert(curr).second;
 				for (auto prev = routes[curr].prevNodes.begin(); prev != routes[curr].prevNodes.end(); prev++) {
@@ -1044,7 +1044,7 @@ void Solution::buildOutWeights(vector<int> start, bool zero) {
 		
 		for (int i = 0; i < (int)vert.size(); i++) {
 			if (routes[curr].hasPin(this, Index(Model::NMOS, vert[i].to))) {
-				int weight = routes[curr].outWeight + vert[i].off;
+				int weight = routes[curr].outWeight + routes[curr].height + vert[i].off;
 				for (int j = 0; j < (int)routes.size(); j++) {
 					if (j != curr and routes[j].hasPin(this, Index(Model::PMOS, vert[i].from))) {
 						if (routes[j].outWeight < weight) {
@@ -1057,7 +1057,7 @@ void Solution::buildOutWeights(vector<int> start, bool zero) {
 		}
 		for (int i = 0; i < (int)horiz.size(); i++) {
 			if (horiz[i].select >= 0 and curr == horiz[i].wires[1-horiz[i].select]) {
-				int weight = routes[curr].outWeight + horiz[i].off;
+				int weight = routes[curr].outWeight + routes[curr].height + horiz[i].off;
 				int in = horiz[i].wires[horiz[i].select];
 				if (routes[in].outWeight < weight) {
 					routes[in].outWeight = weight;
