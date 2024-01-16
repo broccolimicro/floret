@@ -69,18 +69,20 @@ Wire::Wire() {
 	net = -1;
 	layer = -1;
 	height = 0;
-	pos = 0;
 	left = -1;
 	right = -1;
+	inWeight = -1;
+	outWeight = -1;
 }
 
 Wire::Wire(int net, int layer, int height) {
 	this->net = net;
 	this->layer = layer;
 	this->height = height;
-	this->pos = 0;
 	this->left = -1;
 	this->right = -1;
+	this->inWeight = -1;
+	this->outWeight = -1;
 }
 
 Wire::~Wire() {
@@ -439,7 +441,7 @@ vector<int> Solution::next(int r) {
 }
 
 
-vector<vector<int> > Solution::findCycles(bool searchHoriz) {
+vector<vector<int> > Solution::findCycles() {
 	// DESIGN(edward.bingham) There can be multiple cycles with the same set of
 	// nodes as a result of multiple vertical constraints. This function does not
 	// differentiate between those cycles. Doing so could introduce an
@@ -734,15 +736,15 @@ void Solution::breakRoute(int route, set<int> cycleRoutes) {
 	routes[route].pins = wp.pins;
 	routes[route].layer = wp.layer;
 	routes[route].height = wp.height;
-	routes[route].pos = wp.pos;
 	routes[route].left = wp.left;
 	routes[route].right = wp.right;
+	routes[route].inWeight = wp.inWeight;
+	routes[route].outWeight = wp.outWeight;
 	routes.push_back(wn);
 }
 
-void Solution::breakCycles() {
-	vector<vector<int> > cycles = findCycles();
-	int startingRoutes = (int)routes.size();
+void Solution::breakCycles(vector<vector<int> > cycles) {
+	//int startingRoutes = (int)routes.size();
 
 	// count up cycle participation for heuristic
 	vector<vector<int> > cycleCount(routes.size(), vector<int>());
@@ -896,7 +898,7 @@ void Solution::breakCycles() {
 		}
 	}
 
-	cycles = findCycles();
+	/*cycles = findCycles();
 	if (cycles.size() > 0) {
 		printf("error: cycles not broken %d -> %d\n", startingRoutes, (int)routes.size());
 		for (int i = 0; i < (int)cycles.size(); i++) {
@@ -911,11 +913,22 @@ void Solution::breakCycles() {
 		}
 
 		printf("\n\n");
+	}*/
+}
+
+void Solution::buildHorizontalConstraints(const Tech &tech) {
+	// Compute horizontal constraints
+	for (int i = 0; i < (int)routes.size(); i++) {
+		for (int j = i+1; j < (int)routes.size(); j++) {
+			if (routes[i].left < routes[j].right and routes[j].left < routes[i].right) {
+				horiz.push_back(HorizontalConstraint(i, j, tech.layers[tech.wires[2].drawingLayer].minSpacing));
+			}
+		}
 	}
 }
 
 // make sure the graph is acyclic before running this
-vector<int> Solution::initialTokens(bool searchHoriz) {
+vector<int> Solution::findTop() {
 	// set up initial tokens for evaluating vertical constraints
 	vector<int> tokens;
 	for (int i = 0; i < (int)routes.size(); i++) {
@@ -923,10 +936,8 @@ vector<int> Solution::initialTokens(bool searchHoriz) {
 		for (int j = 0; not found and j < (int)vert.size(); j++) {
 			found = found or routes[i].hasPin(this, Index(Model::NMOS, vert[j].to));
 		}
-		if (searchHoriz) {
-			for (int j = 0; not found and j < (int)horiz.size(); j++) {
-				found = found or (horiz[j].select >= 0 and horiz[j].wires[1-horiz[j].select] == i);
-			}
+		for (int j = 0; not found and j < (int)horiz.size(); j++) {
+			found = found or (horiz[j].select >= 0 and horiz[j].wires[1-horiz[j].select] == i);
 		}
 		if (not found) {
 			tokens.push_back(i);
@@ -936,27 +947,133 @@ vector<int> Solution::initialTokens(bool searchHoriz) {
 	return tokens;
 }
 
-void Solution::solve(const Tech &tech, int minCost) {
-	breakCycles();
-
-	// Compute horizontal constraints
+// make sure the graph is acyclic before running this
+vector<int> Solution::findBottom() {
+	// set up initial tokens for evaluating vertical constraints
+	vector<int> tokens;
 	for (int i = 0; i < (int)routes.size(); i++) {
-		for (int j = i+1; j < (int)routes.size(); j++) {
-			if (routes[i].left < routes[j].right and routes[j].left < routes[i].right) {
-				horiz.push_back(HorizontalConstraint(i, j, tech.layers[tech.wires[2].drawingLayer].minSpacing));
-			}
+		bool found = false;
+		for (int j = 0; not found and j < (int)vert.size(); j++) {
+			found = found or routes[i].hasPin(this, Index(Model::PMOS, vert[j].from));
+		}
+		for (int j = 0; not found and j < (int)horiz.size(); j++) {
+			found = found or (horiz[j].select >= 0 and horiz[j].wires[horiz[j].select] == i);
+		}
+		if (not found) {
+			tokens.push_back(i);
+		}
+	}
+	
+	return tokens;
+}
+
+void Solution::buildInWeights(vector<int> start, bool zero) {
+	vector<int> tokens = start;
+	if (zero) {
+		for (int i = 0; i < (int)routes.size(); i++) {
+			routes[i].inWeight = -1;
+			routes[i].prevNodes.clear();
+		}
+		for (int i = 0; i < (int)tokens.size(); i++) {
+			routes[tokens[i]].inWeight = 0;
 		}
 	}
 
-	// TODO(edward.bingham) compute distances from vertical constraints
-	vector<int> tokens = initialTokens();
-	printf("Initial Tokens\n");
-	for (int i = 0; i < (int)tokens.size(); i++) {
-		printf("token %d\n", tokens[i]);
+	while (tokens.size() > 0) {
+		int curr = tokens.back();
+		tokens.pop_back();
+		
+		for (int i = 0; i < (int)vert.size(); i++) {
+			if (routes[curr].hasPin(this, Index(Model::PMOS, vert[i].from))) {
+				int weight = routes[curr].inWeight + vert[i].off;
+				for (int j = 0; j < (int)routes.size(); j++) {
+					if (j != curr and routes[j].hasPin(this, Index(Model::NMOS, vert[i].to))) {
+						bool change = routes[j].prevNodes.insert(curr).second;
+						for (auto prev = routes[curr].prevNodes.begin(); prev != routes[curr].prevNodes.end(); prev++) {
+							change = change or routes[j].prevNodes.insert(*prev).second;
+						}
+
+						if (routes[j].inWeight < weight) {
+							routes[j].inWeight = weight;
+							change = true;
+						}
+
+						if (change) {
+							tokens.push_back(j);
+						}
+					}
+				}
+			}
+		}
+		for (int i = 0; i < (int)horiz.size(); i++) {
+			if (horiz[i].select >= 0 and curr == horiz[i].wires[horiz[i].select]) {
+				int weight = routes[curr].inWeight + horiz[i].off;
+				int out = horiz[i].wires[1-horiz[i].select];
+				bool change = routes[out].prevNodes.insert(curr).second;
+				for (auto prev = routes[curr].prevNodes.begin(); prev != routes[curr].prevNodes.end(); prev++) {
+					change = change or routes[out].prevNodes.insert(*prev).second;
+				}
+
+				if (routes[out].inWeight < weight) {
+					routes[out].inWeight = weight;
+					change = true;
+				}
+
+				if (change) {
+					tokens.push_back(out);
+				}
+			}
+		}
+	}
+}
+
+void Solution::buildOutWeights(vector<int> start, bool zero) {
+	vector<int> tokens = start;
+	if (zero) {
+		for (int i = 0; i < (int)routes.size(); i++) {
+			routes[i].outWeight = -1;
+		}
+		for (int i = 0; i < (int)tokens.size(); i++) {
+			routes[tokens[i]].outWeight = 0;
+		}
 	}
 
-	// TODO(edward.bingham) elaborate horizontal constraints and compute distances
+	while (tokens.size() > 0) {
+		int curr = tokens.back();
+		tokens.pop_back();
+		
+		for (int i = 0; i < (int)vert.size(); i++) {
+			if (routes[curr].hasPin(this, Index(Model::NMOS, vert[i].to))) {
+				int weight = routes[curr].outWeight + vert[i].off;
+				for (int j = 0; j < (int)routes.size(); j++) {
+					if (j != curr and routes[j].hasPin(this, Index(Model::PMOS, vert[i].from))) {
+						if (routes[j].outWeight < weight) {
+							routes[j].outWeight = weight;
+							tokens.push_back(j);
+						}
+					}
+				}
+			}
+		}
+		for (int i = 0; i < (int)horiz.size(); i++) {
+			if (horiz[i].select >= 0 and curr == horiz[i].wires[1-horiz[i].select]) {
+				int weight = routes[curr].outWeight + horiz[i].off;
+				int in = horiz[i].wires[horiz[i].select];
+				if (routes[in].outWeight < weight) {
+					routes[in].outWeight = weight;
+					tokens.push_back(in);
+				}
+			}
+		}
+	}
+}
 
+void Solution::solve(const Tech &tech, int minCost) {
+	breakCycles(findCycles());
+	buildHorizontalConstraints(tech);
+	buildInWeights(findTop(), true);
+	buildOutWeights(findBottom(), true);
+	// TODO(edward.bingham) elaborate horizontal constraints and compute distances
 
 	printf("NMOS\n");
 	for (int i = 0; i < (int)stack[0].size(); i++) {
@@ -970,7 +1087,7 @@ void Solution::solve(const Tech &tech, int minCost) {
 
 	printf("\nRoutes\n");
 	for (int i = 0; i < (int)routes.size(); i++) {
-		printf("wire %d %d->%d: ", routes[i].net, routes[i].left, routes[i].right);
+		printf("wire %d %d->%d in:%d out:%d: ", routes[i].net, routes[i].left, routes[i].right, routes[i].inWeight, routes[i].outWeight);
 		for (int j = 0; j < (int)routes[i].pins.size(); j++) {
 			printf("(%d,%d) ", routes[i].pins[j].type, routes[i].pins[j].pin);
 		}

@@ -2,6 +2,7 @@
 
 #include "Circuit.h"
 #include <set>
+#include <unordered_set>
 
 using namespace std;
 
@@ -73,10 +74,13 @@ struct Wire {
 	//-------------------------------
 	int layer;
 	int height;
-	int pos; // absolute vertical position in cell, top down
 
 	int left;
 	int right;
+
+	int inWeight;
+	int outWeight;
+	unordered_set<int> prevNodes;
 
 	void addPin(const Solution *s, Index pin);
 	bool hasPin(const Solution *s, Index pin, vector<Index>::iterator *out = nullptr);
@@ -171,11 +175,14 @@ struct Solution {
 	vector<int> vertOut(int v);
 	vector<int> vertIn(int v);
 
-	vector<vector<int> > findCycles(bool searchHoriz=false);
+	vector<vector<int> > findCycles();
 	void breakRoute(int route, set<int> cycleRoutes);
-	void breakCycles();
-
-	vector<int> initialTokens(bool searchHoriz=false);
+	void breakCycles(vector<vector<int> > cycles);
+	void buildHorizontalConstraints(const Tech &tech);
+	vector<int> findTop();
+	vector<int> findBottom();
+	void buildInWeights(vector<int> start, bool zero=false);
+	void buildOutWeights(vector<int> start, bool zero=false);
 
 	int cost;
 
