@@ -144,6 +144,10 @@ HorizontalConstraint::~HorizontalConstraint() {
 }
 
 Solution::Solution() {
+	cycleCount = 0;
+	cellHeight = 0;
+	cost = 0;
+	numContacts = 0;
 }
 
 Solution::Solution(const Circuit *ckt) {
@@ -154,6 +158,9 @@ Solution::Solution(const Circuit *ckt) {
 		dangling[base->mos[i].type].push_back(i);
 	}
 	numContacts = 0;
+	cycleCount = 0;
+	cellHeight = 0;
+	cost = 0;
 }
 
 Solution::~Solution() {
@@ -1123,14 +1130,20 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 
 	//printf("solve %fms\n", timer.since()*1e3);
 
-	cost = 0;
+	cellHeight = 0;
 	for (int i = 0; i < (int)routes.size(); i++) {
 		int weight = routes[i].inWeight + routes[i].height + routes[i].outWeight;
-		if (weight > cost) {
-			cost = weight;
+		if (weight > cellHeight) {
+			cellHeight = weight;
 		}
 	}
 
+	int left = min(stack[Model::PMOS][0].pos, stack[Model::NMOS][0].pos);
+	int right = max(stack[Model::PMOS].back().pos+stack[Model::PMOS].back().width, stack[Model::NMOS].back().pos+stack[Model::NMOS].back().width);
+
+	cost = (right-left)*cellHeight;
+	printf("%d * %d = %d\n", (right-left), cellHeight, cost);
+	
 	if (maxCost > 0 and cost >= maxCost)
 		return false;
 

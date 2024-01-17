@@ -150,18 +150,20 @@ void Circuit::solve(const Tech &tech, float cycleCoeff) {
 	// the nmos and pmos contacts. This will ensure that we test as few
 	// orderings as possible while maximizing the chance of hitting the
 	// global minimum for layout area.
+	int cycleBuffer = 10;	
+
 	int minCost = -1;
-	int minCycles = -1;
+	int minCycles = -cycleBuffer;
 	while (stack.size() > 0) {
-		printf("\r%d       ", count);
-		fflush(stdout);
+		//printf("\r%d      ", count);
+		//fflush(stdout);
 		Solution *curr = stack.back();
 		stack.pop_back();
 
 		if (curr->dangling[Model::NMOS].size() == 0 and 
 		    curr->dangling[Model::PMOS].size() == 0) {
 			curr->build(tech);
-			if (curr->solve(tech, minCost, minCycles*cycleCoeff)) {
+			if (curr->solve(tech, minCost, (minCycles+cycleBuffer)*cycleCoeff)) {
 				if (layout != nullptr) {
 					delete layout;
 				}

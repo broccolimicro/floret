@@ -178,6 +178,7 @@ struct Solution {
 	void buildOutWeights(const Tech &tech, vector<int> start, bool zero=false);
 
 	int cycleCount;
+	int cellHeight;
 	int cost;
 
 	// Solve the constraint and circuit graph, filling out layers and constraints

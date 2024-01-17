@@ -297,7 +297,7 @@ void Layout::drawWire(const Tech &tech, const Solution *ckt, const Wire &wire, v
 		vec2i pp(ckt->pin(*pin).pos, 0);
 		vec2i ps(tech.layers[layer].minWidth,height/2);
 		if (pin->type == Model::NMOS) {
-			pp[1] = -ckt->cost + height;
+			pp[1] = -ckt->cellHeight + height;
 		}
 
 		drawVia(tech, wire.net, level, 2, vec2i(0, wire.height), vec2i(pp[0], ll[1]), dir);
@@ -318,7 +318,7 @@ void Layout::drawCell(const Tech &tech, const Solution *ckt) {
 			vec2i pos(pin->pos, 0);
 			vec2i dir(1,-1);
 			if (type == Model::NMOS) {
-				pos[1] = -ckt->cost + pin->height;
+				pos[1] = -ckt->cellHeight + pin->height;
 			}
 
 			if (pin->device < 0) {
