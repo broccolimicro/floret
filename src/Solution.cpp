@@ -1142,7 +1142,7 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 	int right = max(stack[Model::PMOS].back().pos+stack[Model::PMOS].back().width, stack[Model::NMOS].back().pos+stack[Model::NMOS].back().width);
 
 	cost = (right-left)*cellHeight;
-	printf("%d * %d = %d\n", (right-left), cellHeight, cost);
+	//printf("%d * %d = %d\n", (right-left), cellHeight, cost);
 	
 	if (maxCost > 0 and cost >= maxCost)
 		return false;
