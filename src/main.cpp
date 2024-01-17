@@ -4,7 +4,6 @@
 
 #include "Tech.h"
 #include "Library.h"
-//#include "Layout.h"
 
 using namespace std;
 
@@ -65,7 +64,11 @@ int main(int argc, char **argv) {
 
 	Tech tech;
 	Library cellLib;
-	cellLib.loadFile(tech, spiceFiles[0]);
+	for (int i = 0; i < (int)spiceFiles.size(); i++) {
+		if (not cellLib.loadFile(tech, spiceFiles[i])) {
+			printf("file not found: '%s'\n", spiceFiles[i].c_str());
+		}
+	}
 	cellLib.build(tech);
 	
 	/*Layout layout;

@@ -16,7 +16,7 @@ void Library::loadSpice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lex
 	}
 }
 
-void Library::loadFile(const Tech &tech, string path) {
+bool Library::loadFile(const Tech &tech, string path) {
 	// Initialize the grammar
 	pgen::grammar_t gram;
 	pgen::spice_t lang;
@@ -24,7 +24,9 @@ void Library::loadFile(const Tech &tech, string path) {
 
 	// Load the file into the lexer
 	pgen::lexer_t lexer;
-	lexer.open(path);
+	if (not lexer.open(path)) {
+		return false;
+	}
 
 	// Parse the file with the grammar
 	pgen::parsing ast = gram.parse(lexer);
@@ -37,15 +39,24 @@ void Library::loadFile(const Tech &tech, string path) {
 			cout << ast.msgs[i];
 		}
 	}
+
+	return true;
 }
 
 void Library::build(const Tech &tech) {
+	gdstk::Library lib = {};
+	lib.init("test", tech.dbunit*1e-6, tech.dbunit*1e-6);
 	for (int i = 0; i < (int)cells.size(); i++) {
+		printf("\rStarting %s\n", cells[i].name.c_str());
 		cells[i].solve(tech);
+		printf("\rDrawing %s\n", cells[i].name.c_str());
 		if (cells[i].layout != nullptr) {
 			Layout layout;
 			layout.drawCell(tech, cells[i].layout);
-			layout.emit(tech, "test");
+			layout.emit(tech, lib);
 		}
+		printf("\rDone %s\n", cells[i].name.c_str());
 	}
+	lib.write_gds("test.gds", 0, NULL);
+	lib.free_all();
 }

@@ -155,8 +155,8 @@ void Circuit::solve(const Tech &tech, float cycleCoeff) {
 	int minCost = -1;
 	int minCycles = -cycleBuffer;
 	while (stack.size() > 0) {
-		//printf("\r%d      ", count);
-		//fflush(stdout);
+		printf("\r%d      ", count);
+		fflush(stdout);
 		Solution *curr = stack.back();
 		stack.pop_back();
 

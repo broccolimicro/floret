@@ -53,5 +53,5 @@ struct Layout {
 	void drawWire(const Tech &tech, const Solution *ckt, const Wire &wire, vec2i pos, vec2i dir);
 	void drawCell(const Tech &tech, const Solution *ckt);
 
-	void emit(const Tech &tech, string libName) const;
+	void emit(const Tech &tech, gdstk::Library &lib) const;
 };

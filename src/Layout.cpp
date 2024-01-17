@@ -350,10 +350,7 @@ void Layout::drawCell(const Tech &tech, const Solution *ckt) {
 	mergeRects(geometry);
 }
 
-void Layout::emit(const Tech &tech, string libName) const {
-	gdstk::Library lib = {};
-	lib.init(libName.c_str(), tech.dbunit*1e-6, tech.dbunit*1e-6);
-
+void Layout::emit(const Tech &tech, gdstk::Library &lib) const {
 	gdstk::Cell *cell = new gdstk::Cell();
 	cell->init(name.c_str());
 	for (auto r = geometry.begin(); r != geometry.end(); r++) {
@@ -364,6 +361,4 @@ void Layout::emit(const Tech &tech, string libName) const {
 	}
 
 	lib.cell_array.append(cell);
-	lib.write_gds((libName+".gds").c_str(), 0, NULL);
-	lib.free_all();
 }

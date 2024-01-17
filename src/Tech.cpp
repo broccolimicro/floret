@@ -105,6 +105,8 @@ Tech::Tech() {
 	layers.push_back(Layer("pwde.drawing", 124, 20));
 	layers.push_back(Layer("hvtr.drawing", 18, 20));
 	layers.push_back(Layer("hvtp.drawing", 78, 44));
+	layers.back().minWidth = 76;
+	layers.back().minSpacing = 76;
 	layers.push_back(Layer("ldntm.drawing", 11, 44));
 	layers.push_back(Layer("hvi.drawing", 75, 20));
 	layers.push_back(Layer("tunm.drawing", 80, 20));
@@ -374,9 +376,16 @@ Tech::Tech() {
 	models.back().layers.push_back(Diffusion(findLayer("diff.drawing"), 50, 0));
 	models.back().layers.push_back(Diffusion(findLayer("psdm.drawing"), 25, 25));
 	models.back().layers.push_back(Diffusion(findLayer("nwell.drawing"), 36, 36));
+	models.push_back(Model(Model::PMOS, "sky130_fd_pr__pfet_01v8_hvt", 18, 26));
+	models.back().layers.push_back(Diffusion(findLayer("diff.drawing"), 50, 0));
+	models.back().layers.push_back(Diffusion(findLayer("psdm.drawing"), 25, 25));
+	models.back().layers.push_back(Diffusion(findLayer("hvtp.drawing"), 11, 11));
+	models.back().layers.push_back(Diffusion(findLayer("nwell.drawing"), 36, 36));
+
 
 	vias.push_back(Via(-1, 1, findLayer("licon1.drawing"), 8, 12, 0, 16));
 	vias.push_back(Via(-2, 1, findLayer("licon1.drawing"), 8, 12, 0, 16));
+	vias.push_back(Via(-3, 1, findLayer("licon1.drawing"), 8, 12, 0, 16));
 
 	vias.push_back(Via(0, 1, findLayer("licon1.drawing"), 10, 16, 0, 16));
 	vias.push_back(Via(1, 2, findLayer("mcon.drawing"), 0, 0, 6, 12));
@@ -423,11 +432,14 @@ vector<int> Tech::findVias(int downLevel, int upLevel) const {
 	int curr = downLevel;
 	
 	vector<int> result;
-	while (curr != upLevel) {
+	bool done = false;
+	while (not done) {
+		done = true;
 		for (int i = 0; curr != upLevel and i < (int)vias.size(); i++) {
 			if (vias[i].downLevel == curr) {
 				result.push_back(i);
 				curr = vias[i].upLevel;
+				done = false;
 			}
 		}
 	}
