@@ -1,7 +1,8 @@
 #include "Layout.h"
 
 Rect::Rect() {
-	layer = -1;
+	draw = -1;
+	text = -1;
 	net = -1;
 	left = 0;
 	bottom = 0;
@@ -9,8 +10,11 @@ Rect::Rect() {
 	top = 0;
 }
 
-Rect::Rect(int layer, int net, vec2i ll, vec2i ur) {
-	this->layer = layer;
+Rect::Rect(int draw, vec2i ll, vec2i ur) {
+	this->draw = draw;
+	this->text = -1;
+	this->net = -1;
+
 	this->left = ll[0];
 	this->bottom = ll[1];
 	this->right = ur[0];
@@ -29,11 +33,35 @@ Rect::Rect(int layer, int net, vec2i ll, vec2i ur) {
 	}
 }
 
+Rect::Rect(const Routing &layer, int net, vec2i ll, vec2i ur) {
+	this->draw = layer.drawingLayer;
+	this->text = layer.labelLayer;
+	this->net = net;
+
+	this->left = ll[0];
+	this->bottom = ll[1];
+	this->right = ur[0];
+	this->top = ur[1];
+
+	if (this->top < this->bottom) {
+		int tmp = this->top;
+		this->top = this->bottom;
+		this->bottom = tmp;
+	}
+
+	if (this->right < this->left) {
+		int tmp = this->right;
+		this->right = this->left;
+		this->left = tmp;
+	}
+}
+
+
 Rect::~Rect() {
 }
 
 bool Rect::merge(Rect r) {
-	if (layer == r.layer and net == r.net and left == r.left and right == r.right and bottom <= r.top and top >= r.bottom) {
+	if (draw == r.draw and net == r.net and left == r.left and right == r.right and bottom <= r.top and top >= r.bottom) {
 		if (r.bottom < bottom) {
 			bottom = r.bottom;
 		}
@@ -41,7 +69,7 @@ bool Rect::merge(Rect r) {
 			top = r.top;
 		}
 		return true;
-	} else if (layer == r.layer and net == r.net and bottom == r.bottom and top == r.top and left <= r.right and right >= r.left) {
+	} else if (draw == r.draw and net == r.net and bottom == r.bottom and top == r.top and left <= r.right and right >= r.left) {
 		if (r.left < left) {
 			left = r.left;
 		}
@@ -49,9 +77,9 @@ bool Rect::merge(Rect r) {
 			right = r.right;
 		}
 		return true;
-	} else if (layer == r.layer and net == r.net and bottom <= r.bottom and top >= r.top and left <= r.left and right >= r.right) {
+	} else if (draw == r.draw and net == r.net and bottom <= r.bottom and top >= r.top and left <= r.left and right >= r.right) {
 		return true;
-	} else if (layer == r.layer and net == r.net and bottom >= r.bottom and top <= r.top and left >= r.left and right <= r.right) {
+	} else if (draw == r.draw and net == r.net and bottom >= r.bottom and top <= r.top and left >= r.left and right <= r.right) {
 		left = r.left;
 		right = r.right;
 		bottom = r.bottom;
@@ -61,8 +89,24 @@ bool Rect::merge(Rect r) {
 	return false;
 }
 
+bool Rect::hasLabel() const {
+	return net >= 0 and text >= 0;
+}
+
 gdstk::Polygon *Rect::emit(const Tech &tech) const {
-	return new gdstk::Polygon(gdstk::rectangle(gdstk::Vec2{(double)left, (double)bottom}, gdstk::Vec2{(double)right, (double)top}, gdstk::make_tag(tech.layers[layer].major, tech.layers[layer].minor)));
+	return new gdstk::Polygon(gdstk::rectangle(gdstk::Vec2{(double)left, (double)bottom}, gdstk::Vec2{(double)right, (double)top}, gdstk::make_tag(tech.layers[draw].major, tech.layers[draw].minor)));
+}
+
+gdstk::Label *Rect::emitLabel(const Tech &tech, const Layout &layout) const {
+	if (text < 0 or net < 0) {
+		return nullptr;
+	}
+	return new gdstk::Label{
+		.tag = gdstk::make_tag(tech.layers[text].major, tech.layers[text].minor),
+		.text = strdup(layout.nets[net].c_str()),
+		.origin = gdstk::Vec2{(double)((left + right)/2), (double)((bottom+top)/2)},
+		.magnification = 1,
+	};
 }
 
 void mergeRects(vector<Rect> &rects) {
@@ -87,14 +131,14 @@ void Layout::drawTransistor(const Tech &tech, const Mos &mos, vec2i pos, vec2i d
 
 	// draw poly
 	vec2i polyOverhang = vec2i(0, tech.models[mos.model].polyOverhang)*dir;
-	geometry.push_back(Rect(tech.wires[0].drawingLayer, mos.ports[Mos::GATE], ll - polyOverhang, ur + polyOverhang));
+	geometry.push_back(Rect(tech.wires[0], mos.ports[Mos::GATE], ll - polyOverhang, ur + polyOverhang));
 	
 	// draw diffusion
 	for (auto layer = tech.models[mos.model].layers.begin(); layer != tech.models[mos.model].layers.end(); layer++) {
 		vec2i diffOverhang = vec2i(layer->overhangX, layer->overhangY)*dir;
 		ll -= diffOverhang;
 		ur += diffOverhang;
-		geometry.push_back(Rect(layer->layer, -1, ll, ur));
+		geometry.push_back(Rect(layer->layer, ll, ur));
 	}
 }
 
@@ -184,26 +228,26 @@ void Layout::drawVia(const Tech &tech, int net, int level, vec2i size, vec2i pos
 	}
 
 	// draw down
-	geometry.push_back(Rect(downLayer, net, pos+(off-dn)*dir, pos+(off+width+dn)*dir));
+	geometry.push_back(Rect(downLayer, pos+(off-dn)*dir, pos+(off+width+dn)*dir));
 
 	// draw via
 	vec2i idx;
 	int step = viaWidth+viaSpacing;
 	for (idx[0] = 0; idx[0] < num[0]; idx[0]++) {
 		for (idx[1] = 0; idx[1] < num[1]; idx[1]++) {
-			geometry.push_back(Rect(viaLayer, net, pos+(off+idx*step)*dir, pos+(off+idx*step+viaWidth)*dir));
+			geometry.push_back(Rect(viaLayer, pos+(off+idx*step)*dir, pos+(off+idx*step+viaWidth)*dir));
 		}
 	}
 
 	// draw up
-	geometry.push_back(Rect(upLayer, net, pos+(off-up)*dir, pos+(off+width+up)*dir));
+	geometry.push_back(Rect(upLayer, pos+(off-up)*dir, pos+(off+width+up)*dir));
 }
 
 void Layout::drawWire(const Tech &tech, const Solution *ckt, const Wire &wire, vec2i pos, vec2i dir) {
 	vec2i ll = pos+vec2i(wire.left,wire.inWeight)*dir;
 	vec2i ur = pos+vec2i(wire.right,wire.inWeight+wire.height)*dir;
 
-	geometry.push_back(Rect(tech.wires[wire.layer].drawingLayer, wire.net, ll, ur));
+	geometry.push_back(Rect(tech.wires[wire.layer], wire.net, ll, ur));
 
 	for (auto pin = wire.pins.begin(); pin != wire.pins.end(); pin++) {
 		int level = ckt->stack[pin->type][pin->pin].layer;
@@ -218,12 +262,17 @@ void Layout::drawWire(const Tech &tech, const Solution *ckt, const Wire &wire, v
 		for (int i = level; i < 2; i++) {
 			drawVia(tech, wire.net, i+1, vec2i(0, wire.height), vec2i(pp[0], ll[1]), dir);
 		}
-		geometry.push_back(Rect(layer, wire.net, vec2i(pp[0], ll[1]), pp+ps));
+		geometry.push_back(Rect(layer, vec2i(pp[0], ll[1]), pp+ps));
 	}
 }
 
 void Layout::drawCell(const Tech &tech, const Solution *ckt) {
 	name = ckt->base->name;
+
+	nets.reserve(ckt->base->nets.size());
+	for (int i = 0; i < (int)ckt->base->nets.size(); i++) {
+		nets.push_back(ckt->base->nets[i].name);
+	}
 
 	for (int type = 0; type < 2; type++) {
 		for (auto pin = ckt->stack[type].begin(); pin != ckt->stack[type].end(); pin++) {
@@ -251,15 +300,6 @@ void Layout::drawCell(const Tech &tech, const Solution *ckt) {
 	mergeRects(geometry);
 }
 
-gdstk::Label *Layout::emitLabel(const Tech &tech, vec2i pos, int layer, string text) const {
-	return new gdstk::Label{
-		.tag = gdstk::make_tag(tech.layers[layer].major, tech.layers[layer].minor),
-		.text = strdup(text.c_str()),
-		.origin = gdstk::Vec2{(double)pos[0], (double)pos[1]},
-		.magnification = 1,
-	};
-}
-
 void Layout::emit(const Tech &tech, string libName) const {
 	gdstk::Library lib = {};
 	lib.init(libName.c_str(), tech.dbunit*1e-6, tech.dbunit*1e-6);
@@ -268,26 +308,10 @@ void Layout::emit(const Tech &tech, string libName) const {
 	cell->init(name.c_str());
 	for (auto r = geometry.begin(); r != geometry.end(); r++) {
 		cell->polygon_array.append(r->emit(tech));
-	}
-
-	/*for (int i = 0; i < 2; i++) {
-		for (auto r = diff[i].begin(); r != diff[i].end(); r++) {
-			cell->polygon_array.append(r->emit(tech));
+		if (r->hasLabel()) {
+			cell->label_array.append(r->emitLabel(tech, *this));
 		}
 	}
-
-	for (auto n = nets.begin(); n != nets.end(); n++) {
-		for (int c = 0; c < 2; c++) {
-			for (auto r = n->contacts[c].begin(); r != n->contacts[c].end(); r++) {
-				cell->polygon_array.append(r->emit(tech));
-				cell->label_array.append(emitLabel(tech, vec2i((r->left+r->right)/2, (r->bottom+r->top)/2), r->layer, n->name));
-			}
-		}
-
-		for (auto r = n->routes.begin(); r != n->routes.end(); r++) {
-			cell->polygon_array.append(r->emit(tech));
-		}
-	}*/
 
 	lib.cell_array.append(cell);
 	lib.write_gds((libName+".gds").c_str(), 0, NULL);
