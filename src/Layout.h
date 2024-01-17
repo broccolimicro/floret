@@ -46,7 +46,6 @@ struct Layout {
 	vector<Rect> geometry;
 
 	void drawTransistor(const Tech &tech, const Mos &mos, vec2i pos=vec2i(0,0), vec2i dir=vec2i(1,1)); 
-	/*void drawDiffContact(const Tech &tech, const Pin &pin, vec2i pos, vec2i dir, int width);*/
 	void drawVia(const Tech &tech, int net, int downLevel, int upLevel, vec2i size=vec2i(0,0), vec2i pos=vec2i(0,0), vec2i dir=vec2i(1,1));
 	void drawWire(const Tech &tech, const Solution *ckt, const Wire &wire, vec2i pos, vec2i dir);
 	void drawCell(const Tech &tech, const Solution *ckt);

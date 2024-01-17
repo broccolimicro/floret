@@ -142,51 +142,6 @@ void Layout::drawTransistor(const Tech &tech, const Mos &mos, vec2i pos, vec2i d
 	}
 }
 
-/*void Layout::drawDiffContact(const Tech &tech, const Pin &pin, vec2i pos, vec2i dir) {
-	int via = tech.vias[0].drawingLayer;
-	int viaWidth = tech.layers[via].minWidth;
-	int viaSpacing = tech.layers[via].minSpacing;
-	int diffEncloseLo = tech.vias[0].downLo;
-	int diffEncloseHi = tech.vias[0].downHi;
-
-	int numVias = 1 + (width-viaWidth - 2*diffEncloseLo) / (viaSpacing+viaWidth);
-	int contactWidth = numVias*viaWidth + (numVias-1)*viaSpacing;
-	int contactOffset = (width - contactWidth)/2;
-
-	int diffEncloseH = diffEncloseHi;
-	if (contactOffset >= diffEncloseHi) {
-		diffEncloseH = diffEncloseLo;
-	}
-
-	// draw diffusion
-	int type = tech.models[model].type;
-	vec2i diffPos(pos[0]-diffEncloseH*dir[0], pos[1]);
-	int diffLength = (viaWidth + 2*diffEncloseH)*dir[0];
-	int diffWidth = width*dir[1];
-	for (auto layer = tech.models[model].layers.begin(); layer != tech.models[model].layers.end(); layer++) {
-		if (layer != tech.models[model].layers.begin()) {
-			diffPos[0] -= layer->overhangX*dir[0];
-			diffPos[1] -= layer->overhangY*dir[1];
-			diffLength += 2*layer->overhangX*dir[0];
-			diffWidth += 2*layer->overhangY*dir[1];
-		}
-		diff[type].push_back(Rect(layer->layer, diffPos, diffLength, diffWidth));
-	}
-
-	pos[1] += dir[1]*contactOffset;
-	if (dir[1] < 0) {
-		pos[1] += dir[1]*contactWidth;
-	}
-
-	nets[net].contacts[type].push_back(Rect(tech.wires[1].drawingLayer, pos, viaWidth, contactWidth));
-
-	for (int i = 0; i < numVias; i++) {
-		nets[net].routes.push_back(Rect(via, pos, viaWidth, viaWidth));
-
-		pos[1] += viaWidth+viaSpacing;
-	}
-}*/
-
 void Layout::drawVia(const Tech &tech, int net, int downLevel, int upLevel, vec2i size, vec2i pos, vec2i dir) {
 	// layers
 	vector<int> vias = tech.findVias(downLevel, upLevel);
