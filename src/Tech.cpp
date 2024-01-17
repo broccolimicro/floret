@@ -68,14 +68,18 @@ Routing::~Routing() {
 }
 
 Via::Via() {
-	from = -1;
-	to = -1;
+	upLevel = 0;
+	downLevel = 0;
 	drawingLayer = -1;
+	downLo = 0;
+	downHi = 0;
+	upLo = 0;
+	upHi = 0;
 }
 
-Via::Via(int from, int to, int layer, int downLo, int downHi, int upLo, int upHi) {
-	this->from = from;
-	this->to = to;
+Via::Via(int downLevel, int upLevel, int layer, int downLo, int downHi, int upLo, int upHi) {
+	this->downLevel = downLevel;
+	this->upLevel = upLevel;
 	this->drawingLayer = layer;
 	this->downLo = downLo;
 	this->downHi = downHi;
@@ -92,6 +96,8 @@ Tech::Tech() {
 	// TODO(edward.bingham) hardcoding tech configuration values for now, but
 	// this should be parsed in from python
 	layers.push_back(Layer("diff.drawing", 65, 20));
+	layers.back().minWidth = 30;
+	layers.back().minSpacing = 54;
 	layers.push_back(Layer("tap.drawing", 65, 44));
 	layers.push_back(Layer("nwell.drawing", 64, 20));
 	layers.push_back(Layer("dnwell.drawing", 64, 18));
@@ -369,13 +375,15 @@ Tech::Tech() {
 	models.back().layers.push_back(Diffusion(findLayer("psdm.drawing"), 25, 25));
 	models.back().layers.push_back(Diffusion(findLayer("nwell.drawing"), 36, 36));
 
-	vias.push_back(Via(findLayer("diff.drawing"), findLayer("li1.drawing"), findLayer("licon1.drawing"), 8, 12, 16, 16));
-	vias.push_back(Via(findLayer("poly.drawing"), findLayer("li1.drawing"), findLayer("licon1.drawing"), 10, 16, 16, 16));
-	vias.push_back(Via(findLayer("li1.drawing"), findLayer("met1.drawing"), findLayer("mcon.drawing"), 0, 0, 6, 12));
-	vias.push_back(Via(findLayer("met1.drawing"), findLayer("met2.drawing"), findLayer("via.drawing"), 11, 11, 11, 17));
-	vias.push_back(Via(findLayer("met2.drawing"), findLayer("met3.drawing"), findLayer("via2.drawing"), 8, 17, 13, 13));
-	vias.push_back(Via(findLayer("met3.drawing"), findLayer("met4.drawing"), findLayer("via3.drawing"), 12, 18, 13, 13));
-	vias.push_back(Via(findLayer("met4.drawing"), findLayer("met5.drawing"), findLayer("via4.drawing"), 38, 38, 62, 62));
+	vias.push_back(Via(-1, 1, findLayer("licon1.drawing"), 8, 12, 0, 16));
+	vias.push_back(Via(-2, 1, findLayer("licon1.drawing"), 8, 12, 0, 16));
+
+	vias.push_back(Via(0, 1, findLayer("licon1.drawing"), 10, 16, 0, 16));
+	vias.push_back(Via(1, 2, findLayer("mcon.drawing"), 0, 0, 6, 12));
+	vias.push_back(Via(2, 3, findLayer("via.drawing"), 11, 11, 11, 17));
+	vias.push_back(Via(3, 4, findLayer("via2.drawing"), 8, 17, 13, 13));
+	vias.push_back(Via(4, 5, findLayer("via3.drawing"), 12, 18, 13, 13));
+	vias.push_back(Via(5, 6, findLayer("via4.drawing"), 38, 38, 62, 62));
 
 	wires.push_back(Routing(findLayer("poly.drawing"), findLayer("poly.pin"), findLayer("poly.label")));
 	wires.push_back(Routing(findLayer("li1.drawing"), findLayer("li1.pin"), findLayer("li1.label")));
@@ -411,6 +419,21 @@ int Tech::findModel(string name) const {
 	}
 
 	return -1;
+}
+
+vector<int> Tech::findVias(int downLevel, int upLevel) const {
+	int curr = downLevel;
+	
+	vector<int> result;
+	while (curr != upLevel) {
+		for (int i = 0; curr != upLevel and i < (int)vias.size(); i++) {
+			if (vias[i].downLevel == curr) {
+				result.push_back(i);
+				curr = vias[i].upLevel;
+			}
+		}
+	}
+	return result;
 }
 
 // TODO(edward.bingham) instead of manually computing spacing for different situations, we should pre-layout each transistor, contact, and wire, and then use the DRC rules directly on the geometry to compute spacing. This would ensure that every cell is guaranteed to be DRC error free.
@@ -474,10 +497,34 @@ int Tech::hSpacing(const Solution *ckt, Index p0, Index p1) const {
 		// contact to transistor
 		return models[ckt->base->mos[dev1].model].viaPolySpacing;
 	}
+
+	int leftModel = -1;
+	int rightModel = -1;
+	for (Index i(p0.type, p0.pin-1); i.pin >= 0; i.pin--) {
+		int device = ckt->pin(i).device;
+		if (device >= 0) {
+			leftModel = ckt->base->mos[device].model;
+		}
+	}
+	for (Index i(p1.type, p1.pin+1); i.pin < (int)ckt->stack[p1.type].size(); i.pin++) {
+		int device = ckt->pin(i).device;
+		if (device >= 0) {
+			rightModel = ckt->base->mos[device].model;
+		}
+	}
+
+	vector<int> leftVias = findVias(-leftModel-1, 1);
+	vector<int> rightVias = findVias(-rightModel-1, 1);
+
+	if (leftVias.size() == 0 or rightVias.size() == 0) {
+		return 0;
+	}
+
+	int diffLayer = models[leftModel].layers[0].layer;
 	// contact to contact
-	return vias[0].downLo +
-	       layers[vias[0].from].minSpacing + 
-	       vias[0].downLo;
+	return vias[leftVias[0]].downLo +
+	       layers[diffLayer].minSpacing + 
+	       vias[rightVias[0]].downLo;
 }
 
 // horizontal spacing between two wires

@@ -62,12 +62,15 @@ struct Routing {
 
 struct Via {
 	Via();
-	Via(int from, int to, int layer, int downLo = 0, int downHi = 0, int upLo = 0, int upHi = 0);
+	Via(int downLevel, int upLevel, int layer, int downLo = 0, int downHi = 0, int upLo = 0, int upHi = 0);
 	~Via();
 
+	// index into Tech::wires when >= 0
+	// index into Tech::models when < 0
+	int downLevel;
+	int upLevel;
+	
 	// index into Tech::layers
-	int from;
-	int to;
 	int drawingLayer;
 
 	int downLo;
@@ -93,6 +96,7 @@ struct Tech {
 	
 	int findLayer(string name) const;
 	int findModel(string name) const;
+	vector<int> findVias(int downLevel, int upLevel) const;
 
 	int hSize(const Solution *ckt, Index p) const;
 	int vSize(const Solution *ckt, Index p) const;
