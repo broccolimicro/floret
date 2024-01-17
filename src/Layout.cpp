@@ -175,9 +175,9 @@ void Layout::drawVia(const Tech &tech, int net, int level, vec2i size, vec2i pos
 		swap(up[0], up[1]);
 	}
 	
-	if (off[1] < max(dn[1], up[1])) {
-		off[1] = max(dn[1], up[1]);
-	}
+	//if (off[1] < max(dn[1], up[1])) {
+	//	off[1] = max(dn[1], up[1]);
+	//}
 
 	if (level == 0) {
 		dn[1] = off[1];
@@ -203,18 +203,21 @@ void Layout::drawWire(const Tech &tech, const Solution *ckt, const Wire &wire, v
 	vec2i ll = pos+vec2i(wire.left,wire.inWeight)*dir;
 	vec2i ur = pos+vec2i(wire.right,wire.inWeight+wire.height)*dir;
 
-	geometry.push_back(Rect(wire.layer, wire.net, ll, ur));
+	geometry.push_back(Rect(tech.wires[wire.layer].drawingLayer, wire.net, ll, ur));
 
 	for (auto pin = wire.pins.begin(); pin != wire.pins.end(); pin++) {
-		int layer = ckt->stack[pin->type][pin->pin].layer;
+		int level = ckt->stack[pin->type][pin->pin].layer;
+		int layer = tech.wires[level].drawingLayer;
 		vec2i pp(ckt->stack[pin->type][pin->pin].pos, 0);
-		vec2i ps(tech.layers[layer].minWidth,ckt->stack[pin->type][pin->pin].height);
+		vec2i ps(tech.layers[layer].minWidth,ckt->stack[pin->type][pin->pin].height/2);
 		if (pin->type == Model::NMOS) {
 			pp[1] = -ckt->cost;
 			ps *= dir;
 		}
 
-		drawVia(tech, wire.net, 2, vec2i(0, wire.height), vec2i(pp[0], ll[1]), dir);
+		for (int i = level; i < 2; i++) {
+			drawVia(tech, wire.net, i+1, vec2i(0, wire.height), vec2i(pp[0], ll[1]), dir);
+		}
 		geometry.push_back(Rect(layer, wire.net, vec2i(pp[0], ll[1]), pp+ps));
 	}
 }

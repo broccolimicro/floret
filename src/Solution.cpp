@@ -36,7 +36,7 @@ Pin::Pin() {
 	leftNet = -1;
 	rightNet = -1;
 	
-	layer = -1;
+	layer = 0;
 	width = 0;
 	height = 0;
 	off = 0;
@@ -55,7 +55,10 @@ Pin::Pin(int device, int outNet, int leftNet, int rightNet) {
 		this->rightNet = outNet;
 	}
 
-	layer = -1;
+	layer = 0;
+	if (device < 0) {
+		layer = 1;
+	}
 	width = 0;
 	height = 0;
 	off = 0;
@@ -277,49 +280,12 @@ void Solution::build(const Tech &tech) {
 	// Determine location of each pin
 	for (int type = 0; type < 2; type++) {
 		int pos = 0;
-		int lastModel = -1;
 		for (int i = 0; i < (int)stack[type].size(); i++) {
-			if (stack[type][i].device < 0) {
-				stack[type][i].layer = tech.wires[1].drawingLayer;
-				// this is a contact
-				stack[type][i].width = tech.layers[tech.vias[0].drawingLayer].minWidth;
-
-				// contact height is min of transistor widths on either side.
-				stack[type][i].height = 0;
-				if (i-1 >= 0 and stack[type][i-1].device >= 0 and (stack[type][i].height == 0 or base->mos[stack[type][i-1].device].size[1] < stack[type][i].height)) {
-					stack[type][i].height = base->mos[stack[type][i-1].device].size[1];
-				}
-				if (i+1 < (int)stack[type].size() and stack[type][i+1].device >= 0 and (stack[type][i].height == 0 or base->mos[stack[type][i+1].device].size[1] < stack[type][i].height)) {
-					stack[type][i].height = base->mos[stack[type][i+1].device].size[1];
-				}
-
-				stack[type][i].off = 0;
-				if (i-1 >= 0 and lastModel >= 0) {
-					if (stack[type][i-1].device >= 0) {
-						// previous pin was a transistor
-						stack[type][i].off = tech.models[lastModel].viaPolySpacing;
-					} else {
-						// previous pin was a contact and there was a transistor before it
-						stack[type][i].off = tech.vias[0].downLo*2 + tech.layers[tech.models[lastModel].layers[0].layer].minSpacing;
-					}
-				}
-			} else {
-				// this is a transistor
-				lastModel = base->mos[stack[type][i].device].model;
-
-				stack[type][i].layer = tech.wires[0].drawingLayer;
-				stack[type][i].width = base->mos[stack[type][i].device].size[0];
-				stack[type][i].height = base->mos[stack[type][i].device].size[1];
-
-				stack[type][i].off = 0;
-				if (i-1 >= 0 and lastModel >= 0) {
-					if (stack[type][i-1].device >= 0) {
-						// previous pin was a transistor
-						stack[type][i].off = tech.layers[tech.wires[0].drawingLayer].minSpacing;
-					} else {
-						stack[type][i].off = tech.vias[0].downLo*2 + tech.layers[tech.models[lastModel].layers[0].layer].minSpacing;
-					}
-				}
+			stack[type][i].width = tech.hSize(this, Index(type, i));
+			stack[type][i].height = tech.vSize(this, Index(type, i));
+			stack[type][i].off = 0;
+			if (i > 0) {
+				stack[type][i].off = tech.hSpacing(this, Index(type, i-1), Index(type, i));
 			}
 
 			stack[type][i].pos = pos + stack[type][i].off;
@@ -330,7 +296,8 @@ void Solution::build(const Tech &tech) {
 	// Create initial routes
 	routes.reserve(base->nets.size());
 	for (int i = 0; i < (int)base->nets.size(); i++) {
-		routes.push_back(Wire(i, tech.wires[2].drawingLayer, tech.layers[tech.vias[2].drawingLayer].minWidth+max(tech.vias[2].upLo, tech.vias[2].downLo)));
+		routes.push_back(Wire(i, 2, 0));
+		routes.back().height = tech.vSize(this, routes.size()-1);
 	}
 	for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < (int)stack[type].size(); i++) {
@@ -352,7 +319,7 @@ void Solution::build(const Tech &tech) {
 				int nNet = stack[Model::NMOS][n].outNet;
 
 				if (pNet != nNet and pLeft < nRight and nLeft < pRight and routes[nNet].pins.size() > 1) {
-					vert.push_back(VerticalConstraint(p, n, tech.layers[tech.wires[2].drawingLayer].minSpacing));
+					vert.push_back(VerticalConstraint(p, n, tech.vSpacing(this, Index(Model::PMOS, p), Index(Model::NMOS, n))));
 				}
 			}
 		}
@@ -365,56 +332,12 @@ void Solution::build(const Tech &tech) {
 	}
 }
 
-vector<int> Solution::outVert(int r) {
-	vector<int> result;
-	for (int i = 0; i < (int)vert.size(); i++) {
-		for (int j = 0; j < (int)routes[r].pins.size(); j++) {
-			if (routes[r].pins[j].type == Model::PMOS and vert[i].from == routes[r].pins[j].pin) {
-				result.push_back(i);
-				break;
-			}
-		}
-	}
-	return result;
+Pin &Solution::pin(Index i) {
+	return stack[i.type][i.pin];
 }
 
-vector<int> Solution::inVert(int r) {
-	vector<int> result;
-	for (int i = 0; i < (int)vert.size(); i++) {
-		for (int j = 0; j < (int)routes[r].pins.size(); j++) {
-			if (routes[r].pins[j].type == Model::NMOS and vert[i].to == routes[r].pins[j].pin) {
-				result.push_back(i);
-				break;
-			}
-		}
-	}
-	return result;
-}
-
-vector<int> Solution::vertOut(int v) {
-	vector<int> result;
-	for (int i = 0; i < (int)routes.size(); i++) {
-		for (int j = 0; j < (int)routes[i].pins.size(); j++) {
-			if (routes[i].pins[j].type == Model::NMOS and vert[v].to == routes[i].pins[j].pin) {
-				result.push_back(i);
-				break;
-			}
-		}
-	}
-	return result;
-}
-
-vector<int> Solution::vertIn(int v) {
-	vector<int> result;
-	for (int i = 0; i < (int)routes.size(); i++) {
-		for (int j = 0; j < (int)routes[i].pins.size(); j++) {
-			if (routes[i].pins[j].type == Model::PMOS and vert[v].from == routes[i].pins[j].pin) {
-				result.push_back(i);
-				break;
-			}
-		}
-	}
-	return result;
+const Pin &Solution::pin(Index i) const {
+	return stack[i.type][i.pin];
 }
 
 vector<int> Solution::next(int r) {
@@ -921,7 +844,7 @@ void Solution::buildHorizontalConstraints(const Tech &tech) {
 	for (int i = 0; i < (int)routes.size(); i++) {
 		for (int j = i+1; j < (int)routes.size(); j++) {
 			if (routes[i].left < routes[j].right and routes[j].left < routes[i].right) {
-				horiz.push_back(HorizontalConstraint(i, j, tech.layers[tech.wires[2].drawingLayer].minSpacing));
+				horiz.push_back(HorizontalConstraint(i, j, tech.vSpacing(this, i, j)));
 			}
 		}
 	}

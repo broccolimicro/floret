@@ -159,21 +159,14 @@ struct Solution {
 	vector<Pin> stack[2];
 	vector<Wire> routes;
 
+	const Pin &pin(Index i) const;
+	Pin &pin(Index i);
+
 	// channel routing constraint graph
 	vector<VerticalConstraint> vert;
 	vector<HorizontalConstraint> horiz;
 
 	vector<int> next(int r);
-
-	// index into Solution::routes
-	// result indexes into Solution::vert
-	vector<int> outVert(int r);
-	vector<int> inVert(int r);
-
-	// index into Solution::vert
-	// result indexes into Solution::routes
-	vector<int> vertOut(int v);
-	vector<int> vertIn(int v);
 
 	vector<vector<int> > findCycles();
 	void breakRoute(int route, set<int> cycleRoutes);

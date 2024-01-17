@@ -1,4 +1,5 @@
 #include "Tech.h"
+#include "Solution.h"
 
 Layer::Layer() {
 	this->name = "";
@@ -412,4 +413,95 @@ int Tech::findModel(string name) const {
 	return -1;
 }
 
+// TODO(edward.bingham) instead of manually computing spacing for different situations, we should pre-layout each transistor, contact, and wire, and then use the DRC rules directly on the geometry to compute spacing. This would ensure that every cell is guaranteed to be DRC error free.
+
+// horizontal size of pin
+int Tech::hSize(const Solution *ckt, Index p) const {
+	int device = ckt->pin(p).device;
+	if (device >= 0) {
+		// this pin is a transistor, use length of transistor
+		return ckt->base->mos[device].size[0];
+	}
+	// this pin is a contact
+	return layers[vias[0].drawingLayer].minWidth;
+}
+
+// vertical size of pin
+int Tech::vSize(const Solution *ckt, Index p) const {
+	int device = ckt->pin(p).device;
+	if (device >= 0) {
+		// this pin is a transistor, use width of transistor
+		return ckt->base->mos[device].size[1];
+	}
+	// this is a contact, height should be min of transistor widths on either side.
+	int result = -1;
+	if (p.pin > 0) {
+		int leftDevice = ckt->stack[p.type][p.pin-1].device;
+		if (leftDevice >= 0 and (result < 0 or ckt->base->mos[leftDevice].size[1] < result)) {
+			result = ckt->base->mos[leftDevice].size[1];
+		}
+	}
+	if (p.pin+1 < (int)ckt->stack[p.type].size()) {
+		int rightDevice = ckt->stack[p.type][p.pin+1].device;
+		if (rightDevice >= 0 and (result < 0 or ckt->base->mos[rightDevice].size[1] < result)) {
+			result = ckt->base->mos[rightDevice].size[1];
+		}
+	}
+	if (result < 0) {
+		result = layers[vias[0].drawingLayer].minWidth;
+	}
+	
+	return result;
+}
+
+// vertical size of wire
+int Tech::vSize(const Solution *ckt, int w) const {
+	return layers[vias[2].drawingLayer].minWidth +
+	  max(vias[2].upLo, vias[2].downLo);
+}
+
+// horizontal spacing between two pins
+int Tech::hSpacing(const Solution *ckt, Index p0, Index p1) const {
+	int dev0 = ckt->pin(p0).device;
+	int dev1 = ckt->pin(p1).device;
+	if (dev0 >= 0 and dev1 >= 0) {
+		// transistor to transistor
+		return layers[wires[0].drawingLayer].minSpacing;
+	} else if (dev0 >= 0 and dev1 < 0) {
+		// transistor to contact
+		return models[ckt->base->mos[dev0].model].viaPolySpacing;
+	}	else if (dev0 < 0 and dev1 >= 0) {
+		// contact to transistor
+		return models[ckt->base->mos[dev1].model].viaPolySpacing;
+	}
+	// contact to contact
+	return vias[0].downLo +
+	       layers[vias[0].from].minSpacing + 
+	       vias[0].downLo;
+}
+
+// horizontal spacing between two wires
+// Assume that the wires are measured from the position of the first
+// pin to the position of the last pin plus that pin's width. This
+// means that the wires' left and right measurements don't include
+// via enclosure or spacing between vias.
+int Tech::hSpacing(const Solution *ckt, int w0, int w1) const {
+	return 0;
+}
+
+int Tech::vSpacing(const Solution *ckt, Index p, int w) const {
+	return 0;
+}
+
+int Tech::vSpacing(const Solution *ckt, int w0, int w1) const {
+	return layers[wires[2].drawingLayer].minSpacing;
+}
+
+int Tech::vSpacing(const Solution *ckt, int w, Index p) const {
+	return 0;
+}
+
+int Tech::vSpacing(const Solution *ckt, Index p0, Index p1) const {
+	return layers[wires[2].drawingLayer].minSpacing;
+}
 

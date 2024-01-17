@@ -76,6 +76,9 @@ struct Via {
 	int upHi;
 };
 
+struct Solution;
+struct Index;
+
 struct Tech {
 	Tech();
 	~Tech();
@@ -88,8 +91,17 @@ struct Tech {
 	vector<Via> vias;
 	vector<Routing> wires;
 	
-
 	int findLayer(string name) const;
 	int findModel(string name) const;
+
+	int hSize(const Solution *ckt, Index p) const;
+	int vSize(const Solution *ckt, Index p) const;
+	int vSize(const Solution *ckt, int w) const;
+	int hSpacing(const Solution *ckt, Index p0, Index p1) const;
+	int hSpacing(const Solution *ckt, int w0, int w1) const;
+	int vSpacing(const Solution *ckt, Index p, int w) const;
+	int vSpacing(const Solution *ckt, int w0, int w1) const;
+	int vSpacing(const Solution *ckt, int w, Index p) const;
+	int vSpacing(const Solution *ckt, Index p0, Index p1) const;
 };
 
