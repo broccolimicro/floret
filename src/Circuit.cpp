@@ -137,7 +137,7 @@ void Circuit::loadSubckt(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &le
 	}
 }
 
-void Circuit::solve(const Tech &tech) {
+void Circuit::solve(const Tech &tech, float cycleCoeff) {
 	vector<Solution*> stack;
 	stack.push_back(new Solution(this));
 	
@@ -151,20 +151,23 @@ void Circuit::solve(const Tech &tech) {
 	// orderings as possible while maximizing the chance of hitting the
 	// global minimum for layout area.
 	int minCost = -1;
+	int minCycles = -1;
 	while (stack.size() > 0) {
+		printf("\r%d       ", count);
+		fflush(stdout);
 		Solution *curr = stack.back();
 		stack.pop_back();
 
 		if (curr->dangling[Model::NMOS].size() == 0 and 
 		    curr->dangling[Model::PMOS].size() == 0) {
 			curr->build(tech);
-			curr->solve(tech, minCost);
-			if (minCost < 0 or (curr->cost > 0 and curr->cost < minCost)) {
+			if (curr->solve(tech, minCost, minCycles*cycleCoeff)) {
 				if (layout != nullptr) {
 					delete layout;
 				}
 				layout = curr;
 				minCost = curr->cost;
+				minCycles = curr->cycleCount;
 			}
 			count++;
 			continue;
@@ -191,6 +194,6 @@ void Circuit::solve(const Tech &tech) {
 		delete curr;
 	}
 
-	printf("Circuit::solve explored %d layouts for %s in %fms\n", count, name.c_str(), timer.since()*1e3);
+	printf("\rCircuit::solve explored %d layouts for %s in %fms\n", count, name.c_str(), timer.since()*1e3);
 }
 

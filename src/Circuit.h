@@ -64,6 +64,6 @@ struct Circuit {
 	bool loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &dev);
 	void loadSubckt(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &subckt);
 
-	void solve(const Tech &tech);
+	void solve(const Tech &tech, float cycleCoeff = 1.5f);
 };
 

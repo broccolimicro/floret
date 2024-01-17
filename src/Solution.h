@@ -168,19 +168,20 @@ struct Solution {
 
 	vector<int> next(int r);
 
-	vector<vector<int> > findCycles();
+	bool findCycles(vector<vector<int> > &cycles, int maxCycles = -1);
 	void breakRoute(int route, set<int> cycleRoutes);
 	void breakCycles(vector<vector<int> > cycles);
 	void buildHorizontalConstraints(const Tech &tech);
 	vector<int> findTop();
 	vector<int> findBottom();
-	void buildInWeights(vector<int> start, bool zero=false);
-	void buildOutWeights(vector<int> start, bool zero=false);
+	void buildInWeights(const Tech &tech, vector<int> start, bool zero=false);
+	void buildOutWeights(const Tech &tech, vector<int> start, bool zero=false);
 
+	int cycleCount;
 	int cost;
 
 	// Solve the constraint and circuit graph, filling out layers and constraints
-	void solve(const Tech &tech, int minCost);
+	bool solve(const Tech &tech, int maxCost, int maxCycles);
 
 	// Print the solution description
 	void print();

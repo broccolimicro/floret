@@ -42,8 +42,11 @@ struct Layout {
 	~Layout();
 
 	string name;
+	vec2i boxll, boxur;
 	vector<string> nets;
 	vector<Rect> geometry;
+
+	void updateBox(vec2i ll, vec2i ur);
 
 	void drawTransistor(const Tech &tech, const Mos &mos, vec2i pos=vec2i(0,0), vec2i dir=vec2i(1,1)); 
 	void drawVia(const Tech &tech, int net, int downLevel, int upLevel, vec2i size=vec2i(0,0), vec2i pos=vec2i(0,0), vec2i dir=vec2i(1,1));

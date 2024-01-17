@@ -394,8 +394,6 @@ Tech::Tech() {
 	wires.push_back(Routing(findLayer("met5.drawing"), findLayer("met5.pin"), findLayer("met5.label")));
 
 	boundary = findLayer("areaid.sc.identifier");
-
-	
 }
 
 Tech::~Tech() {
@@ -533,11 +531,18 @@ int Tech::hSpacing(const Solution *ckt, Index p0, Index p1) const {
 // means that the wires' left and right measurements don't include
 // via enclosure or spacing between vias.
 int Tech::hSpacing(const Solution *ckt, int w0, int w1) const {
-	return 0;
+	return layers[wires[2].drawingLayer].minSpacing;
 }
 
 int Tech::vSpacing(const Solution *ckt, Index p, int w) const {
-	return 0;
+	int device = ckt->pin(p).device;
+	if (device >= 0) {
+		// this is a transistor gate
+		return ckt->pin(p).height+38;
+	} else {
+		// this is a contact
+		return 0;
+	}
 }
 
 int Tech::vSpacing(const Solution *ckt, int w0, int w1) const {
@@ -545,7 +550,14 @@ int Tech::vSpacing(const Solution *ckt, int w0, int w1) const {
 }
 
 int Tech::vSpacing(const Solution *ckt, int w, Index p) const {
-	return 0;
+	int device = ckt->pin(p).device;
+	if (device >= 0) {
+		// this is a transistor gate
+		return ckt->pin(p).height+38;
+	} else {
+		// this is a contact
+		return 0;
+	}
 }
 
 int Tech::vSpacing(const Solution *ckt, Index p0, Index p1) const {

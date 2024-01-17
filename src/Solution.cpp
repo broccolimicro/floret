@@ -3,6 +3,7 @@
 #include <unordered_set>
 #include <set>
 #include <list>
+#include "Timer.h"
 
 Index::Index() {
 	type = -1;
@@ -318,7 +319,9 @@ void Solution::build(const Tech &tech) {
 				int nRight = nLeft + stack[Model::NMOS][n].width;
 				int nNet = stack[Model::NMOS][n].outNet;
 
-				if (pNet != nNet and pLeft < nRight and nLeft < pRight and routes[nNet].pins.size() > 1) {
+				int spacing = tech.layers[tech.wires[0].drawingLayer].minSpacing;
+
+				if (pNet != nNet and pLeft < nRight+spacing and nLeft < pRight+spacing and routes[nNet].pins.size() > 1) {
 					vert.push_back(VerticalConstraint(p, n, tech.vSpacing(this, Index(Model::PMOS, p), Index(Model::NMOS, n))));
 				}
 			}
@@ -364,15 +367,13 @@ vector<int> Solution::next(int r) {
 }
 
 
-vector<vector<int> > Solution::findCycles() {
+bool Solution::findCycles(vector<vector<int> > &cycles, int maxCycles) {
 	// DESIGN(edward.bingham) There can be multiple cycles with the same set of
 	// nodes as a result of multiple vertical constraints. This function does not
 	// differentiate between those cycles. Doing so could introduce an
 	// exponential blow up, and we can ensure that we split those cycles by
 	// splitting on the node in the cycle that has the most vertical constraints
 	// (maximising min(in.size(), out.size()))
-	vector<vector<int> > cycles;
-	
 	unordered_set<int> seen;
 	unordered_set<int> staged;
 	
@@ -401,6 +402,10 @@ vector<vector<int> > Solution::findCycles() {
 					staged.insert(n[i]);
 				}
 			}
+
+			if (maxCycles > 0 and (int)cycles.size() >= maxCycles) {
+				return false;
+			}
 		}
 
 		seen.insert(staged.begin(), staged.end());
@@ -414,7 +419,7 @@ vector<vector<int> > Solution::findCycles() {
 		}
 	}
 
-	return cycles;
+	return true;
 }
 
 void Solution::breakRoute(int route, set<int> cycleRoutes) {
@@ -843,7 +848,10 @@ void Solution::buildHorizontalConstraints(const Tech &tech) {
 	// Compute horizontal constraints
 	for (int i = 0; i < (int)routes.size(); i++) {
 		for (int j = i+1; j < (int)routes.size(); j++) {
-			if (routes[i].left < routes[j].right and routes[j].left < routes[i].right) {
+			int spacingIJ = tech.hSpacing(this, i, j);
+			int spacingJI = tech.hSpacing(this, j, i);
+
+			if (routes[i].left < routes[j].right+spacingJI and routes[j].left < routes[i].right+spacingIJ) {
 				horiz.push_back(HorizontalConstraint(i, j, tech.vSpacing(this, i, j)));
 			}
 		}
@@ -890,15 +898,24 @@ vector<int> Solution::findBottom() {
 	return tokens;
 }
 
-void Solution::buildInWeights(vector<int> start, bool zero) {
+void Solution::buildInWeights(const Tech &tech, vector<int> start, bool zero) {
 	vector<int> tokens = start;
 	if (zero) {
 		for (int i = 0; i < (int)routes.size(); i++) {
-			routes[i].inWeight = -1;
+			routes[i].inWeight = 0;
 			routes[i].prevNodes.clear();
 		}
-		for (int i = 0; i < (int)tokens.size(); i++) {
-			routes[tokens[i]].inWeight = 0;
+		for (int i = 0; i < (int)routes.size(); i++) {
+			// push vias on poly away from transistor gates, but allow other vias to overlap the transistor stack
+			for (auto j = routes[i].pins.begin(); j != routes[i].pins.end(); j++) {
+				if (j->type == Model::PMOS) {
+					// this pin is a gate of a transistor
+					int weight = tech.vSpacing(this, *j, i);
+					if (routes[i].inWeight < weight) {
+						routes[i].inWeight = weight;
+					}
+				}
+			}
 		}
 	}
 
@@ -950,14 +967,23 @@ void Solution::buildInWeights(vector<int> start, bool zero) {
 	}
 }
 
-void Solution::buildOutWeights(vector<int> start, bool zero) {
+void Solution::buildOutWeights(const Tech &tech, vector<int> start, bool zero) {
 	vector<int> tokens = start;
 	if (zero) {
 		for (int i = 0; i < (int)routes.size(); i++) {
-			routes[i].outWeight = -1;
+			routes[i].outWeight = 0;
 		}
-		for (int i = 0; i < (int)tokens.size(); i++) {
-			routes[tokens[i]].outWeight = 0;
+		for (int i = 0; i < (int)routes.size(); i++) {
+			// push vias on poly away from transistor gates, but allow other vias to overlap the transistor stack
+			for (auto j = routes[i].pins.begin(); j != routes[i].pins.end(); j++) {
+				if (j->type == Model::NMOS) {
+					// this pin is a gate of a transistor
+					int weight = tech.vSpacing(this, i, *j);
+					if (routes[i].outWeight < weight) {
+						routes[i].outWeight = weight;
+					}
+				}
+			}
 		}
 	}
 
@@ -991,56 +1017,86 @@ void Solution::buildOutWeights(vector<int> start, bool zero) {
 	}
 }
 
-void Solution::solve(const Tech &tech, int minCost) {
-	breakCycles(findCycles());
+bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
+	//Timer timer;
+
+	vector<vector<int> > cycles;
+	if (not findCycles(cycles, maxCycles)) {
+		return false;
+	}
+	cycleCount = (int)cycles.size();
+
+	//printf("findcycles %d %fms\n", (int)cycles.size(), timer.since()*1e3);
+	//timer.reset();
+
+	breakCycles(cycles);
+
+	//printf("breakcycles %fms\n", timer.since()*1e3);
+	//timer.reset();
+
 	buildHorizontalConstraints(tech);
-	buildInWeights(findTop(), true);
-	buildOutWeights(findBottom(), true);
+
+	//printf("horiz %fms\n", timer.since()*1e3);
+	//timer.reset();
+
+	buildInWeights(tech, findTop(), true);
+
+	//printf("in %fms\n", timer.since()*1e3);
+	//timer.reset();
+
+	buildOutWeights(tech, findBottom(), true);
 	// TODO(edward.bingham) elaborate horizontal constraints and compute distances
 
-	bool done = false;
-	while (not done) {
-		done = true;
+	//printf("out %fms\n", timer.since()*1e3);
+	//timer.reset();
 
+	vector<int> unassigned;
+	unassigned.reserve(horiz.size());
+	for (int i = 0; i < (int)horiz.size(); i++) {
+		unassigned.push_back(i);
+	}
+
+	//printf("setup %fms\n", timer.since()*1e3);
+	//timer.reset();
+
+	while (unassigned.size() > 0) {
 		// handle critical constraints, that would create cycles if assigned the wrong direction.
 		vector<int> inTokens, outTokens;
-		for (int i = 0; i < (int)horiz.size(); i++) {
-			if (horiz[i].select < 0) {
-				if (routes[horiz[i].wires[0]].prevNodes.find(horiz[i].wires[1]) != routes[horiz[i].wires[0]].prevNodes.end()) {
-					horiz[i].select = 1;
-					inTokens.push_back(horiz[i].wires[1]);
-					outTokens.push_back(horiz[i].wires[0]);
-					continue;
-				}
-				if (routes[horiz[i].wires[1]].prevNodes.find(horiz[i].wires[0]) != routes[horiz[i].wires[1]].prevNodes.end()) {
-					horiz[i].select = 0;
-					inTokens.push_back(horiz[i].wires[0]);
-					outTokens.push_back(horiz[i].wires[1]);
-					continue;
-				}
+		for (int u = (int)unassigned.size()-1; u >= 0; u--) {
+			int i = unassigned[u];
+			if (routes[horiz[i].wires[0]].prevNodes.find(horiz[i].wires[1]) != routes[horiz[i].wires[0]].prevNodes.end()) {
+				horiz[i].select = 1;
+				inTokens.push_back(horiz[i].wires[1]);
+				outTokens.push_back(horiz[i].wires[0]);
+				unassigned.erase(unassigned.begin()+u);
+			} else if (routes[horiz[i].wires[1]].prevNodes.find(horiz[i].wires[0]) != routes[horiz[i].wires[1]].prevNodes.end()) {
+				horiz[i].select = 0;
+				inTokens.push_back(horiz[i].wires[0]);
+				outTokens.push_back(horiz[i].wires[1]);
+				unassigned.erase(unassigned.begin()+u);
 			}
 		}
 		if (inTokens.size() + outTokens.size() > 0) {
-			buildInWeights(inTokens);
-			buildOutWeights(outTokens);
-			done = false;
+			buildInWeights(tech, inTokens);
+			buildOutWeights(tech, outTokens);
 			continue;
 		}
 
 		// find the largest label
 		int maxLabel = -1;
 		int index = -1;
-		for (int i = 0; i < (int)horiz.size(); i++) {
-			if (horiz[i].select < 0) {
-				int label = max(
-					routes[horiz[i].wires[0]].inWeight + routes[horiz[i].wires[1]].outWeight, 
-					routes[horiz[i].wires[1]].inWeight + routes[horiz[i].wires[0]].outWeight
-				) + horiz[i].off;
+		int uindex = -1;
+		for (int u = (int)unassigned.size()-1; u >= 0; u--) {
+			int i = unassigned[u];
+			int label = max(
+				routes[horiz[i].wires[0]].inWeight + routes[horiz[i].wires[1]].outWeight, 
+				routes[horiz[i].wires[1]].inWeight + routes[horiz[i].wires[0]].outWeight
+			) + horiz[i].off;
 
-				if (label > maxLabel) {
-					maxLabel = label;
-					index = i;
-				}
+			if (label > maxLabel) {
+				maxLabel = label;
+				index = i;
+				uindex = u;
 			}
 		}
 
@@ -1057,19 +1113,28 @@ void Solution::solve(const Tech &tech, int minCost) {
 				inTokens.push_back(horiz[index].wires[1]);
 				outTokens.push_back(horiz[index].wires[0]);
 			}
-			buildInWeights(inTokens);
-			buildOutWeights(outTokens);
-			done = false;
+
+			unassigned.erase(unassigned.begin()+uindex);
+			buildInWeights(tech, inTokens);
+			buildOutWeights(tech, outTokens);
 			continue;
 		}
 	}
 
+	//printf("solve %fms\n", timer.since()*1e3);
+
 	cost = 0;
 	for (int i = 0; i < (int)routes.size(); i++) {
-		if (routes[i].inWeight > cost) {
-			cost = routes[i].inWeight;
+		int weight = routes[i].inWeight + routes[i].height + routes[i].outWeight;
+		if (weight > cost) {
+			cost = weight;
 		}
 	}
+
+	if (maxCost > 0 and cost >= maxCost)
+		return false;
+
+	return true;
 }
 
 void Solution::print() {

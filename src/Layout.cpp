@@ -120,9 +120,45 @@ void mergeRects(vector<Rect> &rects) {
 }
 
 Layout::Layout() {
+	boxll = vec2i(0,0);
+	boxur = vec2i(0,0);
 }
 
 Layout::~Layout() {
+}
+
+void Layout::updateBox(vec2i ll, vec2i ur) {
+	if (ll[0] < boxll[0]) {
+		boxll[0] = ll[0];
+	}
+
+	if (ll[1] < boxll[1]) {
+		boxll[1] = ll[1];
+	}
+
+	if (ll[0] > boxur[0]) {
+		boxur[0] = ll[0];
+	}
+
+	if (ll[1] > boxur[1]) {
+		boxur[1] = ll[1];
+	}
+
+	if (ur[0] < boxll[0]) {
+		boxll[0] = ur[0];
+	}
+
+	if (ur[1] < boxll[1]) {
+		boxll[1] = ur[1];
+	}
+
+	if (ur[0] > boxur[0]) {
+		boxur[0] = ur[0];
+	}
+
+	if (ur[1] > boxur[1]) {
+		boxur[1] = ur[1];
+	}
 }
 
 void Layout::drawTransistor(const Tech &tech, const Mos &mos, vec2i pos, vec2i dir) {
@@ -131,6 +167,7 @@ void Layout::drawTransistor(const Tech &tech, const Mos &mos, vec2i pos, vec2i d
 
 	// draw poly
 	vec2i polyOverhang = vec2i(0, tech.models[mos.model].polyOverhang)*dir;
+	updateBox(ll - polyOverhang, ur + polyOverhang);
 	geometry.push_back(Rect(tech.wires[0], mos.ports[Mos::GATE], ll - polyOverhang, ur + polyOverhang));
 	
 	// draw diffusion
@@ -138,6 +175,9 @@ void Layout::drawTransistor(const Tech &tech, const Mos &mos, vec2i pos, vec2i d
 		vec2i diffOverhang = vec2i(layer->overhangX, layer->overhangY)*dir;
 		ll -= diffOverhang;
 		ur += diffOverhang;
+		if (layer == tech.models[mos.model].layers.begin()) {
+			updateBox(ll, ur);
+		}
 		geometry.push_back(Rect(layer->layer, ll, ur));
 	}
 }
@@ -189,6 +229,7 @@ void Layout::drawVia(const Tech &tech, int net, int downLevel, int upLevel, vec2
 		vec2i ur = pos+(off+width+dn)*dir;
 		if (downLevel >= 0) {
 			// routing level
+			updateBox(ll, ur);
 			geometry.push_back(Rect(tech.wires[downLevel].drawingLayer, ll, ur));
 		} else {
 			// diffusion level
@@ -199,6 +240,9 @@ void Layout::drawVia(const Tech &tech, int net, int downLevel, int upLevel, vec2
 					ll[1] -= tech.models[model].layers[i].overhangY*dir[1];
 					ur[0] += tech.models[model].layers[i].overhangX*dir[0];
 					ur[1] += tech.models[model].layers[i].overhangY*dir[1];
+				}
+				if (i == 0) {
+					updateBox(ll, ur);
 				}
 				geometry.push_back(Rect(tech.models[model].layers[i].layer, ll, ur));
 			}
@@ -218,6 +262,7 @@ void Layout::drawVia(const Tech &tech, int net, int downLevel, int upLevel, vec2
 		ur = pos+(off+width+up)*dir;
 		if (upLevel >= 0) {
 			// routing level
+			updateBox(ll, ur);
 			geometry.push_back(Rect(tech.wires[upLevel].drawingLayer, ll, ur));
 		} else {
 			// diffusion level
@@ -229,6 +274,9 @@ void Layout::drawVia(const Tech &tech, int net, int downLevel, int upLevel, vec2
 					ur[0] += tech.models[model].layers[i].overhangX*dir[0];
 					ur[1] += tech.models[model].layers[i].overhangY*dir[1];
 				}
+				if (i == 0) {
+					updateBox(ll, ur);
+				}
 				geometry.push_back(Rect(tech.models[model].layers[i].layer, ll, ur));
 			}
 		}
@@ -239,20 +287,21 @@ void Layout::drawWire(const Tech &tech, const Solution *ckt, const Wire &wire, v
 	vec2i ll = pos+vec2i(wire.left,wire.inWeight)*dir;
 	vec2i ur = pos+vec2i(wire.right,wire.inWeight+wire.height)*dir;
 
+	updateBox(ll, ur);
 	geometry.push_back(Rect(tech.wires[wire.layer], wire.net, ll, ur));
 
 	for (auto pin = wire.pins.begin(); pin != wire.pins.end(); pin++) {
-		int level = ckt->stack[pin->type][pin->pin].layer;
+		int level = ckt->pin(*pin).layer;
 		int layer = tech.wires[level].drawingLayer;
-		vec2i pp(ckt->stack[pin->type][pin->pin].pos, 0);
-		vec2i ps(tech.layers[layer].minWidth,ckt->stack[pin->type][pin->pin].height/2);
+		int height = ckt->pin(*pin).height;
+		vec2i pp(ckt->pin(*pin).pos, 0);
+		vec2i ps(tech.layers[layer].minWidth,height/2);
 		if (pin->type == Model::NMOS) {
-			pp[1] = -ckt->cost;
-			ps *= dir;
+			pp[1] = -ckt->cost + height;
 		}
 
 		drawVia(tech, wire.net, level, 2, vec2i(0, wire.height), vec2i(pp[0], ll[1]), dir);
-		geometry.push_back(Rect(tech.wires[level], wire.net, vec2i(pp[0], ll[1]), pp+ps));
+		geometry.push_back(Rect(tech.wires[level], wire.net, vec2i(pp[0], ll[1]), pp+ps*dir));
 	}
 }
 
@@ -267,10 +316,9 @@ void Layout::drawCell(const Tech &tech, const Solution *ckt) {
 	for (int type = 0; type < 2; type++) {
 		for (auto pin = ckt->stack[type].begin(); pin != ckt->stack[type].end(); pin++) {
 			vec2i pos(pin->pos, 0);
-			vec2i dir(1,1);
+			vec2i dir(1,-1);
 			if (type == Model::NMOS) {
-				pos[1] = -ckt->cost;
-				dir[1] = -1;
+				pos[1] = -ckt->cost + pin->height;
 			}
 
 			if (pin->device < 0) {
@@ -296,6 +344,8 @@ void Layout::drawCell(const Tech &tech, const Solution *ckt) {
 	for (int i = 0; i < (int)ckt->routes.size(); i++) {
 		drawWire(tech, ckt, ckt->routes[i], pos, dir);
 	}
+
+	geometry.push_back(Rect(tech.boundary, boxll, boxur));
 
 	mergeRects(geometry);
 }
