@@ -543,7 +543,42 @@ int Tech::hSpacing(const Solution *ckt, Index p0, Index p1) const {
 // means that the wires' left and right measurements don't include
 // via enclosure or spacing between vias.
 int Tech::hSpacing(const Solution *ckt, int w0, int w1) const {
-	return layers[wires[2].drawingLayer].minSpacing;
+	if (ckt->routes[w0].pins.size() == 0 or ckt->routes[w1].pins.size() == 0) {
+		return 0;
+	}
+	int result = 0;
+	if (ckt->routes[w0].layer == ckt->routes[w1].layer) {
+		result = layers[wires[ckt->routes[w0].layer].drawingLayer].minSpacing;
+	}
+
+	Index p0 = ckt->routes[w0].pins.back();
+	Index p1 = ckt->routes[w1].pins[0];
+
+	int level0 = ckt->pin(p0).layer;
+	int level1 = ckt->pin(p1).layer;
+
+	int start = max(level0, level1);
+	int end = min(ckt->routes[w0].layer, ckt->routes[w1].layer);
+
+	vector<int> vIdx = findVias(start, end);
+	for (auto via = vIdx.begin(); via != vIdx.end(); via++) {
+		int spacing = vias[*via].downHi*2 + layers[wires[vias[*via].downLevel].drawingLayer].minSpacing;
+		if (result < spacing) {
+			result = spacing;
+		}
+
+		spacing = layers[vias[*via].drawingLayer].minSpacing;
+		if (result < spacing) {
+			result = spacing;
+		}
+
+		spacing = vias[*via].upHi*2 + layers[wires[vias[*via].upLevel].drawingLayer].minSpacing;
+		if (result < spacing) {
+			result = spacing;
+		}
+	}
+	
+	return result;
 }
 
 int Tech::vSpacing(const Solution *ckt, Index p, int w) const {
@@ -558,7 +593,54 @@ int Tech::vSpacing(const Solution *ckt, Index p, int w) const {
 }
 
 int Tech::vSpacing(const Solution *ckt, int w0, int w1) const {
-	return layers[wires[2].drawingLayer].minSpacing;
+	int result = 0;
+	if (ckt->routes[w0].layer == ckt->routes[w1].layer) {
+		int level = ckt->routes[w0].layer;
+		result = layers[wires[level].drawingLayer].minSpacing;
+	}
+
+	if (ckt->routes[w0].pins.size() == 0 or ckt->routes[w1].pins.size() == 0) {
+		return result;
+	}
+
+	int w0MinLevel = -1;
+	for (auto p0 = ckt->routes[w0].pins.begin(); p0 != ckt->routes[w0].pins.end(); p0++) {
+		int level = ckt->pin(*p0).layer;
+		if (w0MinLevel < 0 or level < w0MinLevel) {
+			w0MinLevel = level;
+		}
+	}
+
+	int w1MinLevel = -1;
+	for (auto p1 = ckt->routes[w1].pins.begin(); p1 != ckt->routes[w1].pins.end(); p1++) {
+		int level = ckt->pin(*p1).layer;
+		if (w1MinLevel < 0 or level < w1MinLevel) {
+			w1MinLevel = level;
+		}
+	}
+
+	int start = max(w0MinLevel, w1MinLevel);
+	int end = min(ckt->routes[w0].layer, ckt->routes[w1].layer);
+
+	vector<int> vIdx = findVias(start, end);
+	for (auto via = vIdx.begin(); via != vIdx.end(); via++) {
+		int spacing = vias[*via].downLo*2 + layers[wires[vias[*via].downLevel].drawingLayer].minSpacing;
+		if (result < spacing) {
+			result = spacing;
+		}
+
+		spacing = layers[vias[*via].drawingLayer].minSpacing;
+		if (result < spacing) {
+			result = spacing;
+		}
+
+		spacing = vias[*via].upLo*2 + layers[wires[vias[*via].upLevel].drawingLayer].minSpacing;
+		if (result < spacing) {
+			result = spacing;
+		}
+	}
+
+	return result;
 }
 
 int Tech::vSpacing(const Solution *ckt, int w, Index p) const {

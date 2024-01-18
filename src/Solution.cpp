@@ -1138,8 +1138,16 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 		}
 	}
 
-	int left = min(stack[Model::PMOS][0].pos, stack[Model::NMOS][0].pos);
-	int right = max(stack[Model::PMOS].back().pos+stack[Model::PMOS].back().width, stack[Model::NMOS].back().pos+stack[Model::NMOS].back().width);
+	int left = 1000000000;
+	int right = -1000000000;
+	for (int type = 0; type < 2; type++) {
+		if (stack[type].size() > 0 and stack[type][0].pos < left) {
+			left = stack[type][0].pos;
+		}
+		if (stack[type].size() > 0 and stack[type].back().pos > right) {
+			right = stack[type].back().pos;
+		}
+	}
 
 	cost = (right-left)*cellHeight;
 	//printf("%d * %d = %d\n", (right-left), cellHeight, cost);

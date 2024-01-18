@@ -301,7 +301,7 @@ void Layout::drawWire(const Tech &tech, const Solution *ckt, const Wire &wire, v
 		}
 
 		drawVia(tech, wire.net, level, 2, vec2i(0, wire.height), vec2i(pp[0], ll[1]), dir);
-		geometry.push_back(Rect(tech.wires[level], wire.net, vec2i(pp[0], ll[1]), pp+ps*dir));
+		geometry.push_back(Rect(tech.wires[level], wire.net, vec2i(pp[0], ll[1]+(wire.height/2)*dir[1]), pp+ps*dir));
 	}
 }
 
