@@ -1,8 +1,8 @@
 NAME          = floret
 CXXFLAGS	    = -O2 -g -Wall -fmessage-length=0 -std=c++17
-INCLUDE_PATHS = -Ideps/pgen -Ideps/gdstk/build/install/include
-LIBRARY_PATHS = -Ldeps/pgen -Ldeps/gdstk/build/install/lib
-LIBRARIES = -l:libpgen.a -l:libgdstk.a -l:libclipper.a -l:libqhullstatic_r.a -lz
+INCLUDE_PATHS = -Ideps/ruler/src -Ideps/pgen -Ideps/gdstk/build/install/include
+LIBRARY_PATHS = -Ldeps/ruler -Ldeps/pgen -Ldeps/gdstk/build/install/lib
+LIBRARIES = -l:libruler.a -l:libpgen.a -l:libgdstk.a -l:libclipper.a -l:libqhullstatic_r.a -lz
 
 ifeq (@(TUP_PLATFORM),windows)
 CXX           = x86_64-w64-mingw32-g++
@@ -22,6 +22,6 @@ endif
 
 # Executable
 : foreach src/*.cpp | src/*.h deps/pgen/pgen/*.h deps/gdstk/build/install/include/gdstk/*.hpp |> $(CXX) $(INCLUDE_PATHS) $(CXXFLAGS) -fPIC -c -o %o %f |> dyn_obj/%B.o {dynamic_objs}
-: {dynamic_objs} | deps/pgen/libpgen.a deps/gdstk/build/install/lib/libgdstk.a deps/gdstk/build/install/lib/libclipper.a |> $(CXX) $(LIBRARY_PATHS) -L. -o %o %f $(LIBRARIES) |> $(TARGET)
+: {dynamic_objs} | deps/ruler/libruler.a deps/pgen/libpgen.a deps/gdstk/build/install/lib/libgdstk.a deps/gdstk/build/install/lib/libclipper.a |> $(CXX) $(LIBRARY_PATHS) -L. -o %o %f $(LIBRARIES) |> $(TARGET)
 
 .gitignore
