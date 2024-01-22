@@ -1,8 +1,9 @@
-#include "Solution.h"
 #include <algorithm>
 #include <unordered_set>
 #include <set>
 #include <list>
+
+#include "Solution.h"
 #include "Timer.h"
 
 Index::Index() {

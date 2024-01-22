@@ -1,8 +1,11 @@
 #include "Library.h"
-#include "Solution.h"
-#include "Layout.h"
+
+#include <ruler/Layout.h>
 
 #include <vector>
+
+#include "Solution.h"
+#include "Draw.h"
 
 using namespace std;
 
@@ -52,7 +55,7 @@ void Library::build(const Tech &tech) {
 		printf("\rDrawing %s\n", cells[i].name.c_str());
 		if (cells[i].layout != nullptr) {
 			Layout layout;
-			layout.drawCell(tech, cells[i].layout);
+			drawCell(tech, layout, cells[i].layout);
 			layout.emit(tech, lib);
 		}
 		printf("\rDone %s\n", cells[i].name.c_str());

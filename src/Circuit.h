@@ -3,10 +3,13 @@
 #include <map>
 #include <string>
 #include <vector>
-#include "Tech.h"
-#include "spice.h"
-#include "vector.h"
 
+#include <ruler/Tech.h>
+#include <ruler/vector.h>
+
+#include "spice.h"
+
+using namespace ruler;
 using namespace std;
 
 struct Mos {

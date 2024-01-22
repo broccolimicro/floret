@@ -1,7 +1,8 @@
 #pragma once
 
+#include <ruler/Tech.h>
+
 #include "spice.h"
-#include "Tech.h"
 #include "Circuit.h"
 
 struct Library {
