@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ruler/Layout.h>
 #include "Circuit.h"
 #include <set>
 #include <unordered_set>
@@ -49,6 +50,7 @@ struct Pin {
 	//-------------------------------
 	// Layout Information
 	//-------------------------------
+	Layout layout;
 	int layer;
 	int width;
 	int height;
@@ -72,6 +74,7 @@ struct Wire {
 	//-------------------------------
 	// Layout Information
 	//-------------------------------
+	Layout layout;
 	int layer;
 	int height;
 
