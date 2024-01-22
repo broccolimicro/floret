@@ -327,7 +327,7 @@ void Solution::build(const Tech &tech) {
 				int nRight = nLeft + stack[Model::NMOS][n].width;
 				int nNet = stack[Model::NMOS][n].outNet;
 
-				int spacing = tech.layers[tech.wires[0].drawingLayer].minSpacing;
+				int spacing = tech.mats[tech.wires[0].drawing].minSpacing;
 
 				if (pNet != nNet and pLeft < nRight+spacing and nLeft < pRight+spacing and routes[nNet].pins.size() > 1) {
 					vert.push_back(VerticalConstraint(p, n, tech.vSpacing(this, Index(Model::PMOS, p), Index(Model::NMOS, n))));
