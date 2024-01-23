@@ -1,23 +1,32 @@
 #include "Draw.h"
 
-void drawTransistor(const Tech &tech, Layout &dst, const Mos &mos, vec2i pos, vec2i dir) {
+void drawTransistor(const Tech &tech, Layout &dst, const Mos &mos, bool flip, vec2i pos, vec2i dir) {
 	vec2i ll = pos;
 	vec2i ur = pos + mos.size*dir;
 
+	vec2i lm(ll[0]+mos.size[0]*dir[0]/2, ll[1]);
+	vec2i um(ll[0]+mos.size[0]*dir[0]/2, ll[1]+mos.size[1]*dir[1]);
+	
 	// draw poly
 	vec2i polyOverhang = vec2i(0, tech.models[mos.model].polyOverhang)*dir;
 	dst.updateBox(ll - polyOverhang, ur + polyOverhang);
 	dst.push(tech.wires[0].drawing, Rect(mos.ports[Mos::GATE], ll - polyOverhang, ur + polyOverhang));
-	
+
 	// draw diffusion
 	for (auto layer = tech.models[mos.model].mats.begin(); layer != tech.models[mos.model].mats.end(); layer++) {
 		vec2i diffOverhang = vec2i(layer->overhangX, layer->overhangY)*dir;
 		ll -= diffOverhang;
 		ur += diffOverhang;
-		if (layer == tech.models[mos.model].mats.begin()) {
+		lm[1] -= diffOverhang[1];
+		um[1] += diffOverhang[1];
+		bool isDiffusion = layer == tech.models[mos.model].mats.begin();
+		if (isDiffusion) {
 			dst.updateBox(ll, ur);
+			dst.push(layer->layer, Rect(mos.ports[flip ? Mos::DRAIN : Mos::SOURCE], ll, um));
+			dst.push(layer->layer, Rect(mos.ports[flip ? Mos::SOURCE : Mos::DRAIN], lm, ur));
+		} else {
+			dst.push(layer->layer, Rect(-1, ll, ur));
 		}
-		dst.push(layer->layer, Rect(-1, ll, ur));
 	}
 }
 
@@ -160,7 +169,7 @@ void drawPin(const Tech &tech, Layout &dst, const Solution *ckt, int type, int p
 			drawVia(tech, dst, ckt->stack[type][pinID].outNet, -model-1, 1, vec2i(ckt->stack[type][pinID].width, ckt->stack[type][pinID].height), pos, dir);
 		}
 	} else {
-		drawTransistor(tech, dst, ckt->base->mos[ckt->stack[type][pinID].device], pos, dir);
+		drawTransistor(tech, dst, ckt->base->mos[ckt->stack[type][pinID].device], ckt->stack[type][pinID].leftNet != ckt->base->mos[ckt->stack[type][pinID].device].ports[Mos::SOURCE], pos, dir);
 	}
 }
 
@@ -183,7 +192,7 @@ void drawCell(const Tech &tech, Layout &dst, const Solution *ckt) {
 	}
 
 	for (int type = 0; type < 2; type++) {
-		drawLayout(tech, dst, ckt->stackLayout[type]);
+		drawLayout(tech, dst, ckt->stackLayout[type], vec2i(0, type*ckt->cellHeight));
 	}
 
 	for (int i = 0; i < (int)ckt->routes.size(); i++) {
