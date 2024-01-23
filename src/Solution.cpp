@@ -74,17 +74,15 @@ Pin::~Pin() {
 Wire::Wire() {
 	net = -1;
 	layer = -1;
-	height = 0;
 	left = -1;
 	right = -1;
 	inWeight = -1;
 	outWeight = -1;
 }
 
-Wire::Wire(int net, int layer, int height) {
+Wire::Wire(int net, int layer) {
 	this->net = net;
 	this->layer = layer;
-	this->height = height;
 	this->left = -1;
 	this->right = -1;
 	this->inWeight = -1;
@@ -290,8 +288,8 @@ void Solution::build(const Tech &tech) {
 	// Draw the pin contact
 	for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < (int)stack[type].size(); i++) {
-			stack[type][i].width = tech.hSize(this, Index(type, i));
-			stack[type][i].height = tech.vSize(this, Index(type, i));
+			stack[type][i].width = pinWidth(Index(type, i));
+			stack[type][i].height = pinHeight(Index(type, i));
 			drawPin(tech, stack[type][i].pinLayout, this, type, i);
 		}
 	}
@@ -320,8 +318,7 @@ void Solution::build(const Tech &tech) {
 	// Create initial routes
 	routes.reserve(base->nets.size());
 	for (int i = 0; i < (int)base->nets.size(); i++) {
-		routes.push_back(Wire(i, 2, 0));
-		routes.back().height = tech.vSize(this, routes.size()-1);
+		routes.push_back(Wire(i, 2));
 	}
 	for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < (int)stack[type].size(); i++) {
@@ -357,6 +354,44 @@ Pin &Solution::pin(Index i) {
 
 const Pin &Solution::pin(Index i) const {
 	return stack[i.type][i.pin];
+}
+
+// horizontal size of pin
+int Solution::pinWidth(Index p) const {
+	int device = pin(p).device;
+	if (device >= 0) {
+		// this pin is a transistor, use length of transistor
+		return base->mos[device].size[0];
+	}
+	// this pin is a contact
+	return 0;
+}
+
+// vertical size of pin
+int Solution::pinHeight(Index p) const {
+	int device = pin(p).device;
+	if (device >= 0) {
+		// this pin is a transistor, use width of transistor
+		return base->mos[device].size[1];
+	}
+	// this is a contact, height should be min of transistor widths on either side.
+	int result = -1;
+	if (p.pin > 0) {
+		int leftDevice = stack[p.type][p.pin-1].device;
+		if (leftDevice >= 0 and (result < 0 or base->mos[leftDevice].size[1] < result)) {
+			result = base->mos[leftDevice].size[1];
+		}
+	}
+	if (p.pin+1 < (int)stack[p.type].size()) {
+		int rightDevice = stack[p.type][p.pin+1].device;
+		if (rightDevice >= 0 and (result < 0 or base->mos[rightDevice].size[1] < result)) {
+			result = base->mos[rightDevice].size[1];
+		}
+	}
+	if (result < 0) {
+		return 0;
+	}
+	return result;
 }
 
 vector<int> Solution::next(int r) {
@@ -458,8 +493,8 @@ void Solution::breakRoute(int route, set<int> cycleRoutes) {
 	int right = max(stack[0].back().pos, stack[1].back().pos);
 	int center = (left + right)/2;
 
-	Wire wp(routes[route].net, routes[route].layer, routes[route].height);
-	Wire wn(routes[route].net, routes[route].layer, routes[route].height);
+	Wire wp(routes[route].net, routes[route].layer);
+	Wire wn(routes[route].net, routes[route].layer);
 	vector<int> count(routes[route].pins.size(), 0);
 	bool wpHasGate = false;
 	bool wnHasGate = false;
@@ -679,7 +714,6 @@ void Solution::breakRoute(int route, set<int> cycleRoutes) {
 	routes[route].net = wp.net;
 	routes[route].pins = wp.pins;
 	routes[route].layer = wp.layer;
-	routes[route].height = wp.height;
 	routes[route].left = wp.left;
 	routes[route].right = wp.right;
 	routes[route].inWeight = wp.inWeight;
@@ -861,14 +895,17 @@ void Solution::breakCycles(vector<vector<int> > cycles) {
 }
 
 void Solution::buildHorizontalConstraints(const Tech &tech) {
+	// Draw the routes
+	for (int i = 0; i < (int)routes.size(); i++) {
+		drawWire(tech, routes[i].layout, this, routes[i]);
+	}
+
 	// Compute horizontal constraints
 	for (int i = 0; i < (int)routes.size(); i++) {
 		for (int j = i+1; j < (int)routes.size(); j++) {
-			int spacingIJ = tech.hSpacing(this, i, j);
-			int spacingJI = tech.hSpacing(this, j, i);
-
-			if (routes[i].left < routes[j].right+spacingJI and routes[j].left < routes[i].right+spacingIJ) {
-				horiz.push_back(HorizontalConstraint(i, j, tech.vSpacing(this, i, j)));
+			int off;
+			if (minOffset(&off, tech, 1, routes[i].layout.layers, routes[j].layout.layers)) {
+				horiz.push_back(HorizontalConstraint(i, j, off));
 			}
 		}
 	}
@@ -941,7 +978,7 @@ void Solution::buildInWeights(const Tech &tech, vector<int> start, bool zero) {
 		
 		for (int i = 0; i < (int)vert.size(); i++) {
 			if (routes[curr].hasPin(this, Index(Model::PMOS, vert[i].from))) {
-				int weight = routes[curr].inWeight + routes[curr].height + vert[i].off;
+				int weight = routes[curr].inWeight + vert[i].off;
 				for (int j = 0; j < (int)routes.size(); j++) {
 					if (j != curr and routes[j].hasPin(this, Index(Model::NMOS, vert[i].to))) {
 						bool change = routes[j].prevNodes.insert(curr).second;
@@ -963,7 +1000,7 @@ void Solution::buildInWeights(const Tech &tech, vector<int> start, bool zero) {
 		}
 		for (int i = 0; i < (int)horiz.size(); i++) {
 			if (horiz[i].select >= 0 and curr == horiz[i].wires[horiz[i].select]) {
-				int weight = routes[curr].inWeight + routes[curr].height + horiz[i].off;
+				int weight = routes[curr].inWeight + horiz[i].off;
 				int out = horiz[i].wires[1-horiz[i].select];
 				bool change = routes[out].prevNodes.insert(curr).second;
 				for (auto prev = routes[curr].prevNodes.begin(); prev != routes[curr].prevNodes.end(); prev++) {
@@ -1009,7 +1046,7 @@ void Solution::buildOutWeights(const Tech &tech, vector<int> start, bool zero) {
 		
 		for (int i = 0; i < (int)vert.size(); i++) {
 			if (routes[curr].hasPin(this, Index(Model::NMOS, vert[i].to))) {
-				int weight = routes[curr].outWeight + routes[curr].height + vert[i].off;
+				int weight = routes[curr].outWeight + vert[i].off;
 				for (int j = 0; j < (int)routes.size(); j++) {
 					if (j != curr and routes[j].hasPin(this, Index(Model::PMOS, vert[i].from))) {
 						if (routes[j].outWeight < weight) {
@@ -1022,7 +1059,7 @@ void Solution::buildOutWeights(const Tech &tech, vector<int> start, bool zero) {
 		}
 		for (int i = 0; i < (int)horiz.size(); i++) {
 			if (horiz[i].select >= 0 and curr == horiz[i].wires[1-horiz[i].select]) {
-				int weight = routes[curr].outWeight + routes[curr].height + horiz[i].off;
+				int weight = routes[curr].outWeight + horiz[i].off;
 				int in = horiz[i].wires[horiz[i].select];
 				if (routes[in].outWeight < weight) {
 					routes[in].outWeight = weight;
@@ -1061,7 +1098,6 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 	//timer.reset();
 
 	buildOutWeights(tech, findBottom(), true);
-	// TODO(edward.bingham) elaborate horizontal constraints and compute distances
 
 	//printf("out %fms\n", timer.since()*1e3);
 	//timer.reset();
@@ -1141,7 +1177,7 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 
 	cellHeight = 0;
 	for (int i = 0; i < (int)routes.size(); i++) {
-		int weight = routes[i].inWeight + routes[i].height + routes[i].outWeight;
+		int weight = routes[i].inWeight + routes[i].outWeight;
 		if (weight > cellHeight) {
 			cellHeight = weight;
 		}

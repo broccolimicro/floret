@@ -62,7 +62,7 @@ struct Pin {
 // Represents a wire between two Devices
 struct Wire {
 	Wire();
-	Wire(int net, int layer=-1, int height=0);
+	Wire(int net, int layer=-1);
 	~Wire();
 
 	int net;
@@ -77,7 +77,6 @@ struct Wire {
 	//-------------------------------
 	Layout layout;
 	int layer;
-	int height;
 
 	int left;
 	int right;
@@ -165,6 +164,8 @@ struct Solution {
 
 	const Pin &pin(Index i) const;
 	Pin &pin(Index i);
+	int pinWidth(Index i) const;
+	int pinHeight(Index i) const;
 
 	// channel routing constraint graph
 	vector<VerticalConstraint> vert;
