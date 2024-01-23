@@ -133,10 +133,10 @@ HorizontalConstraint::HorizontalConstraint() {
 	off = 0;
 }
 
-HorizontalConstraint::HorizontalConstraint(int a, int b, int off) {
+HorizontalConstraint::HorizontalConstraint(int a, int b, int off, int select) {
 	this->wires[0] = a;
 	this->wires[1] = b;
-	this->select = -1;
+	this->select = select;
 	this->off = off;
 }
 
@@ -895,9 +895,30 @@ void Solution::breakCycles(vector<vector<int> > cycles) {
 }
 
 void Solution::buildHorizontalConstraints(const Tech &tech) {
+	// Draw the stacks
+	for (int type = 0; type < 2; type++) {
+		for (int i = 0; i < (int)stack[type].size(); i++) {
+			drawLayout(tech, stackLayout[type], stack[type][i].pinLayout, vec2i(stack[type][i].pos, 0));
+		}
+	}
+
 	// Draw the routes
 	for (int i = 0; i < (int)routes.size(); i++) {
 		drawWire(tech, routes[i].layout, this, routes[i]);
+	}
+
+	// Compute stack constraints
+	for (int i = 0; i < (int)routes.size(); i++) {
+		// PMOS stack to route
+		int off;
+		if (minOffset(&off, tech, 1, stackLayout[Model::PMOS].layers, routes[i].layout.layers)) {
+			horiz.push_back(HorizontalConstraint(PMOS_STACK, i, off, 0));
+		}
+
+		// Route to NMOS stack
+		if (minOffset(&off, tech, 1, routes[i].layout.layers, stackLayout[Model::NMOS].layers)) {
+			horiz.push_back(HorizontalConstraint(i, NMOS_STACK, off, 0));
+		}
 	}
 
 	// Compute horizontal constraints
@@ -913,6 +934,7 @@ void Solution::buildHorizontalConstraints(const Tech &tech) {
 
 // make sure the graph is acyclic before running this
 vector<int> Solution::findTop() {
+	return vector<int>(1, PMOS_STACK);
 	// set up initial tokens for evaluating vertical constraints
 	vector<int> tokens;
 	for (int i = 0; i < (int)routes.size(); i++) {
@@ -933,6 +955,7 @@ vector<int> Solution::findTop() {
 
 // make sure the graph is acyclic before running this
 vector<int> Solution::findBottom() {
+	return vector<int>(1, NMOS_STACK);
 	// set up initial tokens for evaluating vertical constraints
 	vector<int> tokens;
 	for (int i = 0; i < (int)routes.size(); i++) {
@@ -951,48 +974,39 @@ vector<int> Solution::findBottom() {
 	return tokens;
 }
 
-void Solution::buildInWeights(const Tech &tech, vector<int> start, bool zero) {
-	vector<int> tokens = start;
-	if (zero) {
-		for (int i = 0; i < (int)routes.size(); i++) {
-			routes[i].inWeight = 0;
-			routes[i].prevNodes.clear();
-		}
-		for (int i = 0; i < (int)routes.size(); i++) {
-			// push vias on poly away from transistor gates, but allow other vias to overlap the transistor stack
-			for (auto j = routes[i].pins.begin(); j != routes[i].pins.end(); j++) {
-				if (j->type == Model::PMOS) {
-					// this pin is a gate of a transistor
-					int weight = tech.vSpacing(this, *j, i);
-					if (routes[i].inWeight < weight) {
-						routes[i].inWeight = weight;
-					}
-				}
-			}
-		}
+void Solution::zeroWeights() {
+	for (int i = 0; i < (int)routes.size(); i++) {
+		routes[i].inWeight = 0;
+		routes[i].outWeight = 0;
+		routes[i].prevNodes.clear();
 	}
+}
 
+void Solution::buildInWeights(const Tech &tech, vector<int> start) {
+	vector<int> tokens = start;
 	while (tokens.size() > 0) {
 		int curr = tokens.back();
 		tokens.pop_back();
 		
-		for (int i = 0; i < (int)vert.size(); i++) {
-			if (routes[curr].hasPin(this, Index(Model::PMOS, vert[i].from))) {
-				int weight = routes[curr].inWeight + vert[i].off;
-				for (int j = 0; j < (int)routes.size(); j++) {
-					if (j != curr and routes[j].hasPin(this, Index(Model::NMOS, vert[i].to))) {
-						bool change = routes[j].prevNodes.insert(curr).second;
-						for (auto prev = routes[curr].prevNodes.begin(); prev != routes[curr].prevNodes.end(); prev++) {
-							change = change or routes[j].prevNodes.insert(*prev).second;
-						}
+		if (curr >= 0) {
+			for (int i = 0; i < (int)vert.size(); i++) {
+				if (routes[curr].hasPin(this, Index(Model::PMOS, vert[i].from))) {
+					int weight = routes[curr].inWeight + vert[i].off;
+					for (int j = 0; j < (int)routes.size(); j++) {
+						if (j != curr and routes[j].hasPin(this, Index(Model::NMOS, vert[i].to))) {
+							bool change = routes[j].prevNodes.insert(curr).second;
+							for (auto prev = routes[curr].prevNodes.begin(); prev != routes[curr].prevNodes.end(); prev++) {
+								change = change or routes[j].prevNodes.insert(*prev).second;
+							}
 
-						if (routes[j].inWeight < weight) {
-							routes[j].inWeight = weight;
-							change = true;
-						}
+							if (routes[j].inWeight < weight) {
+								routes[j].inWeight = weight;
+								change = true;
+							}
 
-						if (change) {
-							tokens.push_back(j);
+							if (change) {
+								tokens.push_back(j);
+							}
 						}
 					}
 				}
@@ -1000,13 +1014,25 @@ void Solution::buildInWeights(const Tech &tech, vector<int> start, bool zero) {
 		}
 		for (int i = 0; i < (int)horiz.size(); i++) {
 			if (horiz[i].select >= 0 and curr == horiz[i].wires[horiz[i].select]) {
-				int weight = routes[curr].inWeight + horiz[i].off;
+				int weight = (curr < 0 ? 0 : routes[curr].inWeight) + horiz[i].off;
 				int out = horiz[i].wires[1-horiz[i].select];
-				bool change = routes[out].prevNodes.insert(curr).second;
-				for (auto prev = routes[curr].prevNodes.begin(); prev != routes[curr].prevNodes.end(); prev++) {
-					change = change or routes[out].prevNodes.insert(*prev).second;
+				if (out < 0) {
+					if (cellHeight < weight) {
+						cellHeight = weight;
+					}
+					break;
 				}
 
+				// keep track of anscestor nodes
+				bool change = false;
+				if (curr >= 0) {
+					change = routes[out].prevNodes.insert(curr).second;
+					for (auto prev = routes[curr].prevNodes.begin(); prev != routes[curr].prevNodes.end(); prev++) {
+						change = change or routes[out].prevNodes.insert(*prev).second;
+					}
+				}
+
+				// keep track of weight
 				if (routes[out].inWeight < weight) {
 					routes[out].inWeight = weight;
 					change = true;
@@ -1020,38 +1046,22 @@ void Solution::buildInWeights(const Tech &tech, vector<int> start, bool zero) {
 	}
 }
 
-void Solution::buildOutWeights(const Tech &tech, vector<int> start, bool zero) {
+void Solution::buildOutWeights(const Tech &tech, vector<int> start) {
 	vector<int> tokens = start;
-	if (zero) {
-		for (int i = 0; i < (int)routes.size(); i++) {
-			routes[i].outWeight = 0;
-		}
-		for (int i = 0; i < (int)routes.size(); i++) {
-			// push vias on poly away from transistor gates, but allow other vias to overlap the transistor stack
-			for (auto j = routes[i].pins.begin(); j != routes[i].pins.end(); j++) {
-				if (j->type == Model::NMOS) {
-					// this pin is a gate of a transistor
-					int weight = tech.vSpacing(this, i, *j);
-					if (routes[i].outWeight < weight) {
-						routes[i].outWeight = weight;
-					}
-				}
-			}
-		}
-	}
-
 	while (tokens.size() > 0) {
 		int curr = tokens.back();
 		tokens.pop_back();
-		
-		for (int i = 0; i < (int)vert.size(); i++) {
-			if (routes[curr].hasPin(this, Index(Model::NMOS, vert[i].to))) {
-				int weight = routes[curr].outWeight + vert[i].off;
-				for (int j = 0; j < (int)routes.size(); j++) {
-					if (j != curr and routes[j].hasPin(this, Index(Model::PMOS, vert[i].from))) {
-						if (routes[j].outWeight < weight) {
-							routes[j].outWeight = weight;
-							tokens.push_back(j);
+	
+		if (curr >= 0) {	
+			for (int i = 0; i < (int)vert.size(); i++) {
+				if (routes[curr].hasPin(this, Index(Model::NMOS, vert[i].to))) {
+					int weight = routes[curr].outWeight + vert[i].off;
+					for (int j = 0; j < (int)routes.size(); j++) {
+						if (j != curr and routes[j].hasPin(this, Index(Model::PMOS, vert[i].from))) {
+							if (routes[j].outWeight < weight) {
+								routes[j].outWeight = weight;
+								tokens.push_back(j);
+							}
 						}
 					}
 				}
@@ -1059,9 +1069,9 @@ void Solution::buildOutWeights(const Tech &tech, vector<int> start, bool zero) {
 		}
 		for (int i = 0; i < (int)horiz.size(); i++) {
 			if (horiz[i].select >= 0 and curr == horiz[i].wires[1-horiz[i].select]) {
-				int weight = routes[curr].outWeight + horiz[i].off;
+				int weight = (curr < 0 ? 0 : routes[curr].outWeight) + horiz[i].off;
 				int in = horiz[i].wires[horiz[i].select];
-				if (routes[in].outWeight < weight) {
+				if (in >= 0 and routes[in].outWeight < weight) {
 					routes[in].outWeight = weight;
 					tokens.push_back(in);
 				}
@@ -1092,12 +1102,13 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 	//printf("horiz %fms\n", timer.since()*1e3);
 	//timer.reset();
 
-	buildInWeights(tech, findTop(), true);
+	zeroWeights();
+	buildInWeights(tech);
 
 	//printf("in %fms\n", timer.since()*1e3);
 	//timer.reset();
 
-	buildOutWeights(tech, findBottom(), true);
+	buildOutWeights(tech);
 
 	//printf("out %fms\n", timer.since()*1e3);
 	//timer.reset();
@@ -1116,12 +1127,12 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 		vector<int> inTokens, outTokens;
 		for (int u = (int)unassigned.size()-1; u >= 0; u--) {
 			int i = unassigned[u];
-			if (routes[horiz[i].wires[0]].prevNodes.find(horiz[i].wires[1]) != routes[horiz[i].wires[0]].prevNodes.end()) {
+			if (horiz[i].wires[0] >= 0 and routes[horiz[i].wires[0]].prevNodes.find(horiz[i].wires[1]) != routes[horiz[i].wires[0]].prevNodes.end()) {
 				horiz[i].select = 1;
 				inTokens.push_back(horiz[i].wires[1]);
 				outTokens.push_back(horiz[i].wires[0]);
 				unassigned.erase(unassigned.begin()+u);
-			} else if (routes[horiz[i].wires[1]].prevNodes.find(horiz[i].wires[0]) != routes[horiz[i].wires[1]].prevNodes.end()) {
+			} else if (horiz[i].wires[1] >= 0 and routes[horiz[i].wires[1]].prevNodes.find(horiz[i].wires[0]) != routes[horiz[i].wires[1]].prevNodes.end()) {
 				horiz[i].select = 0;
 				inTokens.push_back(horiz[i].wires[0]);
 				outTokens.push_back(horiz[i].wires[1]);

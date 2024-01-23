@@ -105,7 +105,7 @@ struct VerticalConstraint {
 
 struct HorizontalConstraint {
 	HorizontalConstraint();
-	HorizontalConstraint(int a, int b, int off=0);
+	HorizontalConstraint(int a, int b, int off=0, int select=-1);
 	~HorizontalConstraint();
 
 	// index into Solution::wires
@@ -161,6 +161,11 @@ struct Solution {
 	// stack is indexed by transistor type: Model::NMOS, Model::PMOS
 	vector<Pin> stack[2];
 	vector<Wire> routes;
+	enum {
+		PMOS_STACK=-1,
+		NMOS_STACK=-2,
+	};
+	Layout stackLayout[2];
 
 	const Pin &pin(Index i) const;
 	Pin &pin(Index i);
@@ -179,8 +184,9 @@ struct Solution {
 	void buildHorizontalConstraints(const Tech &tech);
 	vector<int> findTop();
 	vector<int> findBottom();
-	void buildInWeights(const Tech &tech, vector<int> start, bool zero=false);
-	void buildOutWeights(const Tech &tech, vector<int> start, bool zero=false);
+	void zeroWeights();
+	void buildInWeights(const Tech &tech, vector<int> start=vector<int>(1, PMOS_STACK));
+	void buildOutWeights(const Tech &tech, vector<int> start=vector<int>(1, NMOS_STACK));
 
 	int cycleCount;
 	int cellHeight;

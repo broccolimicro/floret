@@ -164,35 +164,6 @@ void drawPin(const Tech &tech, Layout &dst, const Solution *ckt, int type, int p
 	}
 }
 
-void drawCell(const Tech &tech, Layout &dst, const Solution *ckt) {
-	dst.name = ckt->base->name;
-
-	dst.nets.reserve(ckt->base->nets.size());
-	for (int i = 0; i < (int)ckt->base->nets.size(); i++) {
-		dst.nets.push_back(ckt->base->nets[i].name);
-	}
-
-	for (int type = 0; type < 2; type++) {
-		for (int i = 0; i < (int)ckt->stack[type].size(); i++) {
-			vec2i pos(0, 0);
-			vec2i dir(1,-1);
-			if (type == Model::NMOS) {
-				pos[1] = -ckt->cellHeight + ckt->stack[type][i].height;
-			}
-
-			drawPin(tech, dst, ckt, type, i, pos, dir);
-		}
-	}
-
-	vec2i pos(0,0);
-	vec2i dir(1,-1);
-	for (int i = 0; i < (int)ckt->routes.size(); i++) {
-		drawWire(tech, dst, ckt, ckt->routes[i], pos, dir);
-	}
-
-	dst.merge();
-}
-
 void drawLayout(const Tech &tech, Layout &dst, const Layout &src, vec2i pos, vec2i dir) {
 	dst.updateBox(src.box.ll, src.box.ur);
 	for (auto layer = src.layers.begin(); layer != src.layers.end(); layer++) {
@@ -203,3 +174,21 @@ void drawLayout(const Tech &tech, Layout &dst, const Layout &src, vec2i pos, vec
 	}
 }
 
+void drawCell(const Tech &tech, Layout &dst, const Solution *ckt) {
+	dst.name = ckt->base->name;
+
+	dst.nets.reserve(ckt->base->nets.size());
+	for (int i = 0; i < (int)ckt->base->nets.size(); i++) {
+		dst.nets.push_back(ckt->base->nets[i].name);
+	}
+
+	for (int type = 0; type < 2; type++) {
+		drawLayout(tech, dst, ckt->stackLayout[type]);
+	}
+
+	for (int i = 0; i < (int)ckt->routes.size(); i++) {
+		drawLayout(tech, dst, ckt->routes[i].layout);
+	}
+
+	dst.merge();
+}
