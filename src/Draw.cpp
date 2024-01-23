@@ -144,6 +144,24 @@ void drawWire(const Tech &tech, Layout &dst, const Solution *ckt, const Wire &wi
 	}
 }
 
+void drawPin(const Tech &tech, Layout &dst, const Solution *ckt, int type, int pinID, vec2i pos, vec2i dir) {
+	pos[0] += ckt->stack[type][pinID].pos;
+	if (ckt->stack[type][pinID].device < 0) {
+		int model = -1;
+		if (pinID-1 >= 0 and ckt->stack[type][pinID-1].device >= 0) {
+			model = ckt->base->mos[ckt->stack[type][pinID-1].device].model;
+		} else if (pinID+1 < (int)ckt->stack[type].size() and ckt->stack[type][pinID+1].device >= 0) {
+			model = ckt->base->mos[ckt->stack[type][pinID+1].device].model;
+		}
+
+		if (model >= 0) {
+			drawVia(tech, dst, ckt->stack[type][pinID].outNet, -model-1, 1, vec2i(ckt->stack[type][pinID].width, ckt->stack[type][pinID].height), pos, dir);
+		}
+	} else {
+		drawTransistor(tech, dst, ckt->base->mos[ckt->stack[type][pinID].device], pos, dir);
+	}
+}
+
 void drawCell(const Tech &tech, Layout &dst, const Solution *ckt) {
 	dst.name = ckt->base->name;
 
@@ -153,28 +171,14 @@ void drawCell(const Tech &tech, Layout &dst, const Solution *ckt) {
 	}
 
 	for (int type = 0; type < 2; type++) {
-		for (auto pin = ckt->stack[type].begin(); pin != ckt->stack[type].end(); pin++) {
-			vec2i pos(pin->pos, 0);
+		for (int i = 0; i < (int)ckt->stack[type].size(); i++) {
+			vec2i pos(0, 0);
 			vec2i dir(1,-1);
 			if (type == Model::NMOS) {
-				pos[1] = -ckt->cellHeight + pin->height;
+				pos[1] = -ckt->cellHeight + ckt->stack[type][i].height;
 			}
 
-			if (pin->device < 0) {
-				int model = -1;
-				int i = pin-ckt->stack[type].begin();
-				if (i-1 >= 0 and ckt->stack[type][i-1].device >= 0) {
-					model = ckt->base->mos[ckt->stack[type][i-1].device].model;
-				} else if (i+1 < (int)ckt->stack[type].size() and ckt->stack[type][i+1].device >= 0) {
-					model = ckt->base->mos[ckt->stack[type][i+1].device].model;
-				}
-
-				if (model >= 0) {
-					drawVia(tech, dst, pin->outNet, -model-1, 1, vec2i(pin->width, pin->height), pos, dir);
-				}
-			} else {
-				drawTransistor(tech, dst, ckt->base->mos[pin->device], pos, dir);
-			}
+			drawPin(tech, dst, ckt, type, i, pos, dir);
 		}
 	}
 

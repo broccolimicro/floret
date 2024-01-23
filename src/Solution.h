@@ -50,7 +50,8 @@ struct Pin {
 	//-------------------------------
 	// Layout Information
 	//-------------------------------
-	Layout layout;
+	Layout pinLayout;
+	Layout conLayout;
 	int layer;
 	int width;
 	int height;

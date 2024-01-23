@@ -5,6 +5,7 @@
 
 #include "Solution.h"
 #include "Timer.h"
+#include "Draw.h"
 
 Index::Index() {
 	type = -1;
@@ -286,19 +287,33 @@ void Solution::delRoute(int route) {
 }
 
 void Solution::build(const Tech &tech) {
+	// Draw the pin contact
+	for (int type = 0; type < 2; type++) {
+		for (int i = 0; i < (int)stack[type].size(); i++) {
+			stack[type][i].width = tech.hSize(this, Index(type, i));
+			stack[type][i].height = tech.vSize(this, Index(type, i));
+			drawPin(tech, stack[type][i].pinLayout, this, type, i);
+		}
+	}
+
 	// Determine location of each pin
 	for (int type = 0; type < 2; type++) {
 		int pos = 0;
 		for (int i = 0; i < (int)stack[type].size(); i++) {
-			stack[type][i].width = tech.hSize(this, Index(type, i));
-			stack[type][i].height = tech.vSize(this, Index(type, i));
 			stack[type][i].off = 0;
 			if (i > 0) {
-				stack[type][i].off = tech.hSpacing(this, Index(type, i-1), Index(type, i));
+				minOffset(&stack[type][i].off, tech, 0, stack[type][i-1].pinLayout.layers, stack[type][i].pinLayout.layers);
 			}
 
 			stack[type][i].pos = pos + stack[type][i].off;
-			pos = stack[type][i].pos + stack[type][i].width; 
+			pos = stack[type][i].pos; 
+		}
+	}
+
+	// draw the pin via
+	for (int type = 0; type < 2; type++) {
+		for (int i = 0; i < (int)stack[type].size(); i++) {
+			drawVia(tech, stack[type][i].conLayout, stack[type][i].outNet, stack[type][i].layer, 2, vec2i(stack[type][i].pos, 0), vec2i(1, -1));
 		}
 	}
 
@@ -317,20 +332,13 @@ void Solution::build(const Tech &tech) {
 	// Compute the vertical constraints
 	// TODO(edward.bingham) this could be more efficiently done as a 1d rectangle overlap problem
 	for (int p = 0; p < (int)stack[Model::PMOS].size(); p++) {
-		int pLeft = stack[Model::PMOS][p].pos;
-		int pRight = pLeft + stack[Model::PMOS][p].width;
-		int pNet = stack[Model::PMOS][p].outNet;
-
-		if (routes[pNet].pins.size() > 1) {
+		if (routes[stack[Model::PMOS][p].outNet].pins.size() > 1) {
 			for (int n = 0; n < (int)stack[Model::NMOS].size(); n++) {
-				int nLeft = stack[Model::NMOS][n].pos;
-				int nRight = nLeft + stack[Model::NMOS][n].width;
-				int nNet = stack[Model::NMOS][n].outNet;
-
-				int spacing = tech.mats[tech.wires[0].drawing].minSpacing;
-
-				if (pNet != nNet and pLeft < nRight+spacing and nLeft < pRight+spacing and routes[nNet].pins.size() > 1) {
-					vert.push_back(VerticalConstraint(p, n, tech.vSpacing(this, Index(Model::PMOS, p), Index(Model::NMOS, n))));
+				if (routes[stack[Model::NMOS][n].outNet].pins.size() > 1) {
+					int off;
+					if (minOffset(&off, tech, 1, stack[Model::PMOS][p].conLayout.layers, stack[Model::NMOS][n].conLayout.layers)) {
+						vert.push_back(VerticalConstraint(p, n, off));
+					}
 				}
 			}
 		}
