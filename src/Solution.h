@@ -197,4 +197,5 @@ struct Solution {
 
 	// Print the solution description
 	void print();
+	void draw(Layout &dst); 
 };

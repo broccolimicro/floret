@@ -297,14 +297,16 @@ void Solution::build(const Tech &tech) {
 	// Determine location of each pin
 	for (int type = 0; type < 2; type++) {
 		int pos = 0;
+		printf("%s\n", type == Model::NMOS ? "NMOS" : "PMOS");
 		for (int i = 0; i < (int)stack[type].size(); i++) {
 			stack[type][i].off = 0;
 			if (i > 0) {
 				minOffset(&stack[type][i].off, tech, 0, stack[type][i-1].pinLayout.layers, stack[type][i].pinLayout.layers);
 			}
 
-			stack[type][i].pos = pos + stack[type][i].off;
-			pos = stack[type][i].pos; 
+			pos += stack[type][i].off;
+			stack[type][i].pos = pos;
+			printf("%s %d %d %d\n", base->nets[stack[type][i].outNet].name.c_str(), stack[type][i].device, stack[type][i].off, stack[type][i].pos);
 		}
 	}
 
@@ -898,7 +900,7 @@ void Solution::buildHorizontalConstraints(const Tech &tech) {
 	// Draw the stacks
 	for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < (int)stack[type].size(); i++) {
-			drawLayout(tech, stackLayout[type], stack[type][i].pinLayout, vec2i(stack[type][i].pos, 0));
+			drawLayout(stackLayout[type], stack[type][i].pinLayout, vec2i(stack[type][i].pos, 0));
 		}
 	}
 
@@ -1207,6 +1209,8 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 
 	cost = (right-left)*cellHeight;
 	//printf("%d * %d = %d\n", (right-left), cellHeight, cost);
+
+	printf("cost: %d\n", cost);
 	
 	if (maxCost > 0 and cost >= maxCost)
 		return false;
@@ -1243,4 +1247,23 @@ void Solution::print() {
 	}
 
 	printf("\n");
+}
+
+void Solution::draw(Layout &dst) {
+	dst.name = base->name;
+
+	dst.nets.reserve(base->nets.size());
+	for (int i = 0; i < (int)base->nets.size(); i++) {
+		dst.nets.push_back(base->nets[i].name);
+	}
+
+	for (int type = 0; type < 2; type++) {
+		drawLayout(dst, stackLayout[type], vec2i(0, type*cellHeight));
+	}
+
+	for (int i = 0; i < (int)routes.size(); i++) {
+		drawLayout(dst, routes[i].layout);
+	}
+
+	dst.merge();
 }

@@ -10,6 +10,7 @@ void drawTransistor(const Tech &tech, Layout &dst, const Mos &mos, bool flip, ve
 	// draw poly
 	vec2i polyOverhang = vec2i(0, tech.models[mos.model].polyOverhang)*dir;
 	dst.updateBox(ll - polyOverhang, ur + polyOverhang);
+	printf("draw poly %d\n", tech.wires[0].drawing);
 	dst.push(tech.wires[0].drawing, Rect(mos.ports[Mos::GATE], ll - polyOverhang, ur + polyOverhang));
 
 	// draw diffusion
@@ -22,11 +23,11 @@ void drawTransistor(const Tech &tech, Layout &dst, const Mos &mos, bool flip, ve
 		bool isDiffusion = layer == tech.models[mos.model].mats.begin();
 		if (isDiffusion) {
 			dst.updateBox(ll, ur);
-			dst.push(layer->layer, Rect(mos.ports[flip ? Mos::DRAIN : Mos::SOURCE], ll, um));
-			dst.push(layer->layer, Rect(mos.ports[flip ? Mos::SOURCE : Mos::DRAIN], lm, ur));
-		} else {
+			//dst.push(layer->layer, Rect(mos.ports[flip ? Mos::DRAIN : Mos::SOURCE], ll, um));
+			//dst.push(layer->layer, Rect(mos.ports[flip ? Mos::SOURCE : Mos::DRAIN], lm, ur));
+		} //else {
 			dst.push(layer->layer, Rect(-1, ll, ur));
-		}
+		//}
 	}
 }
 
@@ -40,7 +41,7 @@ void drawVia(const Tech &tech, Layout &dst, int net, int downLevel, int upLevel,
 
 		// spacing and width of a via
 		int viaWidth = tech.mats[viaLayer].minWidth;
-		int viaSpacing = tech.mats[viaLayer].minSpacing;
+		int viaSpacing = tech.findSpacing(viaLayer, viaLayer);
 
 		// enclosure rules
 		vec2i dn(tech.vias[vias[i]].downLo, tech.vias[vias[i]].downHi);
@@ -78,7 +79,7 @@ void drawVia(const Tech &tech, Layout &dst, int net, int downLevel, int upLevel,
 		if (downLevel >= 0) {
 			// routing level
 			dst.updateBox(ll, ur);
-			dst.push(tech.wires[downLevel].drawing, Rect(-1, ll, ur));
+			dst.push(tech.wires[downLevel].drawing, Rect(net, ll, ur));
 		} else {
 			// diffusion level
 			int model = -downLevel-1;
@@ -91,8 +92,10 @@ void drawVia(const Tech &tech, Layout &dst, int net, int downLevel, int upLevel,
 				}
 				if (i == 0) {
 					dst.updateBox(ll, ur);
-				}
-				dst.push(tech.models[model].mats[i].layer, Rect(-1, ll, ur));
+					//dst.push(tech.models[model].mats[i].layer, Rect(net, ll, ur));
+				} //else {
+					dst.push(tech.models[model].mats[i].layer, Rect(-1, ll, ur));
+				//}
 			}
 		}
 
@@ -101,7 +104,7 @@ void drawVia(const Tech &tech, Layout &dst, int net, int downLevel, int upLevel,
 		int step = viaWidth+viaSpacing;
 		for (idx[0] = 0; idx[0] < num[0]; idx[0]++) {
 			for (idx[1] = 0; idx[1] < num[1]; idx[1]++) {
-				dst.push(viaLayer, Rect(-1, pos+(off+idx*step)*dir, pos+(off+idx*step+viaWidth)*dir));
+				dst.push(viaLayer, Rect(net, pos+(off+idx*step)*dir, pos+(off+idx*step+viaWidth)*dir));
 			}
 		}
 
@@ -111,7 +114,7 @@ void drawVia(const Tech &tech, Layout &dst, int net, int downLevel, int upLevel,
 		if (upLevel >= 0) {
 			// routing level
 			dst.updateBox(ll, ur);
-			dst.push(tech.wires[upLevel].drawing, Rect(-1, ll, ur));
+			dst.push(tech.wires[upLevel].drawing, Rect(net, ll, ur));
 		} else {
 			// diffusion level
 			int model = -upLevel-1;
@@ -124,8 +127,10 @@ void drawVia(const Tech &tech, Layout &dst, int net, int downLevel, int upLevel,
 				}
 				if (i == 0) {
 					dst.updateBox(ll, ur);
-				}
-				dst.push(tech.models[model].mats[i].layer, Rect(-1, ll, ur));
+					//dst.push(tech.models[model].mats[i].layer, Rect(net, ll, ur));
+				} //else {
+					dst.push(tech.models[model].mats[i].layer, Rect(-1, ll, ur));
+				//}
 			}
 		}
 	}
@@ -173,7 +178,7 @@ void drawPin(const Tech &tech, Layout &dst, const Solution *ckt, int type, int p
 	}
 }
 
-void drawLayout(const Tech &tech, Layout &dst, const Layout &src, vec2i pos, vec2i dir) {
+void drawLayout(Layout &dst, const Layout &src, vec2i pos, vec2i dir) {
 	dst.updateBox(src.box.ll, src.box.ur);
 	for (auto layer = src.layers.begin(); layer != src.layers.end(); layer++) {
 		auto dstLayer = dst.findLayer(layer->draw);
@@ -183,21 +188,3 @@ void drawLayout(const Tech &tech, Layout &dst, const Layout &src, vec2i pos, vec
 	}
 }
 
-void drawCell(const Tech &tech, Layout &dst, const Solution *ckt) {
-	dst.name = ckt->base->name;
-
-	dst.nets.reserve(ckt->base->nets.size());
-	for (int i = 0; i < (int)ckt->base->nets.size(); i++) {
-		dst.nets.push_back(ckt->base->nets[i].name);
-	}
-
-	for (int type = 0; type < 2; type++) {
-		drawLayout(tech, dst, ckt->stackLayout[type], vec2i(0, type*ckt->cellHeight));
-	}
-
-	for (int i = 0; i < (int)ckt->routes.size(); i++) {
-		drawLayout(tech, dst, ckt->routes[i].layout);
-	}
-
-	dst.merge();
-}
