@@ -137,8 +137,10 @@ void drawVia(const Tech &tech, Layout &dst, int net, int downLevel, int upLevel,
 }
 
 void drawWire(const Tech &tech, Layout &dst, const Solution *ckt, const Wire &wire, vec2i pos, vec2i dir) {
-	vec2i ll = pos+vec2i(wire.left,wire.inWeight)*dir;
-	vec2i ur = pos+vec2i(wire.right,wire.inWeight)*dir;
+	int width = tech.mats[tech.wires[wire.layer].drawing].minWidth;
+
+	vec2i ll = pos+vec2i(wire.left,0)*dir;
+	vec2i ur = pos+vec2i(wire.right,width)*dir;
 
 	dst.updateBox(ll, ur);
 	dst.push(tech.wires[wire.layer].drawing, Rect(wire.net, ll, ur));
@@ -156,7 +158,7 @@ void drawWire(const Tech &tech, Layout &dst, const Solution *ckt, const Wire &wi
 		// TODO(edward.bingham) check to see if this is actually needed
 		int wireHeight = 0;
 		drawVia(tech, dst, wire.net, level, 2, vec2i(0, wireHeight), vec2i(pp[0], ll[1]), dir);
-		dst.push(tech.wires[level].drawing, Rect(wire.net, vec2i(pp[0], ll[1]+(wireHeight/2)*dir[1]), pp+ps*dir));
+		//dst.push(tech.wires[level].drawing, Rect(wire.net, vec2i(pp[0], ll[1]+(wireHeight/2)*dir[1]), pp+ps*dir));
 	}
 }
 

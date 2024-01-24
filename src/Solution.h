@@ -81,18 +81,18 @@ struct Wire {
 	int left;
 	int right;
 
-	int inWeight;
-	int outWeight;
+	int pOffset;
+	int nOffset;
 	unordered_set<int> prevNodes;
 
 	void addPin(const Solution *s, Index pin);
 	bool hasPin(const Solution *s, Index pin, vector<Index>::iterator *out = nullptr);
 };
 
-struct VerticalConstraint {
-	VerticalConstraint();
-	VerticalConstraint(int from, int to, int off=0);
-	~VerticalConstraint();
+struct PinConstraint {
+	PinConstraint();
+	PinConstraint(int from, int to, int off=0);
+	~PinConstraint();
 
 	int from; // index into Solution::stack[Model::PMOS]
 	int to;   // index into Solution::stack[Model::NMOS]
@@ -103,10 +103,10 @@ struct VerticalConstraint {
 	int off;
 };
 
-struct HorizontalConstraint {
-	HorizontalConstraint();
-	HorizontalConstraint(int a, int b, int off=0, int select=-1);
-	~HorizontalConstraint();
+struct RouteConstraint {
+	RouteConstraint();
+	RouteConstraint(int a, int b, int off=0, int select=-1);
+	~RouteConstraint();
 
 	// index into Solution::wires
 	int wires[2];
@@ -173,20 +173,20 @@ struct Solution {
 	int pinHeight(Index i) const;
 
 	// channel routing constraint graph
-	vector<VerticalConstraint> vert;
-	vector<HorizontalConstraint> horiz;
+	vector<PinConstraint> vert;
+	vector<RouteConstraint> horiz;
 
 	vector<int> next(int r);
 
 	bool findCycles(vector<vector<int> > &cycles, int maxCycles = -1);
 	void breakRoute(int route, set<int> cycleRoutes);
 	void breakCycles(vector<vector<int> > cycles);
-	void buildHorizontalConstraints(const Tech &tech);
+	void buildRouteConstraints(const Tech &tech);
 	vector<int> findTop();
 	vector<int> findBottom();
 	void zeroWeights();
-	void buildInWeights(const Tech &tech, vector<int> start=vector<int>(1, PMOS_STACK));
-	void buildOutWeights(const Tech &tech, vector<int> start=vector<int>(1, NMOS_STACK));
+	void buildPOffsets(const Tech &tech, vector<int> start=vector<int>(1, PMOS_STACK));
+	void buildNOffsets(const Tech &tech, vector<int> start=vector<int>(1, NMOS_STACK));
 
 	int cycleCount;
 	int cellHeight;
