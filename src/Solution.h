@@ -161,6 +161,9 @@ struct Solution {
 	// stack is indexed by transistor type: Model::NMOS, Model::PMOS
 	vector<Pin> stack[2];
 	vector<Wire> routes;
+	// Route pairs that need to be connected via A*
+	// index into Solution::routes
+	vector<pair<int, int> > aStar;
 	enum {
 		PMOS_STACK=-1,
 		NMOS_STACK=-2,
