@@ -76,8 +76,8 @@ Wire::Wire() {
 	layer = -1;
 	left = -1;
 	right = -1;
-	pOffset = -1;
-	nOffset = -1;
+	pOffset = 0;
+	nOffset = 0;
 }
 
 Wire::Wire(int net, int layer) {
@@ -85,8 +85,8 @@ Wire::Wire(int net, int layer) {
 	this->layer = layer;
 	this->left = -1;
 	this->right = -1;
-	this->pOffset = -1;
-	this->nOffset = -1;
+	this->pOffset = 0;
+	this->nOffset = 0;
 }
 
 Wire::~Wire() {
@@ -130,14 +130,16 @@ RouteConstraint::RouteConstraint() {
 	wires[0] = -1;
 	wires[1] = -1;
 	select = -1;
-	off = 0;
+	off[0] = 0;
+	off[1] = 0;
 }
 
-RouteConstraint::RouteConstraint(int a, int b, int off, int select) {
+RouteConstraint::RouteConstraint(int a, int b, int off0, int off1, int select) {
 	this->wires[0] = a;
 	this->wires[1] = b;
 	this->select = select;
-	this->off = off;
+	this->off[0] = off0;
+	this->off[1] = off1;
 }
 
 RouteConstraint::~RouteConstraint() {
@@ -306,11 +308,9 @@ void Solution::build(const Tech &tech) {
 		}
 	}
 
-	printf("Determine Pin Location\n");
 	// Determine location of each pin
 	for (int type = 0; type < 2; type++) {
 		int pos = 0;
-		printf("%s\n", type == Model::NMOS ? "NMOS" : "PMOS");
 		for (int i = 0; i < (int)stack[type].size(); i++) {
 			stack[type][i].off = 0;
 			if (i > 0) {
@@ -319,11 +319,9 @@ void Solution::build(const Tech &tech) {
 
 			pos += stack[type][i].off;
 			stack[type][i].pos = pos;
-			printf("%s %d %d %d\n", base->nets[stack[type][i].outNet].name.c_str(), stack[type][i].device, stack[type][i].off, stack[type][i].pos);
 		}
 	}
 
-	printf("Draw Pin Via\n");
 	// draw the pin via
 	for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < (int)stack[type].size(); i++) {
@@ -331,7 +329,6 @@ void Solution::build(const Tech &tech) {
 		}
 	}
 
-	printf("Creating Initial Routes\n");
 	// Create initial routes
 	routes.reserve(base->nets.size());
 	for (int i = 0; i < (int)base->nets.size(); i++) {
@@ -343,7 +340,6 @@ void Solution::build(const Tech &tech) {
 		}
 	}
 
-	printf("Creating Pin Constraints\n");
 	// Compute the pin constraints
 	// TODO(edward.bingham) this could be more efficiently done as a 1d rectangle overlap problem
 	for (int p = 0; p < (int)stack[Model::PMOS].size(); p++) {
@@ -365,32 +361,30 @@ void Solution::build(const Tech &tech) {
 		}
 	}
 
-	printf("Drawing Stacks\n");
 	// Draw the stacks
 	for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < (int)stack[type].size(); i++) {
-			drawLayout(stackLayout[type], stack[type][i].pinLayout, vec2i(stack[type][i].pos, 0));
+			drawLayout(stackLayout[type], stack[type][i].pinLayout, vec2i(stack[type][i].pos, 0), vec2i(1, type == Model::NMOS ? -1 : 1));
 		}
 	}
 
-	printf("Drawing Routes\n");
 	// Draw the routes
 	for (int i = 0; i < (int)routes.size(); i++) {
 		drawWire(tech, routes[i].layout, this, routes[i]);
 	}
 
-	printf("Creating stack constraints\n");
 	// Compute stack constraints
 	for (int i = 0; i < (int)routes.size(); i++) {
 		// PMOS stack to route
 		int off = 0;
 		if (minOffset(&off, tech, 1, stackLayout[Model::PMOS].layers, routes[i].layout.layers)) {
-			horiz.push_back(RouteConstraint(PMOS_STACK, i, off, 0));
+			horiz.push_back(RouteConstraint(PMOS_STACK, i, off, 0, 0));
 		}
 
 		// Route to NMOS stack
+		off = 0;
 		if (minOffset(&off, tech, 1, routes[i].layout.layers, stackLayout[Model::NMOS].layers)) {
-			horiz.push_back(RouteConstraint(i, NMOS_STACK, off, 0));
+			horiz.push_back(RouteConstraint(i, NMOS_STACK, off, 0, 0));
 		}
 	}
 }
@@ -945,9 +939,11 @@ void Solution::buildRouteConstraints(const Tech &tech) {
 	// Compute route constraints
 	for (int i = 0; i < (int)routes.size(); i++) {
 		for (int j = i+1; j < (int)routes.size(); j++) {
-			int off = 0;
-			if (minOffset(&off, tech, 1, routes[i].layout.layers, routes[j].layout.layers)) {
-				horiz.push_back(RouteConstraint(i, j, off));
+			int off[2] = {0,0};
+			bool fromto = minOffset(off+0, tech, 1, routes[i].layout.layers, routes[j].layout.layers);
+			bool tofrom = minOffset(off+1, tech, 1, routes[j].layout.layers, routes[i].layout.layers);
+			if (fromto or tofrom) {
+				horiz.push_back(RouteConstraint(i, j, off[0], off[1]));
 			}
 		}
 	}
@@ -1017,7 +1013,8 @@ void Solution::buildPOffsets(const Tech &tech, vector<int> start) {
 						if (j != curr and routes[j].hasPin(this, Index(Model::NMOS, vert[i].to))) {
 							bool change = routes[j].prevNodes.insert(curr).second;
 							for (auto prev = routes[curr].prevNodes.begin(); prev != routes[curr].prevNodes.end(); prev++) {
-								change = change or routes[j].prevNodes.insert(*prev).second;
+								bool inserted = routes[j].prevNodes.insert(*prev).second;
+								change = change or inserted;
 							}
 
 							if (routes[j].pOffset < weight) {
@@ -1035,16 +1032,17 @@ void Solution::buildPOffsets(const Tech &tech, vector<int> start) {
 		}
 		for (int i = 0; i < (int)horiz.size(); i++) {
 			if (horiz[i].select >= 0 and curr == horiz[i].wires[horiz[i].select]) {
-				int weight = (curr < 0 ? 0 : routes[curr].pOffset) + horiz[i].off;
+				int weight = (curr < 0 ? 0 : routes[curr].pOffset) + horiz[i].off[horiz[i].select];
 				int out = horiz[i].wires[1-horiz[i].select];
 				if (out == NMOS_STACK) {
 					if (cellHeight < weight) {
 						cellHeight = weight;
 					}
-					break;
+					continue;
 				} else if (out < 0) {
-					printf("out should never be PMOS_STACK");
-					break;
+					printf("i=%d, sel=%d from=%d to=%d\n", i, horiz[i].select, horiz[i].wires[horiz[i].select], horiz[i].wires[1-horiz[i].select]);
+					printf("out should never be PMOS_STACK %d==%d\n", out, PMOS_STACK);
+					continue;
 				}
 
 				// keep track of anscestor nodes
@@ -1052,7 +1050,8 @@ void Solution::buildPOffsets(const Tech &tech, vector<int> start) {
 				if (curr >= 0) {
 					change = routes[out].prevNodes.insert(curr).second;
 					for (auto prev = routes[curr].prevNodes.begin(); prev != routes[curr].prevNodes.end(); prev++) {
-						change = change or routes[out].prevNodes.insert(*prev).second;
+						bool inserted = routes[out].prevNodes.insert(*prev).second;
+						change = change or inserted;
 					}
 				}
 
@@ -1093,7 +1092,7 @@ void Solution::buildNOffsets(const Tech &tech, vector<int> start) {
 		}
 		for (int i = 0; i < (int)horiz.size(); i++) {
 			if (horiz[i].select >= 0 and curr == horiz[i].wires[1-horiz[i].select]) {
-				int weight = (curr < 0 ? 0 : routes[curr].nOffset) + horiz[i].off;
+				int weight = (curr < 0 ? 0 : routes[curr].nOffset) + horiz[i].off[horiz[i].select];
 				int in = horiz[i].wires[horiz[i].select];
 				if (in >= 0 and routes[in].nOffset < weight) {
 					routes[in].nOffset = weight;
@@ -1106,8 +1105,6 @@ void Solution::buildNOffsets(const Tech &tech, vector<int> start) {
 
 bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 	//Timer timer;
-
-	print();
 
 	vector<vector<int> > cycles;
 	if (not findCycles(cycles, maxCycles)) {
@@ -1142,7 +1139,9 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 	vector<int> unassigned;
 	unassigned.reserve(horiz.size());
 	for (int i = 0; i < (int)horiz.size(); i++) {
-		unassigned.push_back(i);
+		if (horiz[i].select < 0) {
+			unassigned.push_back(i);
+		}
 	}
 
 	//printf("setup %fms\n", timer.since()*1e3);
@@ -1178,9 +1177,9 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 		for (int u = (int)unassigned.size()-1; u >= 0; u--) {
 			int i = unassigned[u];
 			int label = max(
-				routes[horiz[i].wires[0]].pOffset + routes[horiz[i].wires[1]].nOffset, 
-				routes[horiz[i].wires[1]].pOffset + routes[horiz[i].wires[0]].nOffset
-			) + horiz[i].off;
+				routes[horiz[i].wires[0]].pOffset + routes[horiz[i].wires[1]].nOffset + horiz[i].off[0], 
+				routes[horiz[i].wires[1]].pOffset + routes[horiz[i].wires[0]].nOffset + horiz[i].off[1]
+			);
 
 			if (label > maxLabel) {
 				maxLabel = label;
@@ -1190,8 +1189,8 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 		}
 
 		if (index >= 0) {
-			int label0 = routes[horiz[index].wires[0]].pOffset + routes[horiz[index].wires[1]].nOffset;
-			int label1 = routes[horiz[index].wires[1]].pOffset + routes[horiz[index].wires[0]].nOffset;
+			int label0 = routes[horiz[index].wires[0]].pOffset + routes[horiz[index].wires[1]].nOffset + horiz[index].off[0];
+			int label1 = routes[horiz[index].wires[1]].pOffset + routes[horiz[index].wires[0]].nOffset + horiz[index].off[1];
 
 			if (label0 < label1) {
 				horiz[index].select = 0;
@@ -1234,8 +1233,6 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 	cost = (right-left)*cellHeight;
 	//printf("%d * %d = %d\n", (right-left), cellHeight, cost);
 
-	printf("cost: %d\n", cost);
-	
 	if (maxCost > 0 and cost >= maxCost)
 		return false;
 
@@ -1267,14 +1264,14 @@ void Solution::print() {
 		printf("vert %d -> %d: %d\n", vert[i].from, vert[i].to, vert[i].off);
 	}
 	for (int i = 0; i < (int)horiz.size(); i++) {
-		printf("horiz %d %s %d: %d\n", horiz[i].wires[0], (horiz[i].select == 0 ? "->" : (horiz[i].select == 1 ? "<-" : "--")), horiz[i].wires[1], horiz[i].off);
+		printf("horiz %d %s %d: %d,%d\n", horiz[i].wires[0], (horiz[i].select == 0 ? "->" : (horiz[i].select == 1 ? "<-" : "--")), horiz[i].wires[1], horiz[i].off[0], horiz[i].off[1]);
 	}
 
 	printf("\n");
 }
 
 void Solution::draw(Layout &dst) {
-	vec2i dir(1,1);
+	vec2i dir(1,-1);
 	dst.name = base->name;
 
 	dst.nets.reserve(base->nets.size());

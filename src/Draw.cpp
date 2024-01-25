@@ -171,7 +171,7 @@ void drawPin(const Tech &tech, Layout &dst, const Solution *ckt, int type, int p
 }
 
 void drawLayout(Layout &dst, const Layout &src, vec2i pos, vec2i dir) {
-	dst.updateBox(src.box.ll, src.box.ur);
+	dst.updateBox(src.box.ll*dir + pos, src.box.ur*dir+pos);
 	for (auto layer = src.layers.begin(); layer != src.layers.end(); layer++) {
 		auto dstLayer = dst.findLayer(layer->draw);
 		for (int i = 0; i < (int)layer->geo.size(); i++) {

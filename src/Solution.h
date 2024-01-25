@@ -105,7 +105,7 @@ struct PinConstraint {
 
 struct RouteConstraint {
 	RouteConstraint();
-	RouteConstraint(int a, int b, int off=0, int select=-1);
+	RouteConstraint(int a, int b, int off0=0, int off1=0, int select=-1);
 	~RouteConstraint();
 
 	// index into Solution::wires
@@ -118,7 +118,7 @@ struct RouteConstraint {
 	//-------------------------------
 	// Layout Information
 	//-------------------------------
-	int off;
+	int off[2];
 };
 
 struct Solution {
