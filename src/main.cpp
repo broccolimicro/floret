@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
 	cellLib.build(tech);
 	
 	/*Layout layout;
-	layout.drawCell(tech, vec2i(), cellLib.cells[0]);
+	layout.drawCell(tech, vec2i(0,0), cellLib.cells[0]);
 	layout.cleanup();
 	layout.emit(tech, "test");*/
 }
