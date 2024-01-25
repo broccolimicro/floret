@@ -314,7 +314,7 @@ void Solution::build(const Tech &tech) {
 		for (int i = 0; i < (int)stack[type].size(); i++) {
 			stack[type][i].off = 0;
 			if (i > 0) {
-				minOffset(&stack[type][i].off, tech, 0, stack[type][i-1].pinLayout.layers, stack[type][i].pinLayout.layers);
+				minOffset(&stack[type][i].off, tech, 0, stack[type][i-1].pinLayout.layers, stack[type][i].pinLayout.layers, stack[type][i-1].device >= 0 or stack[type][i].device >= 0);
 			}
 
 			pos += stack[type][i].off;
@@ -1106,6 +1106,8 @@ void Solution::buildNOffsets(const Tech &tech, vector<int> start) {
 bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 	//Timer timer;
 
+	print();
+
 	vector<vector<int> > cycles;
 	if (not findCycles(cycles, maxCycles)) {
 		return false;
@@ -1270,8 +1272,8 @@ void Solution::print() {
 	printf("\n");
 }
 
-void Solution::draw(Layout &dst) {
-	vec2i dir(1,-1);
+void Solution::draw(const Tech &tech, Layout &dst) {
+	vec2i dir(1,1);
 	dst.name = base->name;
 
 	dst.nets.reserve(base->nets.size());
@@ -1284,8 +1286,8 @@ void Solution::draw(Layout &dst) {
 	}
 
 	for (int i = 0; i < (int)routes.size(); i++) {
-		drawLayout(dst, routes[i].layout, vec2i(0, routes[i].pOffset)*dir, dir);
-	}
+		drawRoute(tech, dst, this, routes[i], vec2i(0,0), dir);
+	}	
 
 	dst.merge();
 }

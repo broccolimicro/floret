@@ -136,19 +136,26 @@ void drawWire(const Tech &tech, Layout &dst, const Solution *ckt, const Wire &wi
 
 	for (auto pin = wire.pins.begin(); pin != wire.pins.end(); pin++) {
 		drawLayout(dst, ckt->pin(*pin).conLayout, vec2i(0, ll[1]), dir);
-		/*int level = ckt->pin(*pin).layer;
+	}
+}
+
+void drawRoute(const Tech &tech, Layout &dst, const Solution *ckt, const Wire &wire, vec2i pos, vec2i dir) {
+	printf("drawing route %d\n", wire.pOffset);
+	drawLayout(dst, wire.layout, vec2i(0, wire.pOffset)*dir, dir);
+	int wireHeight = tech.mats[tech.wires[wire.layer].drawing].minWidth;
+
+	for (auto pin = wire.pins.begin(); pin != wire.pins.end(); pin++) {
+		int level = ckt->pin(*pin).layer;
 		int layer = tech.wires[level].drawing;
 		int height = ckt->pin(*pin).height;
-		vec2i pp(ckt->pin(*pin).pos, 0);
-		vec2i ps(tech.mats[layer].minWidth,height/2);
-		if (pin->type == Model::NMOS) {
-			pp[1] = -ckt->cellHeight + height;
-		}
+		int width = tech.mats[layer].minWidth;
+		int left = ckt->pin(*pin).pos;
+		int right = left + width;
+		int top = pin->type == Model::PMOS ? 0 : ckt->cellHeight;
+		int bottom = wire.pOffset;
 
-		// TODO(edward.bingham) check to see if this is actually needed
-		int wireHeight = 0;
-		drawVia(tech, dst, wire.net, level, 2, vec2i(0, wireHeight), vec2i(pp[0], ll[1]), dir);*/
-		//dst.push(tech.wires[level].drawing, Rect(wire.net, vec2i(pp[0], ll[1]+(wireHeight/2)*dir[1]), pp+ps*dir));
+		printf("rect %d %d %d %d,%d %d,%d\n", pin->type, layer, wire.net, left, bottom, right, top);
+		dst.push(layer, Rect(wire.net, vec2i(left, bottom), vec2i(right, top)));
 	}
 }
 
