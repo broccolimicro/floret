@@ -1134,7 +1134,7 @@ void Solution::buildNOffsets(const Tech &tech, vector<int> start) {
 bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 	//Timer timer;
 
-	//print();
+	print();
 
 	vector<vector<int> > cycles;
 	if (not findCycles(cycles, maxCycles)) {
@@ -1314,6 +1314,14 @@ void Solution::draw(const Tech &tech, Layout &dst) {
 	for (int i = 0; i < (int)routes.size(); i++) {
 		drawRoute(tech, dst, this, routes[i], vec2i(0,0), dir);
 	}	
+
+	for (int i = 0; i < (int)dst.layers.size(); i++) {
+		if (tech.mats[dst.layers[i].draw].fill) {
+			Rect box = dst.layers[i].bbox();
+			dst.layers[i].clear();
+			dst.layers[i].push(box, true);
+		}
+	}
 
 	dst.merge();
 }
