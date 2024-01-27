@@ -321,7 +321,7 @@ void Solution::build(const Tech &tech) {
 	// Draw the pin contact
 	for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < (int)stack[type].size(); i++) {
-			stack[type][i].width = pinWidth(Index(type, i));
+			stack[type][i].width = pinWidth(tech, Index(type, i));
 			stack[type][i].height = pinHeight(Index(type, i));
 			drawPin(tech, stack[type][i].pinLayout, this, type, i);
 		}
@@ -426,14 +426,15 @@ const Pin &Solution::pin(Index i) const {
 }
 
 // horizontal size of pin
-int Solution::pinWidth(Index p) const {
+int Solution::pinWidth(const Tech &tech, Index p) const {
 	int device = pin(p).device;
 	if (device >= 0) {
 		// this pin is a transistor, use length of transistor
-		return base->mos[device].size[0];
+		return tech.paint[tech.wires[0].draw].minWidth;
+		//return base->mos[device].size[0];
 	}
 	// this pin is a contact
-	return 0;
+	return tech.paint[tech.wires[1].draw].minWidth;
 }
 
 // vertical size of pin
@@ -701,7 +702,7 @@ void Solution::breakRoute(int route, set<int> cycleRoutes) {
 		wnHasGate = wnHasGate or sharedIsGate;
 	} else {
 		needAStar = true;
-		printf("Need A* %d %d\n", route, (int)routes[route].pins.size());
+		//printf("Need A* %d %d\n", route, (int)routes[route].pins.size());
 	}
 
 	//printf("Step 2: w={");
@@ -1195,7 +1196,7 @@ void Solution::buildNOffsets(const Tech &tech, vector<int> start) {
 bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 	//Timer timer;
 
-	print();
+	//print();
 
 	vector<vector<int> > cycles;
 	if (not findCycles(cycles, maxCycles)) {
@@ -1324,7 +1325,8 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 		}
 	}
 
-	cost = /*(right-left)**/ cellHeight*(int)(1+aStar.size());
+	int cellHeightOverhead = 10;
+	cost = (cellHeightOverhead+right-left)*cellHeight*(int)(1+aStar.size());
 	//printf("%d * %d = %d\n", (right-left), cellHeight, cost);
 
 	if (maxCost > 0 and cost >= maxCost)

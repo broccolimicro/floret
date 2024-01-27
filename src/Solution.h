@@ -195,7 +195,7 @@ struct Solution {
 
 	const Pin &pin(Index i) const;
 	Pin &pin(Index i);
-	int pinWidth(Index i) const;
+	int pinWidth(const Tech &tech, Index i) const;
 	int pinHeight(Index i) const;
 
 	// channel routing constraint graph
