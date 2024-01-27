@@ -364,7 +364,7 @@ void Solution::build(const Tech &tech) {
 	for (int p = 0; p < (int)stack[Model::PMOS].size(); p++) {
 		if (routes[stack[Model::PMOS][p].outNet].pins.size() > 1) {
 			for (int n = 0; n < (int)stack[Model::NMOS].size(); n++) {
-				if (routes[stack[Model::NMOS][n].outNet].pins.size() > 1) {
+				if (stack[Model::PMOS][p].outNet != stack[Model::NMOS][n].outNet and routes[stack[Model::NMOS][n].outNet].pins.size() > 1) {
 					int off = 0;
 					if (minOffset(&off, tech, 1, stack[Model::PMOS][p].conLayout.layers, stack[Model::PMOS][p].pos, stack[Model::NMOS][n].conLayout.layers, stack[Model::NMOS][n].pos)) {
 						pinConstraints.push_back(PinConstraint(p, n, off));
@@ -506,6 +506,52 @@ bool Solution::findCycles(vector<vector<int> > &cycles, int maxCycles) {
 	// exponential blow up, and we can ensure that we split those cycles by
 	// splitting on the node in the cycle that has the most pin constraints
 	// (maximising min(in.size(), out.size()))
+
+	if (routes.size() == 0) {
+		return true;
+	}
+	
+	vector<vector<int> > A(routes.size(), vector<int>());
+	
+	// build the adjacency list
+	// traverse the pin constraints
+	vector<int> pins;
+	for (int i = 0; i < (int)pinConstraints.size(); i++) {
+		vector<int> from, to;
+		for (int r = 0; r < (int)routes.size(); r++) {
+			if (routes[r].hasPin(this, Index(Model::PMOS, pinConstraints[i].from))) {
+				from.push_back(r);
+			} else if (routes[r].hasPin(this, Index(Model::NMOS, pinConstraints[i].to))) {
+				to.push_back(r);
+			}
+		}
+
+		for (auto j = from.begin(); j != from.end(); j++) {
+			int size = A[*j].size();
+			A[*j].insert(A[*j].end(), to.begin(), to.end());
+			inplace_merge(A[*j].begin(), A[*j].begin()+size, A[*j].end());
+		}
+	}
+
+	// traverse the route constraints
+	for (int i = 0; i < (int)routeConstraints.size(); i++) {
+		int select = routeConstraints[i].select;
+		int from = routeConstraints[i].wires[select];
+		int to = routeConstraints[i].wires[1-select];
+		if (select >= 0 and from >= 0 and to >= 0) {
+			auto iter = lower_bound(A[from].begin(), A[from].end(), to);
+			A[from].insert(iter, to);
+		}
+	}
+
+	// remove duplicates from adjacency lists
+	for (int i = 0; i < (int)A.size(); i++) {
+		A[i].erase(unique(A[i].begin(), A[i].end()), A[i].end());
+	}
+
+	//vector<int> B;
+	//vector<bool> blocked(routes.size(), false);
+
 	unordered_set<int> seen;
 	unordered_set<int> staged;
 	
@@ -516,10 +562,9 @@ bool Solution::findCycles(vector<vector<int> > &cycles, int maxCycles) {
 		while (not tokens.empty()) {
 			vector<int> curr = tokens.front();
 			tokens.pop_front();
-
-			vector<int> n = next(curr.back());
-			for (int i = 0; i < (int)n.size(); i++) {
-				auto loop = find(curr.begin(), curr.end(), n[i]);
+			int i = curr.back();
+			for (int j = 0; j < (int)A[i].size(); j++) {
+				auto loop = find(curr.begin(), curr.end(), A[i][j]);
 				if (loop != curr.end()) {
 					cycles.push_back(curr);
 					cycles.back().erase(cycles.back().begin(), cycles.back().begin()+(loop-curr.begin()));
@@ -528,10 +573,10 @@ bool Solution::findCycles(vector<vector<int> > &cycles, int maxCycles) {
 					if (find(cycles.begin(), (cycles.end()-1), cycles.back()) != (cycles.end()-1)) {
 						cycles.pop_back();
 					}
-				} else if (seen.find(n[i]) == seen.end()) {
+				} else if (seen.find(A[i][j]) == seen.end()) {
 					tokens.push_back(curr);
-					tokens.back().push_back(n[i]);
-					staged.insert(n[i]);
+					tokens.back().push_back(A[i][j]);
+					staged.insert(A[i][j]);
 				}
 			}
 
