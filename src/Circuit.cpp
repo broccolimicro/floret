@@ -162,7 +162,6 @@ void Circuit::solve(const Tech &tech, float cycleCoeff) {
 
 		if (curr->dangling[Model::NMOS].size() == 0 and 
 		    curr->dangling[Model::PMOS].size() == 0) {
-			curr->build(tech);
 			if (curr->solve(tech, minCost, (minCycles+cycleBuffer)*cycleCoeff)) {
 				if (layout != nullptr) {
 					delete layout;

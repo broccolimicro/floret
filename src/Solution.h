@@ -175,7 +175,6 @@ struct Solution {
 
 	// Finish building the constraint graph, filling out vcon and hcon.
 	void delRoute(int route);
-	void build(const Tech &tech);
 
 	//-------------------------------------------
 	// CONSTRAINT GRAPH
@@ -205,15 +204,23 @@ struct Solution {
 
 	vector<int> next(int r);
 
+	void buildPins(const Tech &tech);
+	void updatePinPos();
+	void buildPinConstraints(const Tech &tech);
+	void buildViaConstraints(const Tech &tech);
+	void buildRoutes();
 	bool findCycles(vector<vector<int> > &cycles, int maxCycles = -1);
 	void breakRoute(int route, set<int> cycleRoutes);
 	void breakCycles(vector<vector<int> > cycles);
+	bool findAndBreakCycles(int maxCycles);
 	void buildRouteConstraints(const Tech &tech);
 	vector<int> findTop();
 	vector<int> findBottom();
 	void zeroWeights();
 	void buildPOffsets(const Tech &tech, vector<int> start=vector<int>(1, PMOS_STACK));
 	void buildNOffsets(const Tech &tech, vector<int> start=vector<int>(1, NMOS_STACK));
+	void assignRouteConstraints(const Tech &tech);
+	bool computeCost(int maxCost);
 
 	int cycleCount;
 	int cellHeight;

@@ -317,63 +317,50 @@ void Solution::delRoute(int route) {
 	routes.erase(routes.begin()+route);
 }
 
-void Solution::build(const Tech &tech) {
-	// Draw the pin contact
+void Solution::buildPins(const Tech &tech) {
+	// Draw the pin contact and via
 	for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < (int)stack[type].size(); i++) {
+			stack[type][i].off = 0;
 			stack[type][i].width = pinWidth(tech, Index(type, i));
 			stack[type][i].height = pinHeight(Index(type, i));
+			stack[type][i].pinLayout.clear();
 			drawPin(tech, stack[type][i].pinLayout, this, type, i);
+			drawVia(tech, stack[type][i].conLayout, stack[type][i].outNet, stack[type][i].layer, 2, vec2i(0,0), vec2i(0,0));
+			if (i > 0) {
+				minOffset(&stack[type][i].off, tech, 0, stack[type][i-1].pinLayout.layers, 0, stack[type][i].pinLayout.layers, 0, stack[type][i-1].device >= 0 or stack[type][i].device >= 0);
+			}
 		}
 	}
+}
 
+void Solution::updatePinPos() {
 	// Determine location of each pin
 	for (int type = 0; type < 2; type++) {
 		int pos = 0;
 		for (int i = 0; i < (int)stack[type].size(); i++) {
-			stack[type][i].off = 0;
-			if (i > 0) {
-				minOffset(&stack[type][i].off, tech, 0, stack[type][i-1].pinLayout.layers, 0, stack[type][i].pinLayout.layers, 0, stack[type][i-1].device >= 0 or stack[type][i].device >= 0);
-			}
-
 			pos += stack[type][i].off;
 			stack[type][i].pos = pos;
 		}
 	}
+}
 
-	// draw the pin via
-	for (int type = 0; type < 2; type++) {
-		for (int i = 0; i < (int)stack[type].size(); i++) {
-			drawVia(tech, stack[type][i].conLayout, stack[type][i].outNet, stack[type][i].layer, 2, vec2i(0,0), vec2i(0,0));
-		}
-	}
-
-	// Create initial routes
-	routes.reserve(base->nets.size());
-	for (int i = 0; i < (int)base->nets.size(); i++) {
-		routes.push_back(Wire(i, 2));
-	}
-	for (int type = 0; type < 2; type++) {
-		for (int i = 0; i < (int)stack[type].size(); i++) {
-			routes[stack[type][i].outNet].addPin(this, Index(type, i));
-		}
-	}
-
+void Solution::buildPinConstraints(const Tech &tech) {
 	// Compute the pin constraints
 	// TODO(edward.bingham) this could be more efficiently done as a 1d rectangle overlap problem
 	for (int p = 0; p < (int)stack[Model::PMOS].size(); p++) {
-		if (routes[stack[Model::PMOS][p].outNet].pins.size() > 1) {
-			for (int n = 0; n < (int)stack[Model::NMOS].size(); n++) {
-				if (stack[Model::PMOS][p].outNet != stack[Model::NMOS][n].outNet and routes[stack[Model::NMOS][n].outNet].pins.size() > 1) {
-					int off = 0;
-					if (minOffset(&off, tech, 1, stack[Model::PMOS][p].conLayout.layers, stack[Model::PMOS][p].pos, stack[Model::NMOS][n].conLayout.layers, stack[Model::NMOS][n].pos)) {
-						pinConstraints.push_back(PinConstraint(p, n, off));
-					}
-				}
+		for (int n = 0; n < (int)stack[Model::NMOS].size(); n++) {
+			int off = 0;
+			if (stack[Model::PMOS][p].outNet != stack[Model::NMOS][n].outNet and
+				minOffset(&off, tech, 1, stack[Model::PMOS][p].conLayout.layers, stack[Model::PMOS][p].pos,
+				                         stack[Model::NMOS][n].conLayout.layers, stack[Model::NMOS][n].pos, true, true)) {
+				pinConstraints.push_back(PinConstraint(p, n, off));
 			}
 		}
 	}
+}
 
+void Solution::buildViaConstraints(const Tech &tech) {
 	// Compute via constraints
 	for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < (int)stack[type].size(); i++) {
@@ -409,7 +396,19 @@ void Solution::build(const Tech &tech) {
 			}
 		}
 	}
-			
+}
+
+void Solution::buildRoutes() {
+	// Create initial routes
+	routes.reserve(base->nets.size());
+	for (int i = 0; i < (int)base->nets.size(); i++) {
+		routes.push_back(Wire(i, 2));
+	}
+	for (int type = 0; type < 2; type++) {
+		for (int i = 0; i < (int)stack[type].size(); i++) {
+			routes[stack[type][i].outNet].addPin(this, Index(type, i));
+		}
+	}
 	for (int i = (int)routes.size()-1; i >= 0; i--) {
 		if (routes[i].pins.size() < 2) {
 			delRoute(i);
@@ -1238,41 +1237,7 @@ void Solution::buildNOffsets(const Tech &tech, vector<int> start) {
 	}
 }
 
-bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
-	//Timer timer;
-
-	//print();
-
-	vector<vector<int> > cycles;
-	if (not findCycles(cycles, maxCycles)) {
-		return false;
-	}
-	cycleCount = (int)cycles.size();
-
-	//printf("findcycles %d %fms\n", (int)cycles.size(), timer.since()*1e3);
-	//timer.reset();
-
-	breakCycles(cycles);
-
-	//printf("breakcycles %fms\n", timer.since()*1e3);
-	//timer.reset();
-
-	buildRouteConstraints(tech);
-
-	//printf("horiz %fms\n", timer.since()*1e3);
-	//timer.reset();
-
-	zeroWeights();
-	buildPOffsets(tech);
-
-	//printf("in %fms\n", timer.since()*1e3);
-	//timer.reset();
-
-	buildNOffsets(tech);
-
-	//printf("out %fms\n", timer.since()*1e3);
-	//timer.reset();
-
+void Solution::assignRouteConstraints(const Tech &tech) {
 	vector<int> unassigned;
 	unassigned.reserve(routeConstraints.size());
 	for (int i = 0; i < (int)routeConstraints.size(); i++) {
@@ -1281,8 +1246,9 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 		}
 	}
 
-	//printf("setup %fms\n", timer.since()*1e3);
-	//timer.reset();
+	zeroWeights();
+	buildPOffsets(tech);
+	buildNOffsets(tech);
 
 	while (unassigned.size() > 0) {
 		// handle critical constraints, that would create cycles if assigned the wrong direction.
@@ -1299,15 +1265,18 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 			// to allow a horizontal path
 
 			int i = unassigned[u];
-			if (routeConstraints[i].wires[0] >= 0 and routes[routeConstraints[i].wires[0]].prevNodes.find(routeConstraints[i].wires[1]) != routes[routeConstraints[i].wires[0]].prevNodes.end()) {
+			int a = routeConstraints[i].wires[0];
+			int b = routeConstraints[i].wires[1];
+
+			if (a >= 0 and routes[a].prevNodes.find(b) != routes[a].prevNodes.end()) {
 				routeConstraints[i].select = 1;
-				inTokens.push_back(routeConstraints[i].wires[1]);
-				outTokens.push_back(routeConstraints[i].wires[0]);
+				inTokens.push_back(b);
+				outTokens.push_back(a);
 				unassigned.erase(unassigned.begin()+u);
-			} else if (routeConstraints[i].wires[1] >= 0 and routes[routeConstraints[i].wires[1]].prevNodes.find(routeConstraints[i].wires[0]) != routes[routeConstraints[i].wires[1]].prevNodes.end()) {
+			} else if (b >= 0 and routes[b].prevNodes.find(a) != routes[b].prevNodes.end()) {
 				routeConstraints[i].select = 0;
-				inTokens.push_back(routeConstraints[i].wires[0]);
-				outTokens.push_back(routeConstraints[i].wires[1]);
+				inTokens.push_back(a);
+				outTokens.push_back(b);
 				unassigned.erase(unassigned.begin()+u);
 			}
 		}
@@ -1355,10 +1324,19 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 			continue;
 		}
 	}
+}
 
-	// TODO(edward.bingham) handle A* TODOs
-	//printf("solve %fms\n", timer.since()*1e3);
+bool Solution::findAndBreakCycles(int maxCycles) {
+	vector<vector<int> > cycles;
+	if (not findCycles(cycles, maxCycles)) {
+		return false;
+	}
+	cycleCount = (int)cycles.size();
+	breakCycles(cycles);
+	return true;
+}
 
+bool Solution::computeCost(int maxCost) {
 	int left = 1000000000;
 	int right = -1000000000;
 	for (int type = 0; type < 2; type++) {
@@ -1372,12 +1350,26 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 
 	int cellHeightOverhead = 10;
 	cost = (cellHeightOverhead+right-left)*cellHeight*(int)(1+aStar.size());
-	//printf("%d * %d = %d\n", (right-left), cellHeight, cost);
 
 	if (maxCost > 0 and cost >= maxCost)
 		return false;
 
 	return true;
+
+}
+
+bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
+	buildPins(tech);
+	updatePinPos();
+	buildPinConstraints(tech);
+	buildRoutes();
+	if (not findAndBreakCycles(maxCycles)) {
+		return false;
+	}
+	buildRouteConstraints(tech);
+	//buildViaConstraints(tech);
+	assignRouteConstraints(tech);
+	return computeCost(maxCost);
 }
 
 void Solution::print() {
