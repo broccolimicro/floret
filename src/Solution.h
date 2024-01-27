@@ -103,6 +103,29 @@ struct PinConstraint {
 	int off;
 };
 
+struct ViaConstraint {
+	ViaConstraint();
+	ViaConstraint(int type, int idx, int fromIdx, int fromOff, int toIdx, int toOff);
+	~ViaConstraint();
+
+	struct Pin {
+		// index to the pin in this constraint
+		int idx;
+		// horizontal offset between the previous pin's gate and this pin's via to the route
+		int off;
+	};
+
+	int type;
+	// index into Solution::stack[type]
+	int idx;
+
+	ViaConstraint::Pin from;
+	ViaConstraint::Pin to;
+
+	// direction of the constraints
+	int select;
+};
+
 struct RouteConstraint {
 	RouteConstraint();
 	RouteConstraint(int a, int b, int off0=0, int off1=0, int select=-1);
@@ -176,8 +199,9 @@ struct Solution {
 	int pinHeight(Index i) const;
 
 	// channel routing constraint graph
-	vector<PinConstraint> vert;
-	vector<RouteConstraint> horiz;
+	vector<PinConstraint> pinConstraints;
+	vector<RouteConstraint> routeConstraints;
+	vector<ViaConstraint> viaConstraints;
 
 	vector<int> next(int r);
 

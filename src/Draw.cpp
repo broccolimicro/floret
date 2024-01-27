@@ -135,7 +135,7 @@ void drawWire(const Tech &tech, Layout &dst, const Solution *ckt, const Wire &wi
 	dst.push(tech.wires[wire.layer].drawing, Rect(wire.net, ll, ur));
 
 	for (auto pin = wire.pins.begin(); pin != wire.pins.end(); pin++) {
-		drawLayout(dst, ckt->pin(*pin).conLayout, vec2i(0, ll[1]), dir);
+		drawLayout(dst, ckt->pin(*pin).conLayout, vec2i(ckt->pin(*pin).pos, ll[1]), dir);
 	}
 }
 
