@@ -678,9 +678,12 @@ void Solution::breakRoute(int route, set<int> cycleRoutes) {
 		int pinPosition = stack[routes[route].pins[i].type][routes[route].pins[i].pin].pos;
 		int distanceFromCenter = abs(pinPosition-center);
 
-		if (sharedCount < 0 or (count[i] < sharedCount or
+		if ((sharedCount < 0 or count[i] < sharedCount) or
 		    (count[i] == sharedCount and ((sharedIsGate and not isGate) or
-		    (sharedIsGate == isGate and distanceFromCenter > sharedDistanceFromCenter))))) {
+		    distanceFromCenter > sharedDistanceFromCenter))) {
+		//if (sharedCount < 0 or (count[i] < sharedCount or
+		//    (count[i] == sharedCount and ((sharedIsGate and not isGate) or
+		//    (sharedIsGate == isGate and distanceFromCenter > sharedDistanceFromCenter))))) {
 			sharedPin = i;
 			sharedCount = count[i];
 			sharedIsGate = isGate;
@@ -689,6 +692,7 @@ void Solution::breakRoute(int route, set<int> cycleRoutes) {
 	}
 
 	if (sharedPin >= 0) {
+		// TODO(edward.bingham) bug in which a non-cycle is being split resulting in redundant vias on various vertical routes
 		wp.addPin(this, routes[route].pins[sharedPin]);
 		wn.addPin(this, routes[route].pins[sharedPin]);
 		routes[route].pins.erase(routes[route].pins.begin()+sharedPin);
@@ -1386,7 +1390,7 @@ void Solution::draw(const Tech &tech, Layout &dst) {
 	}	
 
 	for (int i = 0; i < (int)dst.layers.size(); i++) {
-		if (tech.mats[dst.layers[i].draw].fill) {
+		if (tech.paint[dst.layers[i].draw].fill) {
 			Rect box = dst.layers[i].bbox();
 			dst.layers[i].clear();
 			dst.layers[i].push(box, true);
