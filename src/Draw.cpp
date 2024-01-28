@@ -152,13 +152,13 @@ void drawWire(const Tech &tech, Layout &dst, const Solution *ckt, const Wire &wi
 			    (wireLow <= tech.vias[i].downLevel and pinLevel >= tech.vias[i].upLevel)) {
 				int pinLayer = tech.wires[pinLevel].draw;
 				int width = tech.paint[pinLayer].minWidth;
-				vec2i axis(1,1);
-				if (wireLow <= tech.vias[i].downLevel and wireHigh >= tech.vias[i].downLevel and j > 0 and j < (int)wire.pins.size()-1) {
+				vec2i axis(0,0);
+				/*if (wireLow <= tech.vias[i].downLevel and wireHigh >= tech.vias[i].downLevel and j > 0 and j < (int)wire.pins.size()-1) {
 					axis[0] = 0;
 				}
 				if (wireLow <= tech.vias[i].upLevel and wireHigh >= tech.vias[i].upLevel and j > 0 and j < (int)wire.pins.size()-1) {
 					axis[1] = 0;
-				}
+				}*/
 
 				drawVia(tech, nextLayout, wire.net, i, axis, vec2i(width, height));
 				if (j != 0) {
@@ -189,7 +189,7 @@ void drawWire(const Tech &tech, Layout &dst, const Solution *ckt, const Wire &wi
 			}
 		}
 
-		vec2i axis(1,1);
+		vec2i axis(0,0);
 		//printf("last from=%d to=%d nextToDraw=%d\n", from, to, nextToDraw);
 		if (nextToDraw) {
 			//printf("drawing %d -> %d\n", from, to);

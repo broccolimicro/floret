@@ -357,16 +357,26 @@ void Solution::alignPins() {
 	int pos[2] = {0,0};
 	while (idx[0] < (int)stack[0].size() and idx[1] < (int)stack[1].size()) {
 		if (pos[1]+stack[1][idx[1]].off < pos[0]+stack[0][idx[0]].off) {
-			if (stack[0][idx[0]].outNet == stack[1][idx[1]].outNet and pos[0] + stack[0][idx[0]].off - pos[1] < coeff*stack[1][idx[1]].off) {
-				stack[1][idx[1]].off = pos[0] + stack[0][idx[0]].off - pos[1];
+			int p = pos[0];
+			for (int i = idx[0]; i < (int)stack[0].size() and p + stack[0][i].off - pos[1] < coeff*stack[1][idx[1]].off; i++) {
+				p += stack[0][i].off;
+				if (stack[0][idx[0]].outNet == stack[1][idx[1]].outNet) {
+					stack[1][idx[1]].off = p - pos[1];
+					break;
+				}
 			}
 
 			pos[1] += stack[1][idx[1]].off;
 			stack[1][idx[1]].pos = pos[1];
 			idx[1]++;
 		} else {
-			if (stack[1][idx[1]].outNet == stack[0][idx[0]].outNet and pos[1] + stack[1][idx[1]].off - pos[0] < coeff*stack[0][idx[0]].off) {
-				stack[0][idx[0]].off = pos[1] + stack[1][idx[1]].off - pos[0];
+			int p = pos[1];
+			for (int i = idx[1]; i < (int)stack[1].size() and p + stack[1][i].off - pos[0] < coeff*stack[0][idx[0]].off; i++) {
+				p += stack[1][i].off;
+				if (stack[1][idx[1]].outNet == stack[0][idx[0]].outNet) {
+					stack[0][idx[0]].off = p - pos[0];
+					break;
+				}
 			}
 
 			pos[0] += stack[0][idx[0]].off;
@@ -1383,9 +1393,10 @@ void Solution::lowerRoutes() {
 			}
 			int maxLevel = min(prevLevel, next.layer);
 			// Pins must at least be on local interconnect
-			if (base->nets[routes[i].net].isIO and maxLevel < pinLevel) {
-				maxLevel = pinLevel;
-			}
+			// TODO(edward.bingham) No need to set the whole route to this, we just need to place a via in the right spot
+			//if (base->nets[routes[i].net].isIO and maxLevel < pinLevel) {
+			//	maxLevel = pinLevel;
+			//}
 			set<int> pinLevels;
 			for (int k = 0; k < (int)routes.size(); k++) {
 				if (i != k) {
