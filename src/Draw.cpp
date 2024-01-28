@@ -156,20 +156,20 @@ void drawWire(const Tech &tech, Layout &dst, const Solution *ckt, const Wire &wi
 
 				drawVia(tech, nextLayout, wire.net, i, 0, vec2i(width, height));
 				if (j != 0) {
-					printf("mid pin.pos=%d from=%d to=%d nextToDraw=%d\n", pin.pos, from, to, nextToDraw);
+					//printf("mid pin.pos=%d from=%d to=%d nextToDraw=%d\n", pin.pos, from, to, nextToDraw);
 					int off = 0;
 					if (not minOffset(&off, tech, 0, prevLayout.layers, 0, nextLayout.layers, 0, false) or pin.pos-prevPos >= off) {
-						printf("\tconflict pinOff=%d off=%d nextToDraw=%d\n", pin.pos-prevPos, off, nextToDraw);
+						//printf("\tconflict pinOff=%d off=%d nextToDraw=%d\n", pin.pos-prevPos, off, nextToDraw);
 						if (nextToDraw) {
-							printf("drawing %d -> %d\n", from, to);
+							//printf("drawing %d -> %d\n", from, to);
 							drawVia(tech, levelLayout, wire.net, i, 0, vec2i(to-from, height), vec2i(from, 0));
 						}
 						nextToDraw = false;
 					} else {
-						printf("\tmerge pinOff=%d off=%d nextToDraw=%d\n", pin.pos-prevPos, off, nextToDraw);
+						//printf("\tmerge pinOff=%d off=%d nextToDraw=%d\n", pin.pos-prevPos, off, nextToDraw);
 					}
 				} else {
-					printf("first pin.pos=%d from=%d to=%d nextToDraw=%d\n", pin.pos, from, to, nextToDraw);
+					//printf("first pin.pos=%d from=%d to=%d nextToDraw=%d\n", pin.pos, from, to, nextToDraw);
 				}
 				prevLayout = nextLayout;
 				prevPos = pin.pos;
@@ -183,9 +183,9 @@ void drawWire(const Tech &tech, Layout &dst, const Solution *ckt, const Wire &wi
 			}
 		}
 
-		printf("last from=%d to=%d nextToDraw=%d\n", from, to, nextToDraw);
+		//printf("last from=%d to=%d nextToDraw=%d\n", from, to, nextToDraw);
 		if (nextToDraw) {
-			printf("drawing %d -> %d\n", from, to);
+			//printf("drawing %d -> %d\n", from, to);
 			drawVia(tech, levelLayout, wire.net, i, 0, vec2i(to-from, height), vec2i(from, 0));
 		}
 

@@ -1094,6 +1094,7 @@ void Solution::drawStacks(const Tech &tech) {
 void Solution::drawRoutes(const Tech &tech) {
 	// Draw the routes
 	for (int i = 0; i < (int)routes.size(); i++) {
+		routes[i].layout.clear();
 		drawWire(tech, routes[i].layout, this, routes[i]);
 	}
 }
@@ -1312,6 +1313,10 @@ void Solution::buildNOffsets(const Tech &tech, vector<int> start) {
 }
 
 void Solution::assignRouteConstraints(const Tech &tech) {
+	zeroWeights();
+	buildPOffsets(tech);
+	buildNOffsets(tech);
+
 	vector<int> unassigned;
 	unassigned.reserve(routeConstraints.size());
 	for (int i = 0; i < (int)routeConstraints.size(); i++) {
@@ -1319,10 +1324,6 @@ void Solution::assignRouteConstraints(const Tech &tech) {
 			unassigned.push_back(i);
 		}
 	}
-
-	zeroWeights();
-	buildPOffsets(tech);
-	buildNOffsets(tech);
 
 	while (unassigned.size() > 0) {
 		// handle critical constraints, that would create cycles if assigned the wrong direction.
@@ -1410,6 +1411,34 @@ bool Solution::findAndBreakCycles(int maxCycles) {
 	return true;
 }
 
+void Solution::lowerRoutes() {
+	for (int i = 0; i < (int)routes.size(); i++) {
+		routes[i].level.clear();
+		for (int j = 0; j < (int)routes[i].pins.size()-1; j++) {
+			const Pin &prev = pin(routes[i].pins[j]);
+			const Pin &next = pin(routes[i].pins[j+1]);
+			int prevLevel = prev.layer;
+			if (routes[i].level.size() > 0) {
+				prevLevel = routes[i].level.back();
+			}
+			int maxLevel = min(prevLevel, next.layer)-1;
+			for (int k = 0; k < (int)routes.size(); k++) {
+				if (i != k) {
+					for (int l = 0; l < (int)routes[k].pins.size(); l++) {
+						const Pin &other = pin(routes[k].pins[l]);
+						if (((routes[k].pOffset >= routes[i].pOffset and routes[k].pins[l].type == Model::PMOS) or 
+								 (routes[k].pOffset <= routes[i].pOffset and routes[k].pins[l].type == Model::NMOS)) and 
+								other.pos >= prev.pos and other.pos <= next.pos and other.layer > maxLevel) {
+							maxLevel = other.layer;
+						}
+					}
+				}
+			}
+			routes[i].level.push_back(maxLevel+1);
+		}
+	}
+}
+
 bool Solution::computeCost(int maxCost) {
 	int left = 1000000000;
 	int right = -1000000000;
@@ -1440,30 +1469,39 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 	if (not findAndBreakCycles(maxCycles)) {
 		return false;
 	}
-	print();
 	drawStacks(tech);
 	drawRoutes(tech);
 	buildStackConstraints(tech);
 	buildRouteConstraints(tech);
 	//buildViaConstraints(tech);
 	assignRouteConstraints(tech);
+	print();
+	lowerRoutes();
+	routeConstraints.clear();
+	cellHeight = 0;
+	drawRoutes(tech);
+	buildStackConstraints(tech);
+	buildRouteConstraints(tech);
+	//buildViaConstraints(tech);
+	assignRouteConstraints(tech);
+	print();
 	return computeCost(maxCost);
 }
 
 void Solution::print() {
 	printf("NMOS\n");
 	for (int i = 0; i < (int)stack[0].size(); i++) {
-		printf("pin %d %d->%d->%d: %dx%d %d %d\n", stack[0][i].device, stack[0][i].leftNet, stack[0][i].outNet, stack[0][i].rightNet, stack[0][i].width, stack[0][i].height, stack[0][i].off, stack[0][i].pos);
+		printf("pin[%d] %d %d->%d->%d: %dx%d %d %d\n", i, stack[0][i].device, stack[0][i].leftNet, stack[0][i].outNet, stack[0][i].rightNet, stack[0][i].width, stack[0][i].height, stack[0][i].off, stack[0][i].pos);
 	}
 
 	printf("\nPMOS\n");
 	for (int i = 0; i < (int)stack[1].size(); i++) {
-		printf("pin %d %d->%d->%d: %dx%d %d %d\n", stack[1][i].device, stack[1][i].leftNet, stack[1][i].outNet, stack[1][i].rightNet, stack[1][i].width, stack[1][i].height, stack[1][i].off, stack[1][i].pos);
+		printf("pin[%d] %d %d->%d->%d: %dx%d %d %d\n", i, stack[1][i].device, stack[1][i].leftNet, stack[1][i].outNet, stack[1][i].rightNet, stack[1][i].width, stack[1][i].height, stack[1][i].off, stack[1][i].pos);
 	}
 
 	printf("\nRoutes\n");
 	for (int i = 0; i < (int)routes.size(); i++) {
-		printf("wire %d %d->%d in:%d out:%d: ", routes[i].net, routes[i].left, routes[i].right, routes[i].pOffset, routes[i].nOffset);
+		printf("wire[%d] %s(%d) %d->%d in:%d out:%d: ", i, base->nets[routes[i].net].name.c_str(), routes[i].net, routes[i].left, routes[i].right, routes[i].pOffset, routes[i].nOffset);
 		for (int j = 0; j < (int)routes[i].pins.size(); j++) {
 			printf("(%d,%d) ", routes[i].pins[j].type, routes[i].pins[j].pin);
 		}
@@ -1472,13 +1510,13 @@ void Solution::print() {
 
 	printf("\nConstraints\n");
 	for (int i = 0; i < (int)pinConstraints.size(); i++) {
-		printf("vert %d -> %d: %d\n", pinConstraints[i].from, pinConstraints[i].to, pinConstraints[i].off);
+		printf("vert[%d] %d -> %d: %d\n", i, pinConstraints[i].from, pinConstraints[i].to, pinConstraints[i].off);
 	}
 	for (int i = 0; i < (int)routeConstraints.size(); i++) {
-		printf("horiz %d %s %d: %d,%d\n", routeConstraints[i].wires[0], (routeConstraints[i].select == 0 ? "->" : (routeConstraints[i].select == 1 ? "<-" : "--")), routeConstraints[i].wires[1], routeConstraints[i].off[0], routeConstraints[i].off[1]);
+		printf("horiz[%d] %d %s %d: %d,%d\n", i, routeConstraints[i].wires[0], (routeConstraints[i].select == 0 ? "->" : (routeConstraints[i].select == 1 ? "<-" : "--")), routeConstraints[i].wires[1], routeConstraints[i].off[0], routeConstraints[i].off[1]);
 	}
 	for (int i = 0; i < (int)viaConstraints.size(); i++) {
-		printf("via %d {%d,%d} -> %d -> {%d,%d}\n", viaConstraints[i].type, viaConstraints[i].from.idx, viaConstraints[i].from.off, viaConstraints[i].idx, viaConstraints[i].to.idx, viaConstraints[i].to.off);
+		printf("via[%d] %d {%d,%d} -> %d -> {%d,%d}\n", i, viaConstraints[i].type, viaConstraints[i].from.idx, viaConstraints[i].from.off, viaConstraints[i].idx, viaConstraints[i].to.idx, viaConstraints[i].to.off);
 	}
 
 	printf("\nA* Routes\n");

@@ -225,6 +225,7 @@ struct Solution {
 	void buildPOffsets(const Tech &tech, vector<int> start=vector<int>(1, PMOS_STACK));
 	void buildNOffsets(const Tech &tech, vector<int> start=vector<int>(1, NMOS_STACK));
 	void assignRouteConstraints(const Tech &tech);
+	void lowerRoutes();
 	bool computeCost(int maxCost);
 
 	int cycleCount;
