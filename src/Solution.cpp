@@ -326,7 +326,7 @@ void Solution::buildPins(const Tech &tech) {
 			stack[type][i].height = pinHeight(Index(type, i));
 			stack[type][i].pinLayout.clear();
 			drawPin(tech, stack[type][i].pinLayout, this, type, i);
-			drawVia(tech, stack[type][i].conLayout, stack[type][i].outNet, stack[type][i].layer, 2, vec2i(0,0), vec2i(0,0));
+			drawViaStack(tech, stack[type][i].conLayout, stack[type][i].outNet, stack[type][i].layer, 2, vec2i(0,0), vec2i(0,0));
 			if (i > 0) {
 				minOffset(&stack[type][i].off, tech, 0, stack[type][i-1].pinLayout.layers, 0, stack[type][i].pinLayout.layers, 0, stack[type][i-1].device >= 0 or stack[type][i].device >= 0);
 			}
@@ -1060,6 +1060,12 @@ void Solution::buildRouteConstraints(const Tech &tech) {
 		}
 	}
 
+	// PMOS stack to NMOS stack
+	int off = 0;
+	if (minOffset(&off, tech, 1, stackLayout[Model::PMOS].layers, 0, stackLayout[Model::NMOS].layers, 0)) {
+		routeConstraints.push_back(RouteConstraint(PMOS_STACK, NMOS_STACK, off, 0, 0));
+	}
+
 	// Compute route constraints
 	for (int i = 0; i < (int)routes.size(); i++) {
 		for (int j = i+1; j < (int)routes.size(); j++) {
@@ -1134,12 +1140,18 @@ void Solution::zeroWeights() {
 }
 
 void Solution::buildPOffsets(const Tech &tech, vector<int> start) {
+	vector<bool> visited(routes.size(), false);
 	vector<int> tokens = start;
-	while (tokens.size() > 0) {
+	while (not tokens.empty()) {
 		int curr = tokens.back();
 		tokens.pop_back();
-		
+
 		if (curr >= 0) {
+			if (visited[curr]) {
+				continue;
+			}
+			visited[curr] = true;
+
 			for (int i = 0; i < (int)pinConstraints.size(); i++) {
 				if (routes[curr].hasPin(this, Index(Model::PMOS, pinConstraints[i].from))) {
 					int weight = routes[curr].pOffset + pinConstraints[i].off;
@@ -1204,12 +1216,18 @@ void Solution::buildPOffsets(const Tech &tech, vector<int> start) {
 }
 
 void Solution::buildNOffsets(const Tech &tech, vector<int> start) {
+	vector<bool> visited(routes.size(), false);
 	vector<int> tokens = start;
-	while (tokens.size() > 0) {
+	while (not tokens.empty()) {
 		int curr = tokens.back();
 		tokens.pop_back();
-	
-		if (curr >= 0) {	
+
+		if (curr >= 0) {
+			if (visited[curr]) {
+				continue;
+			}
+			visited[curr] = true;
+
 			for (int i = 0; i < (int)pinConstraints.size(); i++) {
 				if (routes[curr].hasPin(this, Index(Model::NMOS, pinConstraints[i].to))) {
 					int weight = routes[curr].nOffset + pinConstraints[i].off;
@@ -1366,6 +1384,7 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 	if (not findAndBreakCycles(maxCycles)) {
 		return false;
 	}
+	print();
 	buildRouteConstraints(tech);
 	//buildViaConstraints(tech);
 	assignRouteConstraints(tech);
