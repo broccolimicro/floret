@@ -92,16 +92,11 @@ struct Wire {
 
 struct PinConstraint {
 	PinConstraint();
-	PinConstraint(int from, int to, int off=0);
+	PinConstraint(int from, int to);
 	~PinConstraint();
 
 	int from; // index into Solution::stack[Model::PMOS]
 	int to;   // index into Solution::stack[Model::NMOS]
-
-	//-------------------------------
-	// Layout Information
-	//-------------------------------
-	int off;
 };
 
 struct ViaConstraint {
@@ -203,8 +198,6 @@ struct Solution {
 	vector<RouteConstraint> routeConstraints;
 	vector<ViaConstraint> viaConstraints;
 
-	vector<int> next(int r);
-
 	void buildPins(const Tech &tech);
 	void alignPins();
 	void updatePinPos();
@@ -222,6 +215,7 @@ struct Solution {
 	vector<int> findTop();
 	vector<int> findBottom();
 	void zeroWeights();
+	void buildPrevNodes(vector<int> start=vector<int>(1, PMOS_STACK));
 	void buildPOffsets(const Tech &tech, vector<int> start=vector<int>(1, PMOS_STACK));
 	void buildNOffsets(const Tech &tech, vector<int> start=vector<int>(1, NMOS_STACK));
 	void assignRouteConstraints(const Tech &tech);
