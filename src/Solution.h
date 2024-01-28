@@ -205,6 +205,7 @@ struct Solution {
 	vector<int> next(int r);
 
 	void buildPins(const Tech &tech);
+	void alignPins();
 	void updatePinPos();
 	void buildPinConstraints(const Tech &tech);
 	void buildViaConstraints(const Tech &tech);
@@ -213,6 +214,9 @@ struct Solution {
 	void breakRoute(int route, set<int> cycleRoutes);
 	void breakCycles(vector<vector<int> > cycles);
 	bool findAndBreakCycles(int maxCycles);
+	void drawStacks(const Tech &tech);
+	void drawRoutes(const Tech &tech);
+	void buildStackConstraints(const Tech &tech);
 	void buildRouteConstraints(const Tech &tech);
 	vector<int> findTop();
 	vector<int> findBottom();
