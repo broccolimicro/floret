@@ -31,7 +31,7 @@ void drawVia(const Tech &tech, Layout &dst, int net, int viaLevel, vec2i axis, v
 	int viaWidth = tech.paint[viaLayer].minWidth;
 	int viaSpacing = tech.findSpacing(viaLayer, viaLayer);
 
-	// enclosure rules
+	// enclosure rules and default orientation
 	vec2i dn = tech.vias[viaLevel].dn;
 	if (axis[0] == 0) {
 		dn.swap(0,1);
@@ -45,19 +45,25 @@ void drawVia(const Tech &tech, Layout &dst, int net, int viaLevel, vec2i axis, v
 	vec2i width = num * viaWidth + (num-1)*viaSpacing;
 	vec2i off = max((size-width)/2, 0);
 
-	if ((downLevel >= 0 or off[1] >= dn[1]) and off[0] < dn[1]) {
+	// Special rule for diffusion vias
+	if (downLevel < 0) {
+		if (off[1] >= dn[1] and off[0] < dn[1]) {
+			dn.swap(0,1);
+		}
+		dn[1] = off[1];
+	} else if (off[axis[0]] < dn[axis[0]] and off[1-axis[0]] >= dn[axis[0]]) {
 		dn.swap(0,1);
 	}
-	if (downLevel >= 0 and off[0] < up[1]) {
+
+	if (off[axis[1]] < up[axis[1]] and off[1-axis[1]] >= up[axis[1]]) {
 		up.swap(0,1);
 	}
-	
-	//if (off[1] < max(dn[1], up[1])) {
-	//	off[1] = max(dn[1], up[1]);
-	//}
 
-	if (downLevel < 0) {
-		dn[1] = off[1];
+	if (downLevel >= 0) {
+		dn = max(dn, off);
+	}
+	if (upLevel >= 0) {
+		up = max(up, off);
 	}
 
 	// draw down
@@ -150,8 +156,15 @@ void drawWire(const Tech &tech, Layout &dst, const Solution *ckt, const Wire &wi
 			    (wireLow <= tech.vias[i].downLevel and pinLevel >= tech.vias[i].upLevel)) {
 				int pinLayer = tech.wires[pinLevel].draw;
 				int width = tech.paint[pinLayer].minWidth;
+				vec2i axis(1,1);
+				if (wireLow <= tech.vias[i].downLevel and wireHigh >= tech.vias[i].downLevel and j > 0 and j < (int)wire.pins.size()-1) {
+					axis[0] = 0;
+				}
+				if (wireLow <= tech.vias[i].upLevel and wireHigh >= tech.vias[i].upLevel and j > 0 and j < (int)wire.pins.size()-1) {
+					axis[1] = 0;
+				}
 
-				drawVia(tech, nextLayout, wire.net, i, vec2i(0,0), vec2i(width, height));
+				drawVia(tech, nextLayout, wire.net, i, axis, vec2i(width, height));
 				if (j != 0) {
 					//printf("mid pin.pos=%d from=%d to=%d nextToDraw=%d\n", pin.pos, from, to, nextToDraw);
 					int off = 0;
@@ -159,7 +172,7 @@ void drawWire(const Tech &tech, Layout &dst, const Solution *ckt, const Wire &wi
 						//printf("\tconflict pinOff=%d off=%d nextToDraw=%d\n", pin.pos-prevPos, off, nextToDraw);
 						if (nextToDraw) {
 							//printf("drawing %d -> %d\n", from, to);
-							drawVia(tech, levelLayout, wire.net, i, vec2i(0,0), vec2i(to-from, height), vec2i(from, 0));
+							drawVia(tech, levelLayout, wire.net, i, axis, vec2i(to-from, height), vec2i(from, 0));
 						}
 						nextToDraw = false;
 					} else {
@@ -180,10 +193,11 @@ void drawWire(const Tech &tech, Layout &dst, const Solution *ckt, const Wire &wi
 			}
 		}
 
+		vec2i axis(1,1);
 		//printf("last from=%d to=%d nextToDraw=%d\n", from, to, nextToDraw);
 		if (nextToDraw) {
 			//printf("drawing %d -> %d\n", from, to);
-			drawVia(tech, levelLayout, wire.net, i, vec2i(0,0), vec2i(to-from, height), vec2i(from, 0));
+			drawVia(tech, levelLayout, wire.net, i, axis, vec2i(to-from, height), vec2i(from, 0));
 		}
 
 		drawLayout(dst, levelLayout, pos, dir);
