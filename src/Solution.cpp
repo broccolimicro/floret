@@ -1371,6 +1371,7 @@ bool Solution::findAndBreakCycles(int maxCycles) {
 }
 
 void Solution::lowerRoutes() {
+	int pinLevel = 1;
 	for (int i = 0; i < (int)routes.size(); i++) {
 		routes[i].level.clear();
 		for (int j = 0; j < (int)routes[i].pins.size()-1; j++) {
@@ -1382,8 +1383,8 @@ void Solution::lowerRoutes() {
 			}
 			int maxLevel = min(prevLevel, next.layer);
 			// Pins must at least be on local interconnect
-			if (base->nets[routes[i].net].isIO and maxLevel < 1) {
-				maxLevel = 1;
+			if (base->nets[routes[i].net].isIO and maxLevel < pinLevel) {
+				maxLevel = pinLevel;
 			}
 			set<int> pinLevels;
 			for (int k = 0; k < (int)routes.size(); k++) {
