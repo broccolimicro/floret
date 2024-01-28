@@ -62,7 +62,7 @@ struct Pin {
 // Represents a wire between two Devices
 struct Wire {
 	Wire();
-	Wire(int net, int layer=-1);
+	Wire(int net);
 	~Wire();
 
 	int net;
@@ -71,12 +71,12 @@ struct Wire {
 	// horizontal location of the pin in the cell from left to right. This helps
 	// us pick pins to dogleg when breaking cycles.
 	vector<Index> pins;
+	vector<int> level;
 
 	//-------------------------------
 	// Layout Information
 	//-------------------------------
 	Layout layout;
-	int layer;
 
 	int left;
 	int right;
@@ -87,6 +87,7 @@ struct Wire {
 
 	void addPin(const Solution *s, Index pin);
 	bool hasPin(const Solution *s, Index pin, vector<Index>::iterator *out = nullptr);
+	int getLevel(int i) const;
 };
 
 struct PinConstraint {

@@ -73,16 +73,14 @@ Pin::~Pin() {
 
 Wire::Wire() {
 	net = -1;
-	layer = -1;
 	left = -1;
 	right = -1;
 	pOffset = 0;
 	nOffset = 0;
 }
 
-Wire::Wire(int net, int layer) {
+Wire::Wire(int net) {
 	this->net = net;
-	this->layer = layer;
 	this->left = -1;
 	this->right = -1;
 	this->pOffset = 0;
@@ -109,6 +107,22 @@ bool Wire::hasPin(const Solution *s, Index pin, vector<Index>::iterator *out) {
 		*out = pos;
 	}
 	return pos != pins.end() and pos->type == pin.type and pos->pin == pin.pin;
+}
+
+int Wire::getLevel(int i) const {
+	if (level.size() == 0) {
+		return 2;
+	}
+
+	if (i < 0) {
+		return level[0];
+	}
+
+	if (i >= (int)level.size()) {
+		return level.back();
+	}
+
+	return level[i];
 }
 
 PinConstraint::PinConstraint() {
@@ -439,7 +453,7 @@ void Solution::buildRoutes() {
 	// Create initial routes
 	routes.reserve(base->nets.size());
 	for (int i = 0; i < (int)base->nets.size(); i++) {
-		routes.push_back(Wire(i, 2));
+		routes.push_back(Wire(i));
 	}
 	for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < (int)stack[type].size(); i++) {
@@ -655,8 +669,8 @@ void Solution::breakRoute(int route, set<int> cycleRoutes) {
 	int right = max(stack[0].back().pos, stack[1].back().pos);
 	int center = (left + right)/2;
 
-	Wire wp(routes[route].net, routes[route].layer);
-	Wire wn(routes[route].net, routes[route].layer);
+	Wire wp(routes[route].net);
+	Wire wn(routes[route].net);
 	vector<int> count(routes[route].pins.size(), 0);
 	bool wpHasGate = false;
 	bool wnHasGate = false;
@@ -885,7 +899,6 @@ void Solution::breakRoute(int route, set<int> cycleRoutes) {
 
 	routes[route].net = wp.net;
 	routes[route].pins = wp.pins;
-	routes[route].layer = wp.layer;
 	routes[route].left = wp.left;
 	routes[route].right = wp.right;
 	routes[route].pOffset = wp.pOffset;

@@ -129,11 +129,6 @@ void drawViaStack(const Tech &tech, Layout &dst, int net, int downLevel, int upL
 }
 
 void drawWire(const Tech &tech, Layout &dst, const Solution *ckt, const Wire &wire, vec2i pos, vec2i dir) {
-	int height = tech.paint[tech.wires[wire.layer].draw].minWidth;
-
-	vec2i ll = pos+vec2i(wire.left,0)*dir;
-	vec2i ur = pos+vec2i(wire.right,height)*dir;
-
 	int prevPos = 0;
 	Layout prevLayout;
 	Layout nextLayout;
@@ -142,80 +137,106 @@ void drawWire(const Tech &tech, Layout &dst, const Solution *ckt, const Wire &wi
 		bool nextToDraw = false;
 		int from = 0;
 		int to = 0;
+
+		int height = 0;
 		for (int j = 0; j < (int)wire.pins.size(); j++) {
-			int pinLevel = ckt->pin(wire.pins[j]).layer;
-			if ((pinLevel <= tech.vias[i].downLevel and wire.layer >= tech.vias[i].upLevel) or
-			    (wire.layer <= tech.vias[i].downLevel and pinLevel >= tech.vias[i].upLevel)) {
-				int width = tech.paint[tech.wires[pinLevel].draw].minWidth;
-				int pinPos = ckt->pin(wire.pins[j]).pos;
+			const Pin &pin = ckt->pin(wire.pins[j]);
+			int pinLevel = pin.layer;
+			int prevLevel = wire.getLevel(j-1);
+			int nextLevel = wire.getLevel(j);
+			int wireLow = min(nextLevel, prevLevel);
+			int wireHigh = max(nextLevel, prevLevel);
+
+			int wireLayer = tech.wires[nextLevel].draw;
+			height = tech.paint[wireLayer].minWidth;
+			if ((pinLevel <= tech.vias[i].downLevel and wireHigh >= tech.vias[i].upLevel) or
+			    (wireLow <= tech.vias[i].downLevel and pinLevel >= tech.vias[i].upLevel)) {
+				int pinLayer = tech.wires[pinLevel].draw;
+				int width = tech.paint[pinLayer].minWidth;
 
 				drawVia(tech, nextLayout, wire.net, i, 0, vec2i(width, height));
 				if (j != 0) {
-					printf("mid pinPos=%d from=%d to=%d nextToDraw=%d\n", pinPos, from, to, nextToDraw);
+					printf("mid pin.pos=%d from=%d to=%d nextToDraw=%d\n", pin.pos, from, to, nextToDraw);
 					int off = 0;
-					if (not minOffset(&off, tech, 0, prevLayout.layers, 0, nextLayout.layers, 0, false) or pinPos-prevPos >= off) {
-						printf("\tconflict pinOff=%d off=%d nextToDraw=%d\n", pinPos-prevPos, off, nextToDraw);
+					if (not minOffset(&off, tech, 0, prevLayout.layers, 0, nextLayout.layers, 0, false) or pin.pos-prevPos >= off) {
+						printf("\tconflict pinOff=%d off=%d nextToDraw=%d\n", pin.pos-prevPos, off, nextToDraw);
 						if (nextToDraw) {
 							printf("drawing %d -> %d\n", from, to);
-							drawVia(tech, levelLayout, wire.net, i, 0, vec2i(to-from, height), vec2i(from, ll[1]));
+							drawVia(tech, levelLayout, wire.net, i, 0, vec2i(to-from, height), vec2i(from, 0));
 						}
 						nextToDraw = false;
 					} else {
-						printf("\tmerge pinOff=%d off=%d nextToDraw=%d\n", pinPos-prevPos, off, nextToDraw);
+						printf("\tmerge pinOff=%d off=%d nextToDraw=%d\n", pin.pos-prevPos, off, nextToDraw);
 					}
 				} else {
-					printf("first pinPos=%d from=%d to=%d nextToDraw=%d\n", pinPos, from, to, nextToDraw);
+					printf("first pin.pos=%d from=%d to=%d nextToDraw=%d\n", pin.pos, from, to, nextToDraw);
 				}
 				prevLayout = nextLayout;
-				prevPos = pinPos;
+				prevPos = pin.pos;
 				nextLayout.clear();
 
 				if (not nextToDraw) {
 					nextToDraw = true;
-					from = pinPos;
+					from = pin.pos;
 				}
-				to = pinPos + width;
+				to = pin.pos + width;
 			}
 		}
 
 		printf("last from=%d to=%d nextToDraw=%d\n", from, to, nextToDraw);
 		if (nextToDraw) {
 			printf("drawing %d -> %d\n", from, to);
-			drawVia(tech, levelLayout, wire.net, i, 0, vec2i(to-from, height), vec2i(from, ll[1]));
+			drawVia(tech, levelLayout, wire.net, i, 0, vec2i(to-from, height), vec2i(from, 0));
 		}
 
 		drawLayout(dst, levelLayout, pos, dir);
 		levelLayout.clear();
 	}
 
-	dst.box.bound(ll, ur);
-	dst.push(tech.wires[wire.layer], Rect(wire.net, ll, ur));
+	for (int i = 0; i < (int)wire.pins.size()-1; i++) {
+		const Pin &pin = ckt->pin(wire.pins[i]);
+		const Pin &next = ckt->pin(wire.pins[i+1]);
+		int pinLevel = next.layer;
+		int pinLayer = tech.wires[pinLevel].draw;
+		int width = tech.paint[pinLayer].minWidth;
 
-	/*for (auto pin = wire.pins.begin(); pin != wire.pins.end(); pin++) {
-		drawLayout(dst, ckt->pin(*pin).conLayout, vec2i(ckt->pin(*pin).pos, ll[1]), dir);
-	}*/
+		int wireLevel = wire.getLevel(i);
+		int wireLayer = tech.wires[wireLevel].draw;
+		int height = tech.paint[wireLayer].minWidth;
+
+		vec2i ll = pos+vec2i(pin.pos,0)*dir;
+		vec2i ur = pos+vec2i(next.pos+width,height)*dir;
+		dst.box.bound(ll, ur);
+		dst.push(tech.wires[wireLevel], Rect(wire.net, ll, ur));
+	}
+
+	// This would draw the vias without merging them
+	//for (auto pin = wire.pins.begin(); pin != wire.pins.end(); pin++) {
+	//	drawLayout(dst, ckt->pin(*pin).conLayout, vec2i(ckt->pin(*pin).pos, ll[1]), dir);
+	//}
 }
 
 void drawRoute(const Tech &tech, Layout &dst, const Solution *ckt, const Wire &wire, vec2i pos, vec2i dir) {
 	//printf("drawing route %d\n", wire.pOffset);
 	drawLayout(dst, wire.layout, vec2i(0, wire.pOffset)*dir, dir);
 
-	int height = tech.paint[tech.wires[wire.layer].draw].minWidth;
+	for (int i = 0; i < (int)wire.pins.size(); i++) {
+		const Pin &pin = ckt->pin(wire.pins[i]);
+		int wireLevel = wire.getLevel(i);
+		int wireLayer = tech.wires[wireLevel].draw;
+		int height = tech.paint[wireLayer].minWidth;
 
-	for (auto pin = wire.pins.begin(); pin != wire.pins.end(); pin++) {
-		int level = ckt->pin(*pin).layer;
-		int layer = tech.wires[level].draw;
-		int width = tech.paint[layer].minWidth;
-		int left = ckt->pin(*pin).pos;
-		int right = left + width;
+		int pinLevel = pin.layer;
+		int pinLayer = tech.wires[pinLevel].draw;
+		int width = tech.paint[pinLayer].minWidth;
 
-		int pinMid = (pin->type == Model::NMOS)*ckt->cellHeight;
+		int pinMid = (wire.pins[i].type == Model::NMOS)*ckt->cellHeight;
 
 		int top = max(pinMid, wire.pOffset+height);
 		int bottom = min(pinMid, wire.pOffset);
 
 		//printf("rect %d %d %d %d,%d %d,%d\n", pin->type, layer, wire.net, left, bottom, right, top);
-		dst.push(tech.wires[level], Rect(wire.net, vec2i(left, bottom), vec2i(right, top)));
+		dst.push(tech.wires[pinLevel], Rect(wire.net, vec2i(pin.pos, bottom), vec2i(pin.pos+width, top)));
 	}
 }
 
