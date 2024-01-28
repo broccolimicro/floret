@@ -1370,6 +1370,14 @@ bool Solution::findAndBreakCycles(int maxCycles) {
 }
 
 void Solution::lowerRoutes() {
+	// TODO(edward.bingham) there's a bug where two jog paths will be overlapped
+	// after lowering because there is only a route constraint, and there is no
+	// pin constraint when maybe there should be
+	//  | |
+	//  |_|__
+	//    |__|__
+	//       |  |
+	//       |  |
 	int pinLevel = 1;
 	for (int i = 0; i < (int)routes.size(); i++) {
 		routes[i].level.clear();
