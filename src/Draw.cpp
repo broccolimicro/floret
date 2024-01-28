@@ -11,7 +11,7 @@ void drawTransistor(const Tech &tech, Layout &dst, const Mos &mos, bool flip, ve
 
 	// draw diffusion
 	for (auto layer = tech.models[mos.model].paint.begin(); layer != tech.models[mos.model].paint.end(); layer++) {
-		vec2i diffOverhang = vec2i(layer->overhangX, layer->overhangY)*dir;
+		vec2i diffOverhang = layer->overhang*dir;
 		ll -= diffOverhang;
 		ur += diffOverhang;
 		bool isDiffusion = layer == tech.models[mos.model].paint.begin();
@@ -78,10 +78,8 @@ void drawVia(const Tech &tech, Layout &dst, int net, int viaLevel, vec2i axis, v
 		int model = -downLevel-1;
 		for (int i = 0; i < (int)tech.models[model].paint.size(); i++) {
 			if (i != 0) {
-				ll[0] -= tech.models[model].paint[i].overhangX*dir[0];
-				ll[1] -= tech.models[model].paint[i].overhangY*dir[1];
-				ur[0] += tech.models[model].paint[i].overhangX*dir[0];
-				ur[1] += tech.models[model].paint[i].overhangY*dir[1];
+				ll -= tech.models[model].paint[i].overhang*dir;
+				ur += tech.models[model].paint[i].overhang*dir;
 			}
 			if (i == 0) {
 				dst.box.bound(ll, ur);
@@ -111,10 +109,8 @@ void drawVia(const Tech &tech, Layout &dst, int net, int viaLevel, vec2i axis, v
 		int model = -upLevel-1;
 		for (int i = 0; i < (int)tech.models[model].paint.size(); i++) {
 			if (i != 0) {
-				ll[0] -= tech.models[model].paint[i].overhangX*dir[0];
-				ll[1] -= tech.models[model].paint[i].overhangY*dir[1];
-				ur[0] += tech.models[model].paint[i].overhangX*dir[0];
-				ur[1] += tech.models[model].paint[i].overhangY*dir[1];
+				ll -= tech.models[model].paint[i].overhang*dir;
+				ur += tech.models[model].paint[i].overhang*dir;
 			}
 			if (i == 0) {
 				dst.box.bound(ll, ur);
