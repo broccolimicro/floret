@@ -1421,20 +1421,28 @@ void Solution::lowerRoutes() {
 			if (routes[i].level.size() > 0) {
 				prevLevel = routes[i].level.back();
 			}
-			int maxLevel = min(prevLevel, next.layer)-1;
+			int maxLevel = min(prevLevel, next.layer);
+			set<int> pinLevels;
 			for (int k = 0; k < (int)routes.size(); k++) {
 				if (i != k) {
 					for (int l = 0; l < (int)routes[k].pins.size(); l++) {
 						const Pin &other = pin(routes[k].pins[l]);
 						if (((routes[k].pOffset >= routes[i].pOffset and routes[k].pins[l].type == Model::PMOS) or 
 								 (routes[k].pOffset <= routes[i].pOffset and routes[k].pins[l].type == Model::NMOS)) and 
-								other.pos >= prev.pos and other.pos <= next.pos and other.layer > maxLevel) {
-							maxLevel = other.layer;
+								other.pos >= prev.pos and other.pos <= next.pos) {
+							pinLevels.insert(other.layer);
 						}
 					}
 				}
 			}
-			routes[i].level.push_back(maxLevel+1);
+
+			for (int k = maxLevel; k < 3; k++) {
+				if (pinLevels.find(k) == pinLevels.end()) {
+					maxLevel = k;
+					break;
+				}
+			}
+			routes[i].level.push_back(maxLevel);
 		}
 	}
 }
