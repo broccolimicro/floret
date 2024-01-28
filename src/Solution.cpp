@@ -351,44 +351,33 @@ void Solution::buildPins(const Tech &tech) {
 	}
 }
 
-void Solution::alignPins() {
-	int coeff = 2;
-	int idx[2] = {0,0};
+void Solution::alignPins(int coeff) {
+	vector<Pin>::iterator idx[2] = {stack[0].begin(),stack[1].begin()};
 	int pos[2] = {0,0};
-	while (idx[0] < (int)stack[0].size() and idx[1] < (int)stack[1].size()) {
-		if (pos[1]+stack[1][idx[1]].off < pos[0]+stack[0][idx[0]].off) {
-			int p = pos[0];
-			for (int i = idx[0]; i < (int)stack[0].size() and p + stack[0][i].off - pos[1] < coeff*stack[1][idx[1]].off; i++) {
-				p += stack[0][i].off;
-				if (stack[0][idx[0]].outNet == stack[1][idx[1]].outNet) {
-					stack[1][idx[1]].off = p - pos[1];
-					break;
-				}
-			}
-
-			pos[1] += stack[1][idx[1]].off;
-			stack[1][idx[1]].pos = pos[1];
-			idx[1]++;
-		} else {
-			int p = pos[1];
-			for (int i = idx[1]; i < (int)stack[1].size() and p + stack[1][i].off - pos[0] < coeff*stack[0][idx[0]].off; i++) {
-				p += stack[1][i].off;
-				if (stack[1][idx[1]].outNet == stack[0][idx[0]].outNet) {
-					stack[0][idx[0]].off = p - pos[0];
-					break;
-				}
-			}
-
-			pos[0] += stack[0][idx[0]].off;
-			stack[0][idx[0]].pos = pos[0];
-			idx[0]++;
+	while (idx[0] != stack[0].end() and idx[1] != stack[1].end()) {
+		int axis = 0;
+		if (pos[1]+idx[1]->off < pos[0]+idx[0]->off) {
+			axis = 1;
 		}
+
+		int p = pos[1-axis];
+		for (auto other = idx[1-axis]; other != stack[1-axis].end() and p + other->off - pos[axis] < coeff*idx[axis]->off; other++) {
+			p += other->off;
+			if (other->outNet == idx[axis]->outNet) {
+				idx[axis]->off = p - pos[axis];
+				break;
+			}
+		}
+
+		pos[axis] += idx[axis]->off;
+		idx[axis]->pos = pos[axis];
+		idx[axis]++;
 	}
 
 	for (int type = 0; type < 2; type++) {
-		for (; idx[type] < (int)stack[type].size(); idx[type]++) {
-			pos[type] += stack[type][idx[type]].off;
-			stack[type][idx[type]].pos = pos[type];
+		for (; idx[type] != stack[type].end(); idx[type]++) {
+			pos[type] += idx[type]->off;
+			idx[type]->pos = pos[type];
 		}
 	}
 }

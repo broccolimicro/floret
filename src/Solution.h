@@ -199,7 +199,7 @@ struct Solution {
 	vector<ViaConstraint> viaConstraints;
 
 	void buildPins(const Tech &tech);
-	void alignPins();
+	void alignPins(int coeff=2);
 	void updatePinPos();
 	void buildPinConstraints(const Tech &tech);
 	void buildViaConstraints(const Tech &tech);
