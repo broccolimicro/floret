@@ -41,11 +41,12 @@ struct Mos {
 
 struct Net {
 	Net();
-	Net(string name);
+	Net(string name, bool isIO=false);
 	~Net();
 
 	string name;
 	int ports;
+	bool isIO;
 };
 
 struct Solution;

@@ -21,11 +21,13 @@ Mos::~Mos() {
 
 Net::Net() {
 	ports = 0;
+	isIO = false;
 }
 
-Net::Net(string name) {
+Net::Net(string name, bool isIO) {
 	this->name = name;
 	this->ports = 0;
+	this->isIO = isIO;
 }
 
 Net::~Net() {
@@ -127,7 +129,7 @@ void Circuit::loadSubckt(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &le
 			this->name = lexer.read(tok->begin, tok->end);
 		} else if (tok->type == lang.PORT_LIST) {
 			for (auto port = tok->tokens.begin(); port != tok->tokens.end(); port++) {
-				this->nets.push_back(Net(lexer.read(port->begin, port->end)));
+				this->nets.push_back(Net(lexer.read(port->begin, port->end), true));
 			}
 		} else if (tok->type == lang.DEVICE) {
 			if (not loadDevice(tech, lang, lexer, *tok)) {

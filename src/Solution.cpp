@@ -459,7 +459,7 @@ void Solution::buildRoutes() {
 		}
 	}
 	for (int i = (int)routes.size()-1; i >= 0; i--) {
-		if (routes[i].pins.size() < 2) {
+		if (routes[i].pins.size() < 2 and not base->nets[routes[i].net].isIO) {
 			delRoute(i);
 		}
 	}
@@ -1381,6 +1381,10 @@ void Solution::lowerRoutes() {
 				prevLevel = routes[i].level.back();
 			}
 			int maxLevel = min(prevLevel, next.layer);
+			// Pins must at least be on local interconnect
+			if (base->nets[routes[i].net].isIO and maxLevel < 1) {
+				maxLevel = 1;
+			}
 			set<int> pinLevels;
 			for (int k = 0; k < (int)routes.size(); k++) {
 				if (i != k) {
@@ -1432,6 +1436,7 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 	buildPins(tech);
 	alignPins();
 	buildPinConstraints(tech);
+	//buildViaConstraints(tech);
 	buildRoutes();
 	if (not findAndBreakCycles(maxCycles)) {
 		return false;
@@ -1440,7 +1445,6 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 	drawRoutes(tech);
 	buildStackConstraints(tech);
 	buildRouteConstraints(tech);
-	//buildViaConstraints(tech);
 	assignRouteConstraints(tech);
 	print();
 	lowerRoutes();
@@ -1449,7 +1453,6 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 	cellHeight = 0;
 	buildStackConstraints(tech);
 	buildRouteConstraints(tech);
-	//buildViaConstraints(tech);
 	assignRouteConstraints(tech);
 	print();
 	return computeCost(maxCost);
