@@ -32,11 +32,11 @@ void drawVia(const Tech &tech, Layout &dst, int net, int viaLevel, vec2i axis, v
 	int viaSpacing = tech.findSpacing(viaLayer, viaLayer);
 
 	// enclosure rules
-	vec2i dn(tech.vias[viaLevel].downLo, tech.vias[viaLevel].downHi);
+	vec2i dn = tech.vias[viaLevel].dn;
 	if (axis[0] == 0) {
 		dn.swap(0,1);
 	}
-	vec2i up(tech.vias[viaLevel].upLo, tech.vias[viaLevel].upHi);
+	vec2i up = tech.vias[viaLevel].up;
 	if (axis[1] == 0) {
 		up.swap(0,1);
 	}
