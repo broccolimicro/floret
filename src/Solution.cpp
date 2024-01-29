@@ -46,22 +46,27 @@ Pin::Pin() {
 	pos = 0;
 }
 
+Pin::Pin(int outNet) {
+	this->device = -1;
+	this->outNet = outNet;
+	this->leftNet = outNet;
+	this->rightNet = outNet;
+
+	layer = 1;
+	width = 0;
+	height = 0;
+	off = 0;
+	pos = 0;
+}
+
+
 Pin::Pin(int device, int outNet, int leftNet, int rightNet) {
 	this->device = device;
 	this->outNet = outNet;
 	this->leftNet = leftNet;
-	if (leftNet < 0) {
-		this->leftNet = outNet;
-	}
 	this->rightNet = rightNet;
-	if (rightNet < 0) {
-		this->rightNet = outNet;
-	}
 
 	layer = 0;
-	if (device < 0) {
-		layer = 1;
-	}
 	width = 0;
 	height = 0;
 	off = 0;
@@ -180,7 +185,6 @@ Solution::Solution() {
 	cycleCount = 0;
 	cellHeight = 0;
 	cost = 0;
-	numContacts = 0;
 
 	for (int i = 0; i < 2; i++) {
 		dangling[i] = vector<int>();
@@ -202,7 +206,6 @@ Solution::Solution(const Circuit *ckt) {
 	for (int i = 0; i < (int)base->mos.size(); i++) {
 		dangling[base->mos[i].type].push_back(i);
 	}
-	numContacts = 0;
 	cycleCount = 0;
 	cellHeight = 0;
 	cost = 0;
@@ -250,16 +253,14 @@ bool Solution::tryLink(vector<Solution*> &dst, int type, int index) {
 	Solution *next = new Solution(*this);
 	if (next->stack[type].size() == 0 or base->nets[fromNet].ports > 2 or base->nets[fromNet].isIO) {
 		// Add a contact for the first net or between two transistors.
-		next->numContacts++;
-		next->stack[type].push_back(Pin(-next->numContacts, fromNet));
+		next->stack[type].push_back(Pin(fromNet));
 	}
 	next->stack[type].push_back(Pin(device, gateNet, fromNet, toNet));
 
 	// remove item from dangling
 	next->dangling[type].erase(next->dangling[type].begin()+index);
 	if (next->dangling[type].size() == 0) {
-		next->numContacts++;
-		next->stack[type].push_back(Pin(-next->numContacts, toNet));
+		next->stack[type].push_back(Pin(toNet));
 	}
 
 	dst.push_back(next);
@@ -290,17 +291,14 @@ bool Solution::push(vector<Solution*> &dst, int type, int index) {
 		Solution *next = new Solution(*this);
 
 		if (next->stack[type].size() > 0) {
-			next->numContacts++;
-			next->stack[type].push_back(Pin(-next->numContacts, stack[type].back().rightNet));
+			next->stack[type].push_back(Pin(stack[type].back().rightNet));
 		}
-		next->numContacts++;
-		next->stack[type].push_back(Pin(-next->numContacts, fromNet));
+		next->stack[type].push_back(Pin(fromNet));
 		next->stack[type].push_back(Pin(device, gateNet, fromNet, toNet));
 		// remove item from dangling
 		next->dangling[type].erase(next->dangling[type].begin()+index);
 		if (next->dangling[type].size() == 0) {
-			next->numContacts++;
-			next->stack[type].push_back(Pin(-next->numContacts, toNet));
+			next->stack[type].push_back(Pin(toNet));
 		}
 		dst.push_back(next);
 

@@ -34,7 +34,10 @@ struct CompareIndex {
 // Represents Transistors and Contacts
 struct Pin {
 	Pin();
-	Pin(int device, int outNet, int leftNet=-1, int rightNet=-1);
+	// This pin is a contact
+	Pin(int outNet);
+	// This pin is a transistor
+	Pin(int device, int outNet, int leftNet, int rightNet);
 	~Pin();
 
 	// inNet == outNet == gateNet for Contacts
@@ -157,9 +160,6 @@ struct Solution {
 	// index into Circuit::mos
 	// dangling is indexed by transistor type: Model::NMOS, Model::PMOS
 	vector<int> dangling[2];
-	// Count the number of contacts we've created so that we can index them in
-	// our Wires in the constraint graph.
-	int numContacts;
 
 	// Push another transistor into the circuit solution place on pmos or nmos
 	// stack depending on type. Create any necessary contacts, and flip the
