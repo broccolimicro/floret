@@ -4,6 +4,8 @@
 #include "Circuit.h"
 #include <set>
 #include <unordered_set>
+#include <array>
+#include <vector>
 
 using namespace std;
 
@@ -159,15 +161,15 @@ struct Solution {
 	// constraint graph.
 	// index into Circuit::mos
 	// dangling is indexed by transistor type: Model::NMOS, Model::PMOS
-	vector<int> dangling[2];
+	array<vector<int>, 2> dangling;
 
 	// Push another transistor into the circuit solution place on pmos or nmos
 	// stack depending on type. Create any necessary contacts, and flip the
 	// device when possible. These functions build the constraint graph.
 	// type is either Model::NMOS or Model::PMOS
 	// index is a location in dangling[type]
-	bool tryLink(vector<Solution*> &dst, int type, int index);
-	bool push(vector<Solution*> &dst, int type, int index);
+	bool tryLink(vector<Solution> &dst, int type, int index);
+	bool push(vector<Solution> &dst, int type, int index);
 
 	// Finish building the constraint graph, filling out vcon and hcon.
 	void delRoute(int route);
@@ -177,7 +179,7 @@ struct Solution {
 	//-------------------------------------------
 	// This is determined by device ordering
 	// stack is indexed by transistor type: Model::NMOS, Model::PMOS
-	vector<Pin> stack[2];
+	array<vector<Pin>, 2> stack;
 	vector<Wire> routes;
 	// Route pairs that need to be connected via A*
 	// index into Solution::routes
@@ -186,7 +188,7 @@ struct Solution {
 		PMOS_STACK=-1,
 		NMOS_STACK=-2,
 	};
-	Layout stackLayout[2];
+	array<Layout, 2> stackLayout;
 
 	const Pin &pin(Index i) const;
 	Pin &pin(Index i);
@@ -199,6 +201,7 @@ struct Solution {
 	vector<ViaConstraint> viaConstraints;
 
 	void buildPins(const Tech &tech);
+	int countAligned();
 	int alignPins(int coeff=2);
 	void updatePinPos();
 	void buildPinConstraints(const Tech &tech);
@@ -220,6 +223,7 @@ struct Solution {
 	void buildNOffsets(const Tech &tech, vector<int> start=vector<int>(1, NMOS_STACK));
 	void assignRouteConstraints(const Tech &tech);
 	void lowerRoutes();
+	void updateRouteConstraints(const Tech &tech);
 	bool computeCost(int maxCost);
 
 	int cycleCount;

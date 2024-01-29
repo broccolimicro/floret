@@ -54,6 +54,7 @@ void Library::build(const Tech &tech) {
 		cells[i].solve(tech);
 		printf("\rDrawing %s\n", cells[i].name.c_str());
 		if (cells[i].layout != nullptr) {
+			cells[i].layout->solve(tech, -1, -1);
 			Layout layout;
 			cells[i].layout->print();
 			cells[i].layout->draw(tech, layout);

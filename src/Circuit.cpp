@@ -140,8 +140,8 @@ void Circuit::loadSubckt(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &le
 }
 
 void Circuit::solve(const Tech &tech, float cycleCoeff) {
-	vector<Solution*> stack;
-	stack.push_back(new Solution(this));
+	vector<Solution> stack;
+	stack.push_back(Solution(this));
 	
 	int count = 0;
 	Timer timer;
@@ -155,22 +155,22 @@ void Circuit::solve(const Tech &tech, float cycleCoeff) {
 	int cycleBuffer = 10;	
 
 	int minCost = -1;
-	int minCycles = -cycleBuffer;
+	stack.reserve(1000000);
 	while (stack.size() > 0) {
-		printf("\r%d      ", count);
+		printf("\r%d %d      ", count, (int)stack.size());
 		fflush(stdout);
-		Solution *curr = stack.back();
+		Solution curr = stack.back();
 		stack.pop_back();
 
-		if (curr->dangling[Model::NMOS].size() == 0 and 
-		    curr->dangling[Model::PMOS].size() == 0) {
-			if (curr->solve(tech, minCost, (minCycles+cycleBuffer)*cycleCoeff)) {
+		if (curr.dangling[Model::NMOS].size() == 0 and 
+		    curr.dangling[Model::PMOS].size() == 0) {
+			int cost = curr.countAligned();
+			if (minCost < 0 or cost > minCost) {
 				if (layout != nullptr) {
 					delete layout;
 				}
-				layout = curr;
-				minCost = curr->cost;
-				minCycles = curr->cycleCount;
+				layout = new Solution(curr);
+				minCost = cost;
 			}
 			count++;
 			continue;
@@ -181,22 +181,40 @@ void Circuit::solve(const Tech &tech, float cycleCoeff) {
 		// NMOS linked, NMOS unlinked, PMOS linked, PMOS unlinked
 
 		bool found = false;
+		vector<Solution> toadd;
 		for (int type = 0; type < 2 and not found; type++) {
 			for (int link = 1; link >= 0 and not found; link--) {
-				for (int i = 0; i < (int)curr->dangling[type].size(); i++) {
+				for (int i = 0; i < (int)curr.dangling[type].size(); i++) {
 					bool test = (link ?
-						curr->tryLink(stack, type, i) :
-						curr->push(stack, type, i));
+						curr.tryLink(toadd, type, i) :
+						curr.push(toadd, type, i));
 					found = found or test;
 				}
 			}
 		}
 
+		vector<Solution> best;
+		int bestCost = -1;
+		while (not toadd.empty()) {
+			int cost = toadd.back().countAligned();
+			if (bestCost < 0 or cost > bestCost) {
+				bestCost = cost;
+				best.clear();
+			}
+
+			if (cost == bestCost) {
+				best.push_back(toadd.back());
+			}
+
+			toadd.pop_back();
+		}
+
+		stack.insert(stack.end(), best.begin(), best.end());
+		best.clear();
+
 		if (not found) {
 			printf("we should never get here\n");
 		}
-
-		delete curr;
 	}
 
 	printf("\rCircuit::solve explored %d layouts for %s in %fms\n", count, name.c_str(), timer.since()*1e3);

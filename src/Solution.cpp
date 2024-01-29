@@ -185,21 +185,9 @@ Solution::Solution() {
 	cycleCount = 0;
 	cellHeight = 0;
 	cost = 0;
-
-	for (int i = 0; i < 2; i++) {
-		dangling[i] = vector<int>();
-		stack[i] = vector<Pin>();
-		stackLayout[i] = Layout();
-	}
 }
 
 Solution::Solution(const Circuit *ckt) {
-	for (int i = 0; i < 2; i++) {
-		dangling[i] = vector<int>();
-		stack[i] = vector<Pin>();
-		stackLayout[i] = Layout();
-	}
-
 	base = ckt;
 	dangling[0].reserve(base->mos.size());
 	dangling[1].reserve(base->mos.size());
@@ -215,7 +203,7 @@ Solution::~Solution() {
 }
 
 // index into Solution::dangling
-bool Solution::tryLink(vector<Solution*> &dst, int type, int index) {
+bool Solution::tryLink(vector<Solution> &dst, int type, int index) {
 	// Make sure that this transistor can be linked with the previous transistor
 	// on the stack. We cannot link this transistor if there isn't another
 	// transistor on the stack.
@@ -250,25 +238,23 @@ bool Solution::tryLink(vector<Solution*> &dst, int type, int index) {
 	}
 
 	// duplicate solution
-	Solution *next = new Solution(*this);
-	if (next->stack[type].size() == 0 or base->nets[fromNet].ports > 2 or base->nets[fromNet].isIO) {
+	dst.push_back(Solution(*this));
+	if (dst.back().stack[type].size() == 0 or base->nets[fromNet].ports > 2 or base->nets[fromNet].isIO) {
 		// Add a contact for the first net or between two transistors.
-		next->stack[type].push_back(Pin(fromNet));
+		dst.back().stack[type].push_back(Pin(fromNet));
 	}
-	next->stack[type].push_back(Pin(device, gateNet, fromNet, toNet));
+	dst.back().stack[type].push_back(Pin(device, gateNet, fromNet, toNet));
 
 	// remove item from dangling
-	next->dangling[type].erase(next->dangling[type].begin()+index);
-	if (next->dangling[type].size() == 0) {
-		next->stack[type].push_back(Pin(toNet));
+	dst.back().dangling[type].erase(dst.back().dangling[type].begin()+index);
+	if (dst.back().dangling[type].size() == 0) {
+		dst.back().stack[type].push_back(Pin(toNet));
 	}
-
-	dst.push_back(next);
 	return true;
 }
 
 // index into Solution::dangling
-bool Solution::push(vector<Solution*> &dst, int type, int index) {
+bool Solution::push(vector<Solution> &dst, int type, int index) {
 	// Sanity check to make sure this transistor actually has ports. This should
 	// never fail as it should be guaranteed by the spice loader in Circuit.cpp
 	int device = dangling[type][index];
@@ -288,19 +274,17 @@ bool Solution::push(vector<Solution*> &dst, int type, int index) {
 
 	// duplicate solution for the unflipped ordering
 	for (int i = 0; i < 2; i++) {
-		Solution *next = new Solution(*this);
-
-		if (next->stack[type].size() > 0) {
-			next->stack[type].push_back(Pin(stack[type].back().rightNet));
+		dst.push_back(Solution(*this));
+		if (dst.back().stack[type].size() > 0) {
+			dst.back().stack[type].push_back(Pin(stack[type].back().rightNet));
 		}
-		next->stack[type].push_back(Pin(fromNet));
-		next->stack[type].push_back(Pin(device, gateNet, fromNet, toNet));
+		dst.back().stack[type].push_back(Pin(fromNet));
+		dst.back().stack[type].push_back(Pin(device, gateNet, fromNet, toNet));
 		// remove item from dangling
-		next->dangling[type].erase(next->dangling[type].begin()+index);
-		if (next->dangling[type].size() == 0) {
-			next->stack[type].push_back(Pin(toNet));
+		dst.back().dangling[type].erase(dst.back().dangling[type].begin()+index);
+		if (dst.back().dangling[type].size() == 0) {
+			dst.back().stack[type].push_back(Pin(toNet));
 		}
-		dst.push_back(next);
 
 		swap(fromNet, toNet);
 	}
@@ -330,13 +314,15 @@ void Solution::buildPins(const Tech &tech) {
 	for (int type = 0; type < 2; type++) {
 		int pos = 0;
 		for (int i = 0; i < (int)stack[type].size(); i++) {
-			stack[type][i].off = 0;
 			stack[type][i].width = pinWidth(tech, Index(type, i));
 			stack[type][i].height = pinHeight(Index(type, i));
 			stack[type][i].pinLayout.clear();
 			drawPin(tech, stack[type][i].pinLayout, this, type, i);
+			stack[type][i].conLayout.clear();
 			drawViaStack(tech, stack[type][i].conLayout, stack[type][i].outNet, stack[type][i].layer, 2, vec2i(0,0), vec2i(0,0));
 			//stack[type][i].conLayout.push(tech.wires[stack[type][i].layer], Rect(stack[type][i].outNet, vec2i(0, 0), vec2i(stack[type][i].width, 0)));
+			
+			stack[type][i].off = 0;
 			if (i > 0) {
 				minOffset(&stack[type][i].off, tech, 0, stack[type][i-1].pinLayout.layers, 0, stack[type][i].pinLayout.layers, 0, stack[type][i-1].device >= 0 or stack[type][i].device >= 0);
 			}
@@ -346,6 +332,63 @@ void Solution::buildPins(const Tech &tech) {
 		}
 	}
 }
+
+int Solution::countAligned() {
+	int gateMatches = 0;
+	vector<Pin>::iterator idx[2] = {stack[0].begin(),stack[1].begin()};
+	int pos[2] = {0,0};
+	while (idx[0] != stack[0].end() and idx[1] != stack[1].end()) {
+		if (idx[0]->device < 0) {
+			pos[0] += idx[0]->off;
+			idx[0]++;
+		} else if (idx[1]->device < 0) {
+			pos[1] += idx[1]->off;
+			idx[1]++;
+		} else if (idx[0]->outNet == idx[1]->outNet and ((idx[0]->device < 0) == (idx[1]->device < 0))) {
+			gateMatches++;
+			pos[0] += idx[0]->off;
+			pos[1] += idx[1]->off;
+			idx[0]++;
+			idx[1]++;
+		} else if (pos[1]+idx[1]->off < pos[0]+idx[0]->off) {
+			pos[1] += idx[1]->off;
+			idx[1]++;
+		} else {
+			pos[0] += idx[0]->off;
+			idx[0]++;
+		}
+	}
+
+	int conMatches = 0;
+	idx[0] = stack[0].begin();
+	idx[1] = stack[1].begin();
+	pos[0] = 0;
+	pos[1] = 0;
+	while (idx[0] != stack[0].end() and idx[1] != stack[1].end()) {
+		if (idx[0]->device >= 0) {
+			pos[0] += idx[0]->off;
+			idx[0]++;
+		} else if (idx[1]->device >= 0) {
+			pos[1] += idx[1]->off;
+			idx[1]++;
+		} else if (idx[0]->outNet == idx[1]->outNet and ((idx[0]->device < 0) == (idx[1]->device < 0))) {
+			conMatches++;
+			pos[0] += idx[0]->off;
+			pos[1] += idx[1]->off;
+			idx[0]++;
+			idx[1]++;
+		} else if (pos[1]+idx[1]->off < pos[0]+idx[0]->off) {
+			pos[1] += idx[1]->off;
+			idx[1]++;
+		} else {
+			pos[0] += idx[0]->off;
+			idx[0]++;
+		}
+	}
+
+	return gateMatches*3 + conMatches*2;
+}
+
 
 int Solution::alignPins(int coeff) {
 	int matches = 0;
@@ -358,16 +401,20 @@ int Solution::alignPins(int coeff) {
 		}
 
 		int p = pos[1-axis];
+		int off = idx[axis]->off;
 		for (auto other = idx[1-axis]; other != stack[1-axis].end() and p + other->off - pos[axis] < coeff*idx[axis]->off; other++) {
 			p += other->off;
+			other->pos = p;
 			if (other->outNet == idx[axis]->outNet and ((other->device < 0) == (idx[axis]->device < 0))) {
-				idx[axis]->off = p - pos[axis];
+				off = p - pos[axis];
+				//idx[1-axis] = other;
+				//pos[1-axis] = p;
 				matches++;
 				break;
 			}
 		}
 
-		pos[axis] += idx[axis]->off;
+		pos[axis] += off;
 		idx[axis]->pos = pos[axis];
 		idx[axis]++;
 	}
@@ -1418,6 +1465,21 @@ void Solution::lowerRoutes() {
 	}
 }
 
+void Solution::updateRouteConstraints(const Tech &tech) {
+	// Compute route constraints
+	for (int r = 0; r < (int)routeConstraints.size(); r++) {
+		if (routeConstraints[r].wires[0] >= 0 and routeConstraints[r].wires[1] >= 0) {
+			int i = routeConstraints[r].wires[0];
+			int j = routeConstraints[r].wires[1];
+			int off[2] = {0,0};
+			bool fromto = minOffset(off+0, tech, 1, routes[i].layout.layers, 0, routes[j].layout.layers, 0);
+			bool tofrom = minOffset(off+1, tech, 1, routes[j].layout.layers, 0, routes[i].layout.layers, 0);
+			routeConstraints[r].off[0] = off[0];
+			routeConstraints[r].off[1] = off[1];
+		}
+	}
+}
+
 bool Solution::computeCost(int maxCost) {
 	int left = 1000000000;
 	int right = -1000000000;
@@ -1457,11 +1519,11 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 	//print();
 	lowerRoutes();
 	drawRoutes(tech);
-	routeConstraints.clear();
-	cellHeight = 0;
-	buildStackConstraints(tech);
-	buildRouteConstraints(tech);
-	assignRouteConstraints(tech);
+	updateRouteConstraints(tech);
+	zeroWeights();
+	buildPrevNodes();
+	buildPOffsets(tech);
+	buildNOffsets(tech);
 	//print();
 	return computeCost(maxCost);
 }
