@@ -248,7 +248,7 @@ bool Solution::tryLink(vector<Solution*> &dst, int type, int index) {
 
 	// duplicate solution
 	Solution *next = new Solution(*this);
-	if (next->stack[type].size() == 0 or base->nets[fromNet].ports > 2) {
+	if (next->stack[type].size() == 0 or base->nets[fromNet].ports > 2 or base->nets[fromNet].isIO) {
 		// Add a contact for the first net or between two transistors.
 		next->numContacts++;
 		next->stack[type].push_back(Pin(-next->numContacts, fromNet));
@@ -304,9 +304,7 @@ bool Solution::push(vector<Solution*> &dst, int type, int index) {
 		}
 		dst.push_back(next);
 
-		int tmp = fromNet;
-		fromNet = toNet;
-		toNet = tmp;
+		swap(fromNet, toNet);
 	}
 
 	return true;
@@ -351,7 +349,8 @@ void Solution::buildPins(const Tech &tech) {
 	}
 }
 
-void Solution::alignPins(int coeff) {
+int Solution::alignPins(int coeff) {
+	int matches = 0;
 	vector<Pin>::iterator idx[2] = {stack[0].begin(),stack[1].begin()};
 	int pos[2] = {0,0};
 	while (idx[0] != stack[0].end() and idx[1] != stack[1].end()) {
@@ -363,8 +362,9 @@ void Solution::alignPins(int coeff) {
 		int p = pos[1-axis];
 		for (auto other = idx[1-axis]; other != stack[1-axis].end() and p + other->off - pos[axis] < coeff*idx[axis]->off; other++) {
 			p += other->off;
-			if (other->outNet == idx[axis]->outNet) {
+			if (other->outNet == idx[axis]->outNet and ((other->device < 0) == (idx[axis]->device < 0))) {
 				idx[axis]->off = p - pos[axis];
+				matches++;
 				break;
 			}
 		}
@@ -380,6 +380,7 @@ void Solution::alignPins(int coeff) {
 			idx[type]->pos = pos[type];
 		}
 	}
+	return matches;
 }
 
 void Solution::updatePinPos() {
@@ -1432,7 +1433,7 @@ bool Solution::computeCost(int maxCost) {
 	}
 
 	int cellHeightOverhead = 10;
-	cost = (cellHeightOverhead+right-left)*cellHeight*(int)(1+aStar.size());
+	cost = cellHeight;//(cellHeightOverhead+right-left)*cellHeight*(int)(1+aStar.size());
 
 	if (maxCost > 0 and cost >= maxCost)
 		return false;
@@ -1455,7 +1456,7 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 	buildStackConstraints(tech);
 	buildRouteConstraints(tech);
 	assignRouteConstraints(tech);
-	print();
+	//print();
 	lowerRoutes();
 	drawRoutes(tech);
 	routeConstraints.clear();
@@ -1463,7 +1464,7 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 	buildStackConstraints(tech);
 	buildRouteConstraints(tech);
 	assignRouteConstraints(tech);
-	print();
+	//print();
 	return computeCost(maxCost);
 }
 

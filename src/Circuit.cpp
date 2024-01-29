@@ -179,13 +179,15 @@ void Circuit::solve(const Tech &tech, float cycleCoeff) {
 		// DESIGN(edward.bingham) The following search order makes sure
 		// that we can't introduce redundant orderings of transistors:
 		// NMOS linked, NMOS unlinked, PMOS linked, PMOS unlinked
+
 		bool found = false;
 		for (int type = 0; type < 2 and not found; type++) {
 			for (int link = 1; link >= 0 and not found; link--) {
 				for (int i = 0; i < (int)curr->dangling[type].size(); i++) {
-					found = found or (link ?
+					bool test = (link ?
 						curr->tryLink(stack, type, i) :
 						curr->push(stack, type, i));
+					found = found or test;
 				}
 			}
 		}
