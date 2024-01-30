@@ -1200,6 +1200,11 @@ void Solution::zeroWeights() {
 	for (int i = 0; i < (int)routes.size(); i++) {
 		routes[i].pOffset = 0;
 		routes[i].nOffset = 0;
+	}
+}
+
+void Solution::clearPrev() {
+	for (int i = 0; i < (int)routes.size(); i++) {
 		routes[i].prevNodes.clear();
 	}
 }
@@ -1315,12 +1320,15 @@ void Solution::buildNOffsets(const Tech &tech, vector<int> start) {
 	}
 }
 
-void Solution::assignRouteConstraints(const Tech &tech) {
+void Solution::resetGraph(const Tech &tech) {
 	zeroWeights();
+	clearPrev();
 	buildPrevNodes();
 	buildPOffsets(tech);
 	buildNOffsets(tech);
+}
 
+void Solution::assignRouteConstraints(const Tech &tech) {
 	vector<int> unassigned;
 	unassigned.reserve(routeConstraints.size());
 	for (int i = 0; i < (int)routeConstraints.size(); i++) {
@@ -1424,7 +1432,7 @@ void Solution::lowerRoutes() {
 	//    |__|__
 	//       |  |
 	//       |  |
-	int pinLevel = 1;
+	// int pinLevel = 1;
 	for (int i = 0; i < (int)routes.size(); i++) {
 		routes[i].level.clear();
 		for (int j = 0; j < (int)routes[i].pins.size()-1; j++) {
@@ -1467,15 +1475,21 @@ void Solution::lowerRoutes() {
 
 void Solution::updateRouteConstraints(const Tech &tech) {
 	// Compute route constraints
-	for (int r = 0; r < (int)routeConstraints.size(); r++) {
-		if (routeConstraints[r].wires[0] >= 0 and routeConstraints[r].wires[1] >= 0) {
-			int i = routeConstraints[r].wires[0];
-			int j = routeConstraints[r].wires[1];
-			int off[2] = {0,0};
-			bool fromto = minOffset(off+0, tech, 1, routes[i].layout.layers, 0, routes[j].layout.layers, 0);
-			bool tofrom = minOffset(off+1, tech, 1, routes[j].layout.layers, 0, routes[i].layout.layers, 0);
-			routeConstraints[r].off[0] = off[0];
-			routeConstraints[r].off[1] = off[1];
+	for (auto con = routeConstraints.begin(); con != routeConstraints.end(); con++) {
+		if (con->wires[0] >= 0 and con->wires[1] >= 0) {
+			con->off[0] = 0;
+			con->off[1] = 0;
+			minOffset(con->off+0, tech, 1, routes[con->wires[0]].layout.layers, 0, routes[con->wires[1]].layout.layers, 0);
+			minOffset(con->off+1, tech, 1, routes[con->wires[1]].layout.layers, 0, routes[con->wires[0]].layout.layers, 0);
+		} else if (con->wires[0] >= 0) {
+			con->off[0] = 0;
+			con->off[1] = 0;
+			minOffset(con->off+0, tech, 1, stackLayout[Model::PMOS].layers, 0, routes[con->wires[0]].layout.layers, 0);
+		} else if (con->wires[1] >= 0) {
+			con->off[0] = 0;
+			con->off[1] = 0;
+			minOffset(con->off+0, tech, 1, routes[con->wires[1]].layout.layers, 0, stackLayout[Model::NMOS].layers, 0);
+		} else {
 		}
 	}
 }
@@ -1515,15 +1529,20 @@ bool Solution::solve(const Tech &tech, int maxCost, int maxCycles) {
 	drawRoutes(tech);
 	buildStackConstraints(tech);
 	buildRouteConstraints(tech);
+	resetGraph(tech);
 	assignRouteConstraints(tech);
 	//print();
 	lowerRoutes();
 	drawRoutes(tech);
-	updateRouteConstraints(tech);
+	cellHeight = 0;
+	routeConstraints.clear();
+	buildStackConstraints(tech);
+	buildRouteConstraints(tech);
 	zeroWeights();
-	buildPrevNodes();
 	buildPOffsets(tech);
 	buildNOffsets(tech);
+	assignRouteConstraints(tech);
+	//updateRouteConstraints(tech);
 	//print();
 	return computeCost(maxCost);
 }

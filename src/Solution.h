@@ -218,6 +218,8 @@ struct Solution {
 	vector<int> findTop();
 	vector<int> findBottom();
 	void zeroWeights();
+	void clearPrev();
+	void resetGraph(const Tech &tech);
 	void buildPrevNodes(vector<int> start=vector<int>(1, PMOS_STACK));
 	void buildPOffsets(const Tech &tech, vector<int> start=vector<int>(1, PMOS_STACK));
 	void buildNOffsets(const Tech &tech, vector<int> start=vector<int>(1, NMOS_STACK));
