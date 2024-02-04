@@ -318,6 +318,29 @@ bool operator<(PortPairing p0, PortPairing p1) {
 	return min(p0.count[0], p0.count[1]) < min(p1.count[0], p1.count[1]);
 }
 
+vector<array<Token, 2> > Ordering::findStart() {
+	vector<array<Token, 2> > result;
+	for (int i = 0; i < (int)mos[0].edges.size(); i++) {
+		for (int j = 0; j < (int)mos[1].edges.size(); j++) {
+			//if (mos[0].edges[i].gate == mos[1].edges[j].gate) {
+				int matchingPorts = 0;
+				for (int k = 0; k < (int)mos[0].edges[i].ports.size(); k++) {
+					for (int l = 0; l < (int)mos[1].edges[j].ports.size(); l++) {
+						if (mos[0].edges[i].ports[k] == mos[1].edges[j].ports[l]) {
+							result.push_back(array<Token, 2>({Token(i, mos[0].edges[i].ports[k]), Token(j, mos[1].edges[j].ports[l])}));
+						}
+					}
+				}
+			//}
+		}
+	}
+
+	for (int i = 0; i < (int)result.size(); i++) {
+		printf("start (%d %d) (%d %d)\n", result[i][0].edge, result[i][0].port, result[i][1].edge, result[i][1].port);
+	}
+	return result;
+}
+
 void Ordering::matchSequencing() {
 	// DESIGN(edward.bingham) Any time there is a net with more than 2 ports,
 	// it's because of some parallel composition. That parallel composition

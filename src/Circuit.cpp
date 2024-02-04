@@ -148,8 +148,12 @@ void Circuit::solve(const Tech &tech, float cycleCoeff) {
 	order.print(this);
 
 	vector<Solution> stack;
-	stack.push_back(Solution(this));
-	
+	vector<array<Token, 2> > start = order.findStart();
+	for (int i = 0; i < (int)start.size(); i++) {
+		stack.push_back(Solution(this));
+		stack.back().curr = start[i];
+	}
+
 	int count = 0;
 	Timer timer;
 

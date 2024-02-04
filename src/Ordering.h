@@ -75,6 +75,7 @@ struct Ordering {
 
 	void build(const Circuit *base);
 
+	vector<array<Token, 2> > findStart();
 	void matchSequencing();
 	void breakCycles();
 	void buildSequences();
