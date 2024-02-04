@@ -2,7 +2,7 @@
 
 #include <ruler/Layout.h>
 #include "Circuit.h"
-#include "Ordering.h"
+#include "Placer.h"
 #include <set>
 #include <unordered_set>
 #include <array>
@@ -10,26 +10,26 @@
 
 using namespace std;
 
-struct Solution;
+struct Router;
 
 struct Index {
 	Index();
 	Index(int type, int pin);
 	~Index();
 
-	// index into Solution::stack (Model::NMOS or Model::PMOS)
+	// index into Router::stack (Model::NMOS or Model::PMOS)
 	int type;
 
-	// index into Solution::stack[type], pin number from left to right
+	// index into Router::stack[type], pin number from left to right
 	int pin;
 };
 
 // DESIGN(edward.bingham) use this to keep Wire::pins sorted
 struct CompareIndex {
-	CompareIndex(const Solution *s);
+	CompareIndex(const Router *s);
 	~CompareIndex();
 
-	const Solution *s;
+	const Router *s;
 
 	bool operator()(const Index &i0, const Index &i1);
 };
@@ -72,7 +72,7 @@ struct Wire {
 	~Wire();
 
 	int net;
-	// index into Solution::stack
+	// index into Router::stack
 	// DESIGN(edward.bingham) We should always keep this array sorted based on
 	// horizontal location of the pin in the cell from left to right. This helps
 	// us pick pins to dogleg when breaking cycles.
@@ -91,8 +91,8 @@ struct Wire {
 	int nOffset;
 	unordered_set<int> prevNodes;
 
-	void addPin(const Solution *s, Index pin);
-	bool hasPin(const Solution *s, Index pin, vector<Index>::iterator *out = nullptr);
+	void addPin(const Router *s, Index pin);
+	bool hasPin(const Router *s, Index pin, vector<Index>::iterator *out = nullptr);
 	int getLevel(int i) const;
 };
 
@@ -101,8 +101,8 @@ struct PinConstraint {
 	PinConstraint(int from, int to);
 	~PinConstraint();
 
-	int from; // index into Solution::stack[Model::PMOS]
-	int to;   // index into Solution::stack[Model::NMOS]
+	int from; // index into Router::stack[Model::PMOS]
+	int to;   // index into Router::stack[Model::NMOS]
 };
 
 struct ViaConstraint {
@@ -118,7 +118,7 @@ struct ViaConstraint {
 	};
 
 	int type;
-	// index into Solution::stack[type]
+	// index into Router::stack[type]
 	int idx;
 
 	ViaConstraint::Pin from;
@@ -133,10 +133,10 @@ struct RouteConstraint {
 	RouteConstraint(int a, int b, int off0=0, int off1=0, int select=-1);
 	~RouteConstraint();
 
-	// index into Solution::wires
+	// index into Router::wires
 	int wires[2];
 
-	// derived by Solution::solve
+	// derived by Router::solve
 	// from = wires[select], to = wires[1-select]
 	int select;
 
@@ -146,10 +146,10 @@ struct RouteConstraint {
 	int off[2];
 };
 
-struct Solution {
-	Solution();
-	Solution(const Circuit *ckt);
-	~Solution();
+struct Router {
+	Router();
+	Router(const Circuit *ckt);
+	~Router();
 
 	const Circuit *base;
 
@@ -170,8 +170,8 @@ struct Solution {
 	// device when possible. These functions build the constraint graph.
 	// type is either Model::NMOS or Model::PMOS
 	// index is a location in dangling[type]
-	bool tryLink(vector<Solution> &dst, int type, int index);
-	bool push(vector<Solution> &dst, int type, int index);
+	bool tryLink(vector<Router> &dst, int type, int index);
+	bool push(vector<Router> &dst, int type, int index);
 
 	//-------------------------------------------
 	// CONSTRAINT GRAPH
@@ -182,7 +182,7 @@ struct Solution {
 	array<int, 2> alignIdx;
 	vector<Wire> routes;
 	// Route pairs that need to be connected via A*
-	// index into Solution::routes
+	// index into Router::routes
 	vector<pair<int, int> > aStar;
 	enum {
 		PMOS_STACK=-1,

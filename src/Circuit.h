@@ -49,7 +49,7 @@ struct Net {
 	bool isIO;
 };
 
-struct Solution;
+struct Router;
 
 struct Circuit {
 	Circuit();
@@ -61,7 +61,7 @@ struct Circuit {
 	vector<Net> nets;
 	vector<Mos> mos;
 
-	Solution *layout;
+	Router *layout;
 
 	int findNet(string name, bool create=false);
 

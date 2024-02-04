@@ -67,9 +67,9 @@ struct Eulerian {
 	void print(const Circuit *base=nullptr); 
 };
 
-struct Ordering {
-	Ordering();
-	~Ordering();
+struct Placer {
+	Placer();
+	~Placer();
 
 	array<Eulerian, 2> mos;
 

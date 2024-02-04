@@ -127,7 +127,7 @@ void drawViaStack(const Tech &tech, Layout &dst, int net, int downLevel, int upL
 	}
 }
 
-void drawWire(const Tech &tech, Layout &dst, const Solution *ckt, const Wire &wire, vec2i pos, vec2i dir) {
+void drawWire(const Tech &tech, Layout &dst, const Router *ckt, const Wire &wire, vec2i pos, vec2i dir) {
 	int prevPos = 0;
 	Layout prevLayout;
 	Layout nextLayout;
@@ -223,7 +223,7 @@ void drawWire(const Tech &tech, Layout &dst, const Solution *ckt, const Wire &wi
 	//}
 }
 
-void drawRoute(const Tech &tech, Layout &dst, const Solution *ckt, const Wire &wire, vec2i pos, vec2i dir) {
+void drawRoute(const Tech &tech, Layout &dst, const Router *ckt, const Wire &wire, vec2i pos, vec2i dir) {
 	//printf("drawing route %d\n", wire.pOffset);
 	drawLayout(dst, wire.layout, vec2i(0, wire.pOffset)*dir, dir);
 
@@ -247,7 +247,7 @@ void drawRoute(const Tech &tech, Layout &dst, const Solution *ckt, const Wire &w
 	}
 }
 
-void drawPin(const Tech &tech, Layout &dst, const Solution *ckt, int type, int pinID, vec2i pos, vec2i dir) {
+void drawPin(const Tech &tech, Layout &dst, const Router *ckt, int type, int pinID, vec2i pos, vec2i dir) {
 	pos[0] += ckt->stack[type][pinID].pos;
 	if (ckt->stack[type][pinID].device < 0) {
 		int model = -1;

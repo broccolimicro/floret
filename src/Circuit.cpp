@@ -1,9 +1,9 @@
 #include "Circuit.h"
 #include "Common.h"
 #include "spice.h"
-#include "Solution.h"
+#include "Router.h"
 #include "Timer.h"
-#include "Ordering.h"
+#include "Placer.h"
 
 Mos::Mos() {
 	model = -1;
@@ -141,16 +141,16 @@ void Circuit::loadSubckt(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &le
 }
 
 void Circuit::solve(const Tech &tech, float cycleCoeff) {
-	Ordering order;
+	Placer order;
 	order.build(this);
 	order.print(this);
 	order.solve();
 	order.print(this);
 
-	vector<Solution> stack;
+	vector<Router> stack;
 	vector<array<Token, 2> > start = order.findStart();
 	for (int i = 0; i < (int)start.size(); i++) {
-		stack.push_back(Solution(this));
+		stack.push_back(Router(this));
 		stack.back().curr = start[i];
 	}
 
@@ -168,7 +168,7 @@ void Circuit::solve(const Tech &tech, float cycleCoeff) {
 	while (stack.size() > 0) {
 		printf("\r%d %d      ", count, (int)stack.size());
 		fflush(stdout);
-		Solution curr = stack.back();
+		Router curr = stack.back();
 		stack.pop_back();
 
 		if (curr.dangling[Model::NMOS].size() == 0 and 
@@ -178,7 +178,7 @@ void Circuit::solve(const Tech &tech, float cycleCoeff) {
 				if (layout != nullptr) {
 					delete layout;
 				}
-				layout = new Solution(curr);
+				layout = new Router(curr);
 				maxAlignment = alignment;
 			}
 			count++;
@@ -189,7 +189,7 @@ void Circuit::solve(const Tech &tech, float cycleCoeff) {
 		// that we can't introduce redundant orderings of transistors:
 		// NMOS linked, NMOS unlinked, PMOS linked, PMOS unlinked
 
-		vector<Solution> toadd;
+		vector<Router> toadd;
 		vector<Token> n;
 
 		int type = 1;
@@ -227,7 +227,7 @@ void Circuit::solve(const Tech &tech, float cycleCoeff) {
 			}	
 		}
 		
-		vector<Solution> best;
+		vector<Router> best;
 		int bestCost = -1;
 		while (not toadd.empty()) {
 			int cost = toadd.back().countAligned();

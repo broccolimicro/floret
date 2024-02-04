@@ -1,4 +1,4 @@
-#include "Ordering.h"
+#include "Placer.h"
 
 #include <list>
 #include <set>
@@ -233,13 +233,13 @@ void Eulerian::print(const Circuit *base) {
 	}
 }
 
-Ordering::Ordering() {
+Placer::Placer() {
 }
 
-Ordering::~Ordering() {
+Placer::~Placer() {
 }
 
-void Ordering::build(const Circuit *base) {
+void Placer::build(const Circuit *base) {
 	// Create a Eulerian graph for the nmos stack and for the pmos stack
 	// Nets represent vertices in that graph while transistors represent edges.
 	for (int i = 0; i < (int)base->mos.size(); i++) {
@@ -318,7 +318,7 @@ bool operator<(PortPairing p0, PortPairing p1) {
 	return min(p0.count[0], p0.count[1]) < min(p1.count[0], p1.count[1]);
 }
 
-vector<array<Token, 2> > Ordering::findStart() {
+vector<array<Token, 2> > Placer::findStart() {
 	vector<array<Token, 2> > result;
 	for (int i = 0; i < (int)mos[0].edges.size(); i++) {
 		for (int j = 0; j < (int)mos[1].edges.size(); j++) {
@@ -341,7 +341,7 @@ vector<array<Token, 2> > Ordering::findStart() {
 	return result;
 }
 
-void Ordering::matchSequencing() {
+void Placer::matchSequencing() {
 	// DESIGN(edward.bingham) Any time there is a net with more than 2 ports,
 	// it's because of some parallel composition. That parallel composition
 	// *must* either be standalone or paired with some sequential composition in
@@ -462,7 +462,7 @@ void Ordering::matchSequencing() {
 	// Cycle.
 }
 
-void Ordering::breakCycles() {
+void Placer::breakCycles() {
 	// Look for cycles in the Eulerian graph and cut them optimizing gate
 	// distance and reducing number of connections to the other stack. The result
 	// of this will be a set of gate strips which we need to align. We can create
@@ -478,7 +478,7 @@ void Ordering::breakCycles() {
 	}
 }
 
-void Ordering::buildSequences() {
+void Placer::buildSequences() {
 	// Identify all of the stacks from the graph by exploring all of the nodes
 	// (hopefully in linear time). Then, we can free the memory associated with
 	// the Eulerian Graphs. While there are nodes left in the Eulerian graphs,
@@ -491,19 +491,19 @@ void Ordering::buildSequences() {
 	}
 }
 
-void Ordering::buildConstraints() {
+void Placer::buildConstraints() {
 	// Identify the offsets for maximum alignment and the alignment score between
 	// any pairing of the nmos and pmos stacks.
 }
 
-void Ordering::solveConstraints() {
+void Placer::solveConstraints() {
 	// Run a greedy algorithm, choosing the pairing and offset with the best
 	// score, then checking to see which pairings it eliminates from our choice
 	// set. We do this until we have either selected or eliminated all of the
 	// pairings.
 }
 
-void Ordering::fixDangling() {
+void Placer::fixDangling() {
 	// Check for dangling transistors which haven't been matched up. We can
 	// either leave them where they are (hurting horizontal size due to unmatched
 	// transistors in both stacks) or cut them off their stack and reposition
@@ -513,7 +513,7 @@ void Ordering::fixDangling() {
 	// occur too often.
 }
 
-void Ordering::solve(int radix) {
+void Placer::solve(int radix) {
 	matchSequencing();
 	//breakCycles();
 	//buildSequences();
@@ -547,7 +547,7 @@ void Ordering::solve(int radix) {
 	}*/
 }
 
-void Ordering::print(const Circuit *base) {
+void Placer::print(const Circuit *base) {
 	printf("NMOS Stack\n");
 	mos[0].print(base);
 	printf("\nPMOS Stack\n");
