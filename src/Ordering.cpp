@@ -37,6 +37,54 @@ Eulerian::Eulerian() {
 Eulerian::~Eulerian() {
 }
 
+vector<Sequence> Eulerian::buildSequences() {
+	vector<Sequence> result;
+
+	/*while (not edges.empty()) {
+	}*/
+
+	return result;
+} 
+
+void Eulerian::print(const Circuit *base) {
+	printf("Vertices\n");
+	for (int i = 0; i < (int)verts.size(); i++) {
+		if (base != nullptr) {
+			printf("vert %s(%d): gates={", base->nets[i].name.c_str(), i);
+		} else {
+			printf("vert %d: gates={", i);
+		}
+		for (int j = 0; j < (int)verts[i].gates.size(); j++) {
+			printf("%d ", verts[i].gates[j]);
+		}
+		printf("} ports={");
+		for (int j = 0; j < (int)verts[i].ports.size(); j++) {
+			if (j != 0) {
+				printf(", ");
+			}
+			printf("(");
+			for (int k = 0; k < (int)verts[i].ports[j].size(); k++) {
+				printf("%d ", verts[i].ports[j][k]);
+			}
+			printf(")");
+		}
+		printf("}\n");
+	}
+
+	printf("Edges\n");
+	for (int i = 0; i < (int)edges.size(); i++) {
+		if (base != nullptr) {
+			printf("edge %d: %s(%d)\t-\t%s(%d)\t-\t%s(%d) {", i, base->nets[edges[i].ports[0]].name.c_str(), edges[i].ports[0], base->nets[edges[i].gate].name.c_str(), edges[i].gate, base->nets[edges[i].ports[1]].name.c_str(), edges[i].ports[1]);
+		} else {
+			printf("edge %d: %d-%d-%d {", i, edges[i].ports[0], edges[i].gate, edges[i].ports[1]);
+		}
+		for (int j = 0; j < (int)edges[i].mos.size(); j++) {
+			printf("%d ", edges[i].mos[j]);
+		}
+		printf("}\n");
+	}
+}
+
 Ordering::Ordering() {
 }
 
@@ -69,7 +117,7 @@ void Ordering::build(const Circuit *base) {
 		}
 
 		// if not a folding, then add a new edge
-		if (s == (int)mos[type].edges.size()) {
+		if (s >= (int)mos[type].edges.size()) {
 			mos[type].edges.push_back(Edge(i, gate, ports, base->mos[i].size));
 		} else {
 			mos[type].edges[s].mos.push_back(i);
@@ -107,7 +155,7 @@ bool operator<(PortPairing p0, PortPairing p1) {
 	return min(p0.count[0], p0.count[1]) < min(p1.count[0], p1.count[1]);
 }
 
-void Ordering::solve(int radix) {
+void Ordering::matchSequencing() {
 	// DESIGN(edward.bingham) Any time there is a net with more than 2 ports,
 	// it's because of some parallel composition. That parallel composition
 	// *must* either be standalone or paired with some sequential composition in
@@ -123,15 +171,26 @@ void Ordering::solve(int radix) {
 			if (v0->ports.size() == 0) {
 				continue;
 			}
+			if (v0->ports[0].size() > 2) {
+				// DESIGN(edward.bingham) This ensures that adding items to v0->ports won't invalidate the iterator p0
+				v0->ports.reserve(((int)v0->ports[0].size()+1)/2+1);
+			}
 
+			// At this point, we're looking at a single net in one of the two stacks
 			int v0i = v0-mos[type].verts.begin();
 			auto p0 = v0->ports.begin();
 			if ((int)p0->size() > 2) {
+				// This net needs to be broken up, look in the other stack for a
+				// sequence that can help inform us how that should be done
 				for (auto v1 = mos[1-type].verts.begin(); v1 != mos[1-type].verts.end(); v1++) {
 					for (auto p1 = v1->ports.begin(); p1 != v1->ports.end(); p1++) {
 						if ((int)p1->size() == 2) {
+							// We found a strict sequencing, this is a net that is only
+							// connected to two other source or drain nodes in the stack.
+							// Does it have anything to do with the ports in our net?
 							vector<PortPairing> n0;
 							for (auto port = p0->begin(); port != p0->end(); port++) {
+								// See if any of the ports in our net match the first of the two nodes
 								if (mos[type].edges[*port].gate == mos[1-type].edges[(*p1)[0]].gate) {
 									int k = 0;
 									while (k < (int)n0.size() and n0[k].ports[0] != *port) {
@@ -149,6 +208,7 @@ void Ordering::solve(int radix) {
 
 							vector<PortPairing> n1;
 							for (auto port = p0->begin(); port != p0->end(); port++) {
+								// See if any of the ports in our net match the second of the two nodes
 								if (mos[type].edges[*port].gate == mos[1-type].edges[(*p1)[1]].gate) {
 									for (int k = 0; k < (int)n0.size(); k++) {
 										if (n0[k].ports[0] != *port) {
@@ -170,9 +230,11 @@ void Ordering::solve(int radix) {
 								}
 							}
 
-							// Make a heap
-							// greedily pick and apply pairings
-							// arbitrarily determine remaining pairings
+							// If N ports in our net match the first node and M ports in our
+							// net match the second, then we have N*M possible pairings.
+							// We've already elaborated these possible pairings into n1. So,
+							// we need to figure out which set of pairings is optimal. Make a
+							// heap, greedily pick and apply pairings
 							make_heap(n1.begin(), n1.end());
 							while (n1.size() != 0) {
 								pop_heap(n1.begin(), n1.end());
@@ -212,38 +274,67 @@ void Ordering::solve(int radix) {
 	// minimize the number of diffusion breaks. It can create loops in the
 	// Eulerian graph that wouldn't exist if we were to draw out a Eulerian
 	// Cycle.
+}
 
-	// Our next task is to identify all of the stacks from the graph. This
-	// involves exploring all of the nodes (hopefully in linear time) and then
-	// recording them in stacks. At that point, we can free the Eulerian Graphs.
-	// While there are nodes left in the Eulerian graphs, pick a node and walk
-	// the graph in both directions. Save the resulting stack and record whether
-	// there is a cycle. Delete the nodes from the graph as we explore them
+void Ordering::breakCycles() {
+	// Look for cycles in the Eulerian graph and cut them optimizing gate
+	// distance and reducing number of connections to the other stack. The result
+	// of this will be a set of gate strips which we need to align. We can create
+	// de-bruijn graphs following the DNA sequencing strategies.
+
+	// DESIGN(edward.bingham) Most of the cycles are likely to involve Vdd or GND
+	// in some way. Even if not, nets which can be placed over the transistor
+	// stacks because they have fewer connections to the other stack are more
+	// amenable to being broken up.
 
 	
+}
 
-	// Then, we need to to identify the offsets for maximum alignment and the
-	// alignment score between any pairing of the nmos and pmos stacks.
+void Ordering::buildSequences() {
+	// Identify all of the stacks from the graph by exploring all of the nodes
+	// (hopefully in linear time). Then, we can free the memory associated with
+	// the Eulerian Graphs. While there are nodes left in the Eulerian graphs,
+	// pick a node and walk the graph in both directions. Save the resulting
+	// stack and record whether there is a cycle. Delete the nodes from the graph
+	// as we explore them
+	array<vector<Sequence>, 2> seq;
+	for (int type = 0; type < 2; type++) {
+		seq[type] = mos[type].buildSequences();
+	}
+}
+
+void Ordering::buildConstraints() {
+	// Identify the offsets for maximum alignment and the alignment score between
+	// any pairing of the nmos and pmos stacks.
+}
+
+void Ordering::solveConstraints() {
+	// Run a greedy algorithm, choosing the pairing and offset with the best
+	// score, then checking to see which pairings it eliminates from our choice
+	// set. We do this until we have either selected or eliminated all of the
+	// pairings.
+}
+
+void Ordering::fixDangling() {
+	// Check for dangling transistors which haven't been matched up. We can
+	// either leave them where they are (hurting horizontal size due to unmatched
+	// transistors in both stacks) or cut them off their stack and reposition
+	// them somewhere with a hole (hurting vertical size due to increased routing
+	// complexity). Since combinational logic is always fully matched, and
+	// c-elements are often fully matched, this outcome should hopefully not
+	// occur too often.
+}
+
+void Ordering::solve(int radix) {
+	matchSequencing();
+	breakCycles();
+	buildSequences();
+	buildConstraints();
+	solveConstraints();
+	fixDangling();
 
 
-	// Then we run a greedy algorithm, choosing the pairing and offset with the
-	// best score, then checking to see which pairings it eliminates from our
-	// choice set. We do this until we have either selected or eliminated all of
-	// the pairings.
-
-
-	// Then we need to check for dangling transistors which haven't been matched
-	// up. We can either leave them where they are (hurting horizontal size due
-	// to unmatched transistors in both stacks) or cut them off their stack and
-	// reposition them somewhere with a hole (hurting vertical size due to
-	// increased routing complexity). Since combinational logic is always fully
-	// matched, and c-elements are often fully matched, this outcome should
-	// hopefully not occur too often.
-
-
-
-
-
+	// Old Code
 	// Create super nodes
 	/*for (int i = 0; i < 2; i++) {
 		seq[i].push_back(Edge());
@@ -280,3 +371,13 @@ void Ordering::solve(int radix) {
 		}
 	}*/
 }
+
+void Ordering::print(const Circuit *base) {
+	printf("NMOS Stack\n");
+	mos[0].print(base);
+	printf("\nPMOS Stack\n");
+	mos[1].print(base);
+	printf("\n");
+}
+
+

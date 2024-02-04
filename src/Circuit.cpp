@@ -3,6 +3,7 @@
 #include "spice.h"
 #include "Solution.h"
 #include "Timer.h"
+#include "Ordering.h"
 
 Mos::Mos() {
 	model = -1;
@@ -140,7 +141,13 @@ void Circuit::loadSubckt(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &le
 }
 
 void Circuit::solve(const Tech &tech, float cycleCoeff) {
-	vector<Solution> stack;
+	Ordering order;
+	order.build(this);
+	order.print(this);
+	order.solve();
+	order.print(this);
+
+	/*vector<Solution> stack;
 	stack.push_back(Solution(this));
 	
 	int count = 0;
@@ -217,6 +224,6 @@ void Circuit::solve(const Tech &tech, float cycleCoeff) {
 		}
 	}
 
-	printf("\rCircuit::solve explored %d layouts for %s in %fms\n", count, name.c_str(), timer.since()*1e3);
+	printf("\rCircuit::solve explored %d layouts for %s in %fms\n", count, name.c_str(), timer.since()*1e3);*/
 }
 

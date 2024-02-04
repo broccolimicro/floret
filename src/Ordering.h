@@ -33,6 +33,12 @@ struct Vertex {
 	void addGate(int e);
 };
 
+struct Sequence {
+	vector<int> mos;
+	int source;
+	int drain;
+};
+
 struct Eulerian {
 	Eulerian();
 	~Eulerian();
@@ -40,6 +46,9 @@ struct Eulerian {
 	vector<Vertex> verts;
 	vector<Edge> edges;
 	int brk;
+
+	vector<Sequence> buildSequences();
+	void print(const Circuit *base=nullptr); 
 };
 
 struct Ordering {
@@ -48,7 +57,16 @@ struct Ordering {
 
 	array<Eulerian, 2> mos;
 
-	void build(const Circuit *base);	
+	void build(const Circuit *base);
+
+	void matchSequencing();
+	void breakCycles();
+	void buildSequences();
+	void buildConstraints();
+	void solveConstraints();
+	void fixDangling();
+
 	void solve(int radix=2);
+	void print(const Circuit *base=nullptr);
 };
 
