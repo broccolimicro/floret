@@ -36,10 +36,72 @@ void Vertex::addGate(int e) {
 	gates.push_back(e);
 }
 
+Token::Token() {
+	edge = -1;
+	port = -1;
+}
+
+Token::Token(int edge, int port) {
+	this->edge = edge;
+	this->port = port;
+}
+
+Token::~Token() {
+}
+
 Eulerian::Eulerian() {
 }
 
 Eulerian::~Eulerian() {
+}
+
+vector<Token> Eulerian::next(Token t) {
+	vector<Token> result;
+
+	if (t.edge < 0) {
+		return result;
+		/*for (int i = 0; i < (int)edges.size(); i++) {
+			result.push_back(Token(i, -1));
+		}
+		return result;*/
+	}
+
+	for (int i = 0; i < (int)edges[t.edge].ports.size(); i++) {
+		int port = edges[t.edge].ports[i];
+		if (port != t.port) {
+			for (int j = 0; j < (int)verts[port].ports.size(); j++) {
+				auto pos = lower_bound(verts[port].ports[j].begin(), verts[port].ports[j].end(), t.edge);
+				if (pos != verts[port].ports[j].end() and *pos == t.edge) {
+					for (int k = 0; k < (int)verts[port].ports[j].size(); k++) {
+						int next = verts[port].ports[j][k];
+						if (next != t.edge) {
+							result.push_back(Token(next, port));
+						}
+					}
+				}
+			}
+		}
+	}
+	return result;
+}
+
+void Eulerian::buildSupernodes() {
+	// Create super nodes
+	int brk = -1;
+	for (int i = 0; i < (int)verts.size(); i++) {
+		if (verts[i].ports[0].size()&1) {
+			if (brk < 0) {
+				brk = (int)verts.size();
+				verts.push_back(Vertex());
+			}
+			int edge = (int)edges.size();
+			edges.push_back(Edge());
+			verts[i].ports[0].push_back(edge);
+			edges[edge].ports.push_back(i);
+			verts[brk].ports[0].push_back(edge);
+			edges[edge].ports.push_back(brk);
+		}
+	}
 }
 
 vector<vector<int> > Eulerian::findCycles() {
@@ -52,8 +114,8 @@ vector<vector<int> > Eulerian::findCycles() {
 
 	// index into Eulerian::edges, Eulerian::verts
 	// pair<sequence of edges, last vert>
-	list<pair<vector<int>, int> > tokens;
-	tokens.push_back(pair<vector<int>, int>(vector<int>(1, 0), 0));
+	list<pair<vector<int>, Token> > tokens;
+	tokens.push_back(pair<vector<int>, Token>(vector<int>(1, 0), Token(0,0)));
 	staged.insert(0);
 	while (not tokens.empty()) {
 		// breadth first search from current starting point to identify
@@ -61,46 +123,27 @@ vector<vector<int> > Eulerian::findCycles() {
 		while (not tokens.empty()) {
 			printf("%d\r", (int)tokens.size());
 			fflush(stdout);
-			pair<vector<int>, int> curr = tokens.front();
+			pair<vector<int>, Token> curr = tokens.front();
 			tokens.pop_front();
-			int edge = curr.first.back();
-			
-			for (int i = 0; i < (int)edges[edge].ports.size(); i++) {
-				int port = edges[edge].ports[i];
-				if (port == curr.second) {
-					continue;
-				}
+		
+			vector<Token> n = next(curr.second);
+			for (int i = 0; i < (int)n.size(); i++) {
 
-				for (int j = 0; j < (int)verts[port].ports.size(); j++) {
-					auto pos = lower_bound(verts[port].ports[j].begin(), verts[port].ports[j].end(), edge);
-					if (pos == verts[port].ports[j].end() or *pos != edge) {
-						continue;
+				// Check to see if this next edge would create a loop
+				auto loop = find(curr.first.begin(), curr.first.end(), n[i].edge);
+				if (loop != curr.first.end()) {
+					cycles.push_back(curr.first);
+					cycles.back().erase(cycles.back().begin(), cycles.back().begin()+(loop-curr.first.begin()));
+					vector<int>::iterator minElem = min_element(cycles.back().begin(), cycles.back().end());
+					rotate(cycles.back().begin(), minElem, cycles.back().end());
+					if (find(cycles.begin(), (cycles.end()-1), cycles.back()) != (cycles.end()-1)) {
+						cycles.pop_back();
 					}
-
-					// our transistor is connected to this particular pairing
-					for (int k = 0; k < (int)verts[port].ports[j].size(); k++) {
-						int next = verts[port].ports[j][k];
-						if (next == edge) {
-							continue;
-						}
-
-						// Check to see if this next edge would create a loop
-						auto loop = find(curr.first.begin(), curr.first.end(), next);
-						if (loop != curr.first.end()) {
-							cycles.push_back(curr.first);
-							cycles.back().erase(cycles.back().begin(), cycles.back().begin()+(loop-curr.first.begin()));
-							vector<int>::iterator minElem = min_element(cycles.back().begin(), cycles.back().end());
-							rotate(cycles.back().begin(), minElem, cycles.back().end());
-							if (find(cycles.begin(), (cycles.end()-1), cycles.back()) != (cycles.end()-1)) {
-								cycles.pop_back();
-							}
-						} else if (seen.find(next) == seen.end()) {
-							tokens.push_back(curr);
-							tokens.back().first.push_back(next);
-							tokens.back().second = port;
-							staged.insert(next);
-						}
-					}
+				} else if (seen.find(n[i].edge) == seen.end()) {
+					tokens.push_back(curr);
+					tokens.back().first.push_back(n[i].edge);
+					tokens.back().second = n[i];
+					staged.insert(n[i].edge);
 				}
 			}
 		}
@@ -111,7 +154,7 @@ vector<vector<int> > Eulerian::findCycles() {
 		staged.clear();
 		for (int edge = 0; edge < (int)edges.size(); edge++) {
 			if (seen.find(edge) == seen.end()) {
-				tokens.push_back(pair<vector<int>, int>(vector<int>(1, edge), 0));
+				tokens.push_back(pair<vector<int>, Token>(vector<int>(1, edge), Token(edge, 0)));
 				staged.insert(edge);
 				break;
 			}
@@ -130,7 +173,14 @@ void Eulerian::breakCycles(vector<vector<int> > cycles) {
 		printf("}\n");
 	}
 
-	
+	/*while (not cycles.empty()) {
+		float maxScore = -1;
+		int from = -1;
+		int to = -1;
+		for (int i = 0; i < (int)cycles.size(); i++) {
+			
+		}
+	}*/
 }
 
 vector<Sequence> Eulerian::buildSequences() {
@@ -145,7 +195,7 @@ vector<Sequence> Eulerian::buildSequences() {
 void Eulerian::print(const Circuit *base) {
 	printf("Vertices\n");
 	for (int i = 0; i < (int)verts.size(); i++) {
-		if (base != nullptr) {
+		if (base != nullptr and i < (int)base->nets.size()) {
 			printf("vert %s(%d): gates={", base->nets[i].name.c_str(), i);
 		} else {
 			printf("vert %d: gates={", i);
@@ -169,7 +219,9 @@ void Eulerian::print(const Circuit *base) {
 
 	printf("Edges\n");
 	for (int i = 0; i < (int)edges.size(); i++) {
-		if (base != nullptr) {
+		if (edges[i].gate < 0) {
+			printf("brk %d: %s(%d) - %d {", i, base->nets[edges[i].ports[0]].name.c_str(), edges[i].ports[0], edges[i].ports[1]);
+		} else if (base != nullptr) {
 			printf("edge %d: %s(%d)\t-\t%s(%d)\t-\t%s(%d) {", i, base->nets[edges[i].ports[0]].name.c_str(), edges[i].ports[0], base->nets[edges[i].gate].name.c_str(), edges[i].gate, base->nets[edges[i].ports[1]].name.c_str(), edges[i].ports[1]);
 		} else {
 			printf("edge %d: %d-%d-%d {", i, edges[i].ports[0], edges[i].gate, edges[i].ports[1]);
@@ -205,23 +257,38 @@ void Ordering::build(const Circuit *base) {
 		ports.push_back(max(source, drain));
 
 		// See if this is a folding of another transistor
-		int s = 0;
-		while (s < (int)mos[type].edges.size() and (
-			mos[type].edges[s].gate != gate or mos[type].edges[s].ports != ports or
-			mos[type].edges[s].size != size)) {
-			s++;
-		}
+		// int s = 0;
+		// while (s < (int)mos[type].edges.size() and (
+		// 	mos[type].edges[s].gate != gate or mos[type].edges[s].ports != ports or
+		// 	mos[type].edges[s].size != size)) {
+		// 	s++;
+		// }
 
+		int s = (int)mos[type].edges.size();
 		// if not a folding, then add a new edge
-		if (s >= (int)mos[type].edges.size()) {
+		// if (s >= (int)mos[type].edges.size()) {
 			mos[type].edges.push_back(Edge(i, gate, ports, base->mos[i].size));
-		} else {
-			mos[type].edges[s].mos.push_back(i);
-		}
+		// } else {
+		// 	mos[type].edges[s].mos.push_back(i);
+		// }
 
 		mos[type].verts[source].addPort(s);
 		mos[type].verts[drain].addPort(s);
 		mos[type].verts[gate].addGate(s);
+	}
+
+	int m = min((int)mos[0].verts.size(), (int)mos[1].verts.size());
+	for (int type = 0; type < 2; type++) {
+		for (int i = 0; i < m; i++) {
+			mos[type].verts[i].score = (int)mos[type].verts[i].ports[0].size() - (int)mos[1-type].verts[i].ports[0].size();
+		}
+		for (int i = m; i < (int)mos[type].verts.size(); i++) {
+			mos[type].verts[i].score = (int)mos[type].verts[i].ports[0].size();
+		}
+	}
+
+	for (int type = 0; type < 2; type++) {
+		mos[type].buildSupernodes();
 	}
 }
 
@@ -425,26 +492,13 @@ void Ordering::fixDangling() {
 
 void Ordering::solve(int radix) {
 	matchSequencing();
-	breakCycles();
-	buildSequences();
-	buildConstraints();
-	solveConstraints();
-	fixDangling();
-
-
+	//breakCycles();
+	//buildSequences();
+	//buildConstraints();
+	//solveConstraints();
+	//fixDangling();
+	
 	// Old Code
-	// Create super nodes
-	/*for (int i = 0; i < 2; i++) {
-		seq[i].push_back(Edge());
-		auto s = prev(seq[i].end());
-		sup[i].push_back(s);
-		for (int j = 0; j < (int)nets.size(); j++) {
-			if (nets[j].portCount[i]&1) {
-				seq[i].back().nets.push_back(j);
-				nets[j].ports.push_back(s);
-			}
-		}		
-	}*/
 
 	/*vector<int> dev;
 	dev.reserve(radix);

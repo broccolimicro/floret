@@ -2,6 +2,7 @@
 
 #include <ruler/Layout.h>
 #include "Circuit.h"
+#include "Ordering.h"
 #include <set>
 #include <unordered_set>
 #include <array>
@@ -162,6 +163,7 @@ struct Solution {
 	// index into Circuit::mos
 	// dangling is indexed by transistor type: Model::NMOS, Model::PMOS
 	array<vector<int>, 2> dangling;
+	array<Token, 2> curr;
 
 	// Push another transistor into the circuit solution place on pmos or nmos
 	// stack depending on type. Create any necessary contacts, and flip the
@@ -171,15 +173,13 @@ struct Solution {
 	bool tryLink(vector<Solution> &dst, int type, int index);
 	bool push(vector<Solution> &dst, int type, int index);
 
-	// Finish building the constraint graph, filling out vcon and hcon.
-	void delRoute(int route);
-
 	//-------------------------------------------
 	// CONSTRAINT GRAPH
 	//-------------------------------------------
 	// This is determined by device ordering
 	// stack is indexed by transistor type: Model::NMOS, Model::PMOS
 	array<vector<Pin>, 2> stack;
+	array<int, 2> alignIdx;
 	vector<Wire> routes;
 	// Route pairs that need to be connected via A*
 	// index into Solution::routes
@@ -190,16 +190,22 @@ struct Solution {
 	};
 	array<Layout, 2> stackLayout;
 
-	const Pin &pin(Index i) const;
-	Pin &pin(Index i);
-	int pinWidth(const Tech &tech, Index i) const;
-	int pinHeight(Index i) const;
-
 	// channel routing constraint graph
 	vector<PinConstraint> pinConstraints;
 	vector<RouteConstraint> routeConstraints;
 	vector<ViaConstraint> viaConstraints;
 
+	int cycleCount;
+	int cellHeight;
+	int cost;
+	
+	const Pin &pin(Index i) const;
+	Pin &pin(Index i);
+	int pinWidth(const Tech &tech, Index i) const;
+	int pinHeight(Index i) const;
+
+	// Finish building the constraint graph, filling out vcon and hcon.
+	void delRoute(int route);
 	void buildPins(const Tech &tech);
 	int countAligned();
 	int alignPins(int coeff=2);
@@ -227,10 +233,6 @@ struct Solution {
 	void lowerRoutes();
 	void updateRouteConstraints(const Tech &tech);
 	bool computeCost(int maxCost);
-
-	int cycleCount;
-	int cellHeight;
-	int cost;
 
 	// Solve the constraint and circuit graph, filling out layers and constraints
 	bool solve(const Tech &tech, int maxCost, int maxCycles);

@@ -147,7 +147,7 @@ void Circuit::solve(const Tech &tech, float cycleCoeff) {
 	order.solve();
 	order.print(this);
 
-	/*vector<Solution> stack;
+	vector<Solution> stack;
 	stack.push_back(Solution(this));
 	
 	int count = 0;
@@ -159,9 +159,7 @@ void Circuit::solve(const Tech &tech, float cycleCoeff) {
 	// the nmos and pmos contacts. This will ensure that we test as few
 	// orderings as possible while maximizing the chance of hitting the
 	// global minimum for layout area.
-	int cycleBuffer = 10;	
-
-	int minCost = -1;
+	int maxAlignment = -1;
 	stack.reserve(1000000);
 	while (stack.size() > 0) {
 		printf("\r%d %d      ", count, (int)stack.size());
@@ -171,13 +169,13 @@ void Circuit::solve(const Tech &tech, float cycleCoeff) {
 
 		if (curr.dangling[Model::NMOS].size() == 0 and 
 		    curr.dangling[Model::PMOS].size() == 0) {
-			int cost = curr.countAligned();
-			if (minCost < 0 or cost > minCost) {
+			int alignment = curr.countAligned();
+			if (alignment > maxAlignment) {
 				if (layout != nullptr) {
 					delete layout;
 				}
 				layout = new Solution(curr);
-				minCost = cost;
+				maxAlignment = alignment;
 			}
 			count++;
 			continue;
@@ -187,19 +185,44 @@ void Circuit::solve(const Tech &tech, float cycleCoeff) {
 		// that we can't introduce redundant orderings of transistors:
 		// NMOS linked, NMOS unlinked, PMOS linked, PMOS unlinked
 
-		bool found = false;
 		vector<Solution> toadd;
-		for (int type = 0; type < 2 and not found; type++) {
-			for (int link = 1; link >= 0 and not found; link--) {
-				for (int i = 0; i < (int)curr.dangling[type].size(); i++) {
-					bool test = (link ?
-						curr.tryLink(toadd, type, i) :
-						curr.push(toadd, type, i));
-					found = found or test;
+		vector<Token> n;
+
+		int type = 1;
+		if (curr.stack[0].size() == 0 or (curr.stack[1].size() != 0 and curr.stack[0].back().pos < curr.stack[1].back().pos)) {
+			type = 0;
+		}
+
+		bool found = false;
+		n = order.mos[type].next(curr.curr[type]);
+		for (int i = 0; i < (int)n.size(); i++) {
+			curr.curr[type] = n[i];
+			if (order.mos[type].edges[n[i].edge].mos.size() > 0) {
+				auto pos = find(curr.dangling[type].begin(), curr.dangling[type].end(), order.mos[type].edges[n[i].edge].mos[0]);
+				if (pos != curr.dangling[type].end()) {
+					int d = pos-curr.dangling[type].begin(); 
+					bool test = curr.tryLink(toadd, type, d) or
+					            curr.push(toadd, type, d);
+						found = found or test;
 				}
+			} else {
+				toadd.push_back(curr);
 			}
 		}
 
+		if (n.size() == 0) {
+			for (int type = 0; type < 2 and not found; type++) {
+				for (int link = 1; link >= 0 and not found; link--) {
+					for (int i = 0; i < (int)curr.dangling[type].size(); i++) {
+						bool test = (link ?
+							curr.tryLink(toadd, type, i) :
+							curr.push(toadd, type, i));
+						found = found or test;
+					}
+				}
+			}	
+		}
+		
 		vector<Solution> best;
 		int bestCost = -1;
 		while (not toadd.empty()) {
@@ -218,12 +241,8 @@ void Circuit::solve(const Tech &tech, float cycleCoeff) {
 
 		stack.insert(stack.end(), best.begin(), best.end());
 		best.clear();
-
-		if (not found) {
-			printf("we should never get here\n");
-		}
 	}
 
-	printf("\rCircuit::solve explored %d layouts for %s in %fms\n", count, name.c_str(), timer.since()*1e3);*/
+	printf("\rCircuit::solve explored %d layouts for %s in %fms\n", count, name.c_str(), timer.since()*1e3);
 }
 

@@ -185,6 +185,8 @@ Solution::Solution() {
 	cycleCount = 0;
 	cellHeight = 0;
 	cost = 0;
+	curr[0] = Token(-1, -1);
+	curr[1] = Token(-1, -1);
 }
 
 Solution::Solution(const Circuit *ckt) {
@@ -197,6 +199,8 @@ Solution::Solution(const Circuit *ckt) {
 	cycleCount = 0;
 	cellHeight = 0;
 	cost = 0;
+	curr[0] = Token(-1, -1);
+	curr[1] = Token(-1, -1);
 }
 
 Solution::~Solution() {

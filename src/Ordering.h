@@ -21,6 +21,9 @@ struct Vertex {
 	Vertex();
 	~Vertex();
 
+	// number of ports in this stack minus the number of ports in the opposite stack
+	int score;
+
 	// index into Eulerian::edges
 	vector<int> gates;
 
@@ -39,14 +42,25 @@ struct Sequence {
 	int drain;
 };
 
+struct Token {
+	Token();
+	Token(int edge, int port);
+	~Token();
+
+	int edge;
+	int port;
+};
+
 struct Eulerian {
 	Eulerian();
 	~Eulerian();
 
 	vector<Vertex> verts;
 	vector<Edge> edges;
-	int brk;
 
+	vector<Token> next(Token t);
+
+	void buildSupernodes();
 	vector<vector<int> > findCycles();
 	void breakCycles(vector<vector<int> > cycles);
 	vector<Sequence> buildSequences();
