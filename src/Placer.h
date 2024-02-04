@@ -71,7 +71,7 @@ struct Placer {
 	Placer();
 	~Placer();
 
-	array<Eulerian, 2> mos;
+	array<Eulerian, 2> stack;
 
 	void build(const Circuit *base);
 

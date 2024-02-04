@@ -249,8 +249,8 @@ void Placer::build(const Circuit *base) {
 		int drain = base->mos[i].ports[Mos::DRAIN];
 		int gate = base->mos[i].ports[Mos::GATE];
 		int maxNet = max(max(source, drain), gate);
-		if ((int)mos[type].verts.size() <= maxNet) {
-			mos[type].verts.resize(maxNet+1);
+		if ((int)stack[type].verts.size() <= maxNet) {
+			stack[type].verts.resize(maxNet+1);
 		}
 		vector<int> ports;
 		ports.push_back(min(source, drain));
@@ -258,37 +258,37 @@ void Placer::build(const Circuit *base) {
 
 		// See if this is a folding of another transistor
 		// int s = 0;
-		// while (s < (int)mos[type].edges.size() and (
-		// 	mos[type].edges[s].gate != gate or mos[type].edges[s].ports != ports or
-		// 	mos[type].edges[s].size != size)) {
+		// while (s < (int)stack[type].edges.size() and (
+		// 	stack[type].edges[s].gate != gate or stack[type].edges[s].ports != ports or
+		// 	stack[type].edges[s].size != size)) {
 		// 	s++;
 		// }
 
-		int s = (int)mos[type].edges.size();
+		int s = (int)stack[type].edges.size();
 		// if not a folding, then add a new edge
-		// if (s >= (int)mos[type].edges.size()) {
-			mos[type].edges.push_back(Edge(i, gate, ports, base->mos[i].size));
+		// if (s >= (int)stack[type].edges.size()) {
+			stack[type].edges.push_back(Edge(i, gate, ports, base->mos[i].size));
 		// } else {
 		// 	mos[type].edges[s].mos.push_back(i);
 		// }
 
-		mos[type].verts[source].addPort(s);
-		mos[type].verts[drain].addPort(s);
-		mos[type].verts[gate].addGate(s);
+		stack[type].verts[source].addPort(s);
+		stack[type].verts[drain].addPort(s);
+		stack[type].verts[gate].addGate(s);
 	}
 
-	int m = min((int)mos[0].verts.size(), (int)mos[1].verts.size());
+	int m = min((int)stack[0].verts.size(), (int)stack[1].verts.size());
 	for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < m; i++) {
-			mos[type].verts[i].score = (int)mos[type].verts[i].ports[0].size() - (int)mos[1-type].verts[i].ports[0].size();
+			stack[type].verts[i].score = (int)stack[type].verts[i].ports[0].size() - (int)stack[1-type].verts[i].ports[0].size();
 		}
-		for (int i = m; i < (int)mos[type].verts.size(); i++) {
-			mos[type].verts[i].score = (int)mos[type].verts[i].ports[0].size();
+		for (int i = m; i < (int)stack[type].verts.size(); i++) {
+			stack[type].verts[i].score = (int)stack[type].verts[i].ports[0].size();
 		}
 	}
 
 	for (int type = 0; type < 2; type++) {
-		mos[type].buildSupernodes();
+		stack[type].buildSupernodes();
 	}
 }
 
@@ -320,14 +320,14 @@ bool operator<(PortPairing p0, PortPairing p1) {
 
 vector<array<Token, 2> > Placer::findStart() {
 	vector<array<Token, 2> > result;
-	for (int i = 0; i < (int)mos[0].edges.size(); i++) {
-		for (int j = 0; j < (int)mos[1].edges.size(); j++) {
-			//if (mos[0].edges[i].gate == mos[1].edges[j].gate) {
+	for (int i = 0; i < (int)stack[0].edges.size(); i++) {
+		for (int j = 0; j < (int)stack[1].edges.size(); j++) {
+			//if (stack[0].edges[i].gate == stack[1].edges[j].gate) {
 				int matchingPorts = 0;
-				for (int k = 0; k < (int)mos[0].edges[i].ports.size(); k++) {
-					for (int l = 0; l < (int)mos[1].edges[j].ports.size(); l++) {
-						if (mos[0].edges[i].ports[k] == mos[1].edges[j].ports[l]) {
-							result.push_back(array<Token, 2>({Token(i, mos[0].edges[i].ports[k]), Token(j, mos[1].edges[j].ports[l])}));
+				for (int k = 0; k < (int)stack[0].edges[i].ports.size(); k++) {
+					for (int l = 0; l < (int)stack[1].edges[j].ports.size(); l++) {
+						if (stack[0].edges[i].ports[k] == stack[1].edges[j].ports[l]) {
+							result.push_back(array<Token, 2>({Token(i, stack[0].edges[i].ports[k]), Token(j, stack[1].edges[j].ports[l])}));
 						}
 					}
 				}
@@ -353,7 +353,7 @@ void Placer::matchSequencing() {
 	// for that net which maximizes alignment with those sequences. This will
 	// reduce the choices we have to just the ordering of the diffusion breaks.
 	for (int type = 0; type < 2; type++) {
-		for (auto v0 = mos[type].verts.begin(); v0 != mos[type].verts.end(); v0++) {
+		for (auto v0 = stack[type].verts.begin(); v0 != stack[type].verts.end(); v0++) {
 			if (v0->ports.size() == 0) {
 				continue;
 			}
@@ -363,12 +363,12 @@ void Placer::matchSequencing() {
 			}
 
 			// At this point, we're looking at a single net in one of the two stacks
-			int v0i = v0-mos[type].verts.begin();
+			int v0i = v0-stack[type].verts.begin();
 			auto p0 = v0->ports.begin();
 			if ((int)p0->size() > 2) {
 				// This net needs to be broken up, look in the other stack for a
 				// sequence that can help inform us how that should be done
-				for (auto v1 = mos[1-type].verts.begin(); v1 != mos[1-type].verts.end(); v1++) {
+				for (auto v1 = stack[1-type].verts.begin(); v1 != stack[1-type].verts.end(); v1++) {
 					for (auto p1 = v1->ports.begin(); p1 != v1->ports.end(); p1++) {
 						if ((int)p1->size() == 2) {
 							// We found a strict sequencing, this is a net that is only
@@ -377,7 +377,7 @@ void Placer::matchSequencing() {
 							vector<PortPairing> n0;
 							for (auto port = p0->begin(); port != p0->end(); port++) {
 								// See if any of the ports in our net match the first of the two nodes
-								if (mos[type].edges[*port].gate == mos[1-type].edges[(*p1)[0]].gate) {
+								if (stack[type].edges[*port].gate == stack[1-type].edges[(*p1)[0]].gate) {
 									int k = 0;
 									while (k < (int)n0.size() and n0[k].ports[0] != *port) {
 										k++;
@@ -395,7 +395,7 @@ void Placer::matchSequencing() {
 							vector<PortPairing> n1;
 							for (auto port = p0->begin(); port != p0->end(); port++) {
 								// See if any of the ports in our net match the second of the two nodes
-								if (mos[type].edges[*port].gate == mos[1-type].edges[(*p1)[1]].gate) {
+								if (stack[type].edges[*port].gate == stack[1-type].edges[(*p1)[1]].gate) {
 									for (int k = 0; k < (int)n0.size(); k++) {
 										if (n0[k].ports[0] != *port) {
 											int l = 0;
@@ -473,8 +473,8 @@ void Placer::breakCycles() {
 	// amenable to being broken up. Often, this will likely be Vdd or GND
 
 	for (int type = 0; type < 2; type++) {
-		vector<vector<int> > cycles = mos[type].findCycles();
-		mos[type].breakCycles(cycles);
+		vector<vector<int> > cycles = stack[type].findCycles();
+		stack[type].breakCycles(cycles);
 	}
 }
 
@@ -487,7 +487,7 @@ void Placer::buildSequences() {
 	// as we explore them
 	array<vector<Sequence>, 2> seq;
 	for (int type = 0; type < 2; type++) {
-		seq[type] = mos[type].buildSequences();
+		seq[type] = stack[type].buildSequences();
 	}
 }
 
@@ -549,9 +549,9 @@ void Placer::solve(int radix) {
 
 void Placer::print(const Circuit *base) {
 	printf("NMOS Stack\n");
-	mos[0].print(base);
+	stack[Model::NMOS].print(base);
 	printf("\nPMOS Stack\n");
-	mos[1].print(base);
+	stack[Model::PMOS].print(base);
 	printf("\n");
 }
 

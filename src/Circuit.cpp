@@ -198,11 +198,11 @@ void Circuit::solve(const Tech &tech, float cycleCoeff) {
 		}
 
 		bool found = false;
-		n = order.mos[type].next(curr.curr[type]);
+		n = order.stack[type].next(curr.curr[type]);
 		for (int i = 0; i < (int)n.size(); i++) {
 			curr.curr[type] = n[i];
-			if (order.mos[type].edges[n[i].edge].mos.size() > 0) {
-				auto pos = find(curr.dangling[type].begin(), curr.dangling[type].end(), order.mos[type].edges[n[i].edge].mos[0]);
+			if (order.stack[type].edges[n[i].edge].mos.size() > 0) {
+				auto pos = find(curr.dangling[type].begin(), curr.dangling[type].end(), order.stack[type].edges[n[i].edge].mos[0]);
 				if (pos != curr.dangling[type].end()) {
 					int d = pos-curr.dangling[type].begin(); 
 					bool test = curr.tryLink(toadd, type, d) or
