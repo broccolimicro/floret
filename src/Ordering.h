@@ -47,6 +47,8 @@ struct Eulerian {
 	vector<Edge> edges;
 	int brk;
 
+	vector<vector<int> > findCycles();
+	void breakCycles(vector<vector<int> > cycles);
 	vector<Sequence> buildSequences();
 	void print(const Circuit *base=nullptr); 
 };

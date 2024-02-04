@@ -1,5 +1,10 @@
 #include "Ordering.h"
 
+#include <list>
+#include <set>
+#include <unordered_set>
+#include <vector>
+
 Edge::Edge() {
 	gate = -1;
 	size = vec2i(0, 0);
@@ -35,6 +40,97 @@ Eulerian::Eulerian() {
 }
 
 Eulerian::~Eulerian() {
+}
+
+vector<vector<int> > Eulerian::findCycles() {
+	vector<vector<int> > cycles;
+
+	// index into Eulerian::edges
+	unordered_set<int> seen;
+	// index into Eulerian::edges
+	unordered_set<int> staged;
+
+	// index into Eulerian::edges, Eulerian::verts
+	// pair<sequence of edges, last vert>
+	list<pair<vector<int>, int> > tokens;
+	tokens.push_back(pair<vector<int>, int>(vector<int>(1, 0), 0));
+	staged.insert(0);
+	while (not tokens.empty()) {
+		// breadth first search from current starting point to identify
+		// any connected cycles.
+		while (not tokens.empty()) {
+			printf("%d\r", (int)tokens.size());
+			fflush(stdout);
+			pair<vector<int>, int> curr = tokens.front();
+			tokens.pop_front();
+			int edge = curr.first.back();
+			
+			for (int i = 0; i < (int)edges[edge].ports.size(); i++) {
+				int port = edges[edge].ports[i];
+				if (port == curr.second) {
+					continue;
+				}
+
+				for (int j = 0; j < (int)verts[port].ports.size(); j++) {
+					auto pos = lower_bound(verts[port].ports[j].begin(), verts[port].ports[j].end(), edge);
+					if (pos == verts[port].ports[j].end() or *pos != edge) {
+						continue;
+					}
+
+					// our transistor is connected to this particular pairing
+					for (int k = 0; k < (int)verts[port].ports[j].size(); k++) {
+						int next = verts[port].ports[j][k];
+						if (next == edge) {
+							continue;
+						}
+
+						// Check to see if this next edge would create a loop
+						auto loop = find(curr.first.begin(), curr.first.end(), next);
+						if (loop != curr.first.end()) {
+							cycles.push_back(curr.first);
+							cycles.back().erase(cycles.back().begin(), cycles.back().begin()+(loop-curr.first.begin()));
+							vector<int>::iterator minElem = min_element(cycles.back().begin(), cycles.back().end());
+							rotate(cycles.back().begin(), minElem, cycles.back().end());
+							if (find(cycles.begin(), (cycles.end()-1), cycles.back()) != (cycles.end()-1)) {
+								cycles.pop_back();
+							}
+						} else if (seen.find(next) == seen.end()) {
+							tokens.push_back(curr);
+							tokens.back().first.push_back(next);
+							tokens.back().second = port;
+							staged.insert(next);
+						}
+					}
+				}
+			}
+		}
+
+		// The graph may not be fully connected, find the next
+		// unexplored edge to start the next breadth-first-search
+		seen.insert(staged.begin(), staged.end());
+		staged.clear();
+		for (int edge = 0; edge < (int)edges.size(); edge++) {
+			if (seen.find(edge) == seen.end()) {
+				tokens.push_back(pair<vector<int>, int>(vector<int>(1, edge), 0));
+				staged.insert(edge);
+				break;
+			}
+		}
+	}
+
+	return cycles;
+}
+
+void Eulerian::breakCycles(vector<vector<int> > cycles) {
+	for (int i = 0; i < (int)cycles.size(); i++) {
+		printf("cycle %d: {", i);
+		for (int j = 0; j < (int)cycles[i].size(); j++) {
+			printf("%d ", cycles[i][j]);
+		}
+		printf("}\n");
+	}
+
+	
 }
 
 vector<Sequence> Eulerian::buildSequences() {
@@ -282,12 +378,14 @@ void Ordering::breakCycles() {
 	// of this will be a set of gate strips which we need to align. We can create
 	// de-bruijn graphs following the DNA sequencing strategies.
 
-	// DESIGN(edward.bingham) Most of the cycles are likely to involve Vdd or GND
-	// in some way. Even if not, nets which can be placed over the transistor
+	// DESIGN(edward.bingham) Nets which can be placed over the transistor
 	// stacks because they have fewer connections to the other stack are more
-	// amenable to being broken up.
+	// amenable to being broken up. Often, this will likely be Vdd or GND
 
-	
+	for (int type = 0; type < 2; type++) {
+		vector<vector<int> > cycles = mos[type].findCycles();
+		mos[type].breakCycles(cycles);
+	}
 }
 
 void Ordering::buildSequences() {
