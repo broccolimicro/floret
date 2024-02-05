@@ -14,7 +14,7 @@ struct Edge {
 
 	int gate;
 	vec2i size;
-	vector<int> ports;
+	vector<int> verts;
 };
 
 struct Vertex {
@@ -24,10 +24,10 @@ struct Vertex {
 	// number of ports in this stack minus the number of ports in the opposite stack
 	int score;
 
-	// index into Eulerian::edges
+	// index into Network::edges
 	vector<int> gates;
 
-	// index into Eulerian::edges
+	// index into Network::edges
 	// ports[0] contains all of the unpaired ports if it's size is greater than 2
 	// each port set should be kept in sorted order to facilitate search
 	vector<vector<int> > ports;
@@ -51,9 +51,9 @@ struct Token {
 	int port;
 };
 
-struct Eulerian {
-	Eulerian();
-	~Eulerian();
+struct Network {
+	Network();
+	~Network();
 
 	vector<Vertex> verts;
 	vector<Edge> edges;
@@ -67,11 +67,56 @@ struct Eulerian {
 	void print(const Circuit *base=nullptr); 
 };
 
+struct Placement {
+	Placement();
+	Placement(const Circuit *base);
+	~Placement();
+
+	const Circuit *base;
+	// This is determined by device ordering
+	// stack is indexed by transistor type: Model::NMOS, Model::PMOS
+	array<Stack, 2> stack;
+
+	// This keeps track of the transistors in the Circuit we haven't placed on
+	// the stack yet. This is filled by the constructor, then successively
+	// removed as transistor ordering is done and we place wires in the
+	// constraint graph.
+	// index into Circuit::mos
+	// dangling is indexed by transistor type: Model::NMOS, Model::PMOS
+	array<vector<int>, 2> dangling;
+
+
+	array<Token, 2> curr;
+	array<int, 2> alignIdx;
+
+	const Pin &pin(Index i) const;
+	Pin &pin(Index i);
+
+	// Push another transistor into the circuit solution place on pmos or nmos
+	// stack depending on type. Create any necessary contacts, and flip the
+	// device when possible. These functions build the constraint graph.
+	// type is either Model::NMOS or Model::PMOS
+	// index is a location in dangling[type]
+	bool tryLink(vector<Placement> &dst, int type, int index);
+	bool push(vector<Placement> &dst, int type, int index);
+
+	int pinWidth(const Tech &tech, Index i) const;
+	int pinHeight(Index i) const;
+
+	void buildPins(const Tech &tech);
+	int countAligned();
+	int alignPins(int coeff=2);
+	void updatePinPos();
+};
+
 struct Placer {
 	Placer();
+	Placer(Circuit *base);
 	~Placer();
 
-	array<Eulerian, 2> stack;
+	Circuit *base;
+
+	array<Network, 2> stack;
 
 	void build(const Circuit *base);
 
@@ -82,8 +127,9 @@ struct Placer {
 	void buildConstraints();
 	void solveConstraints();
 	void fixDangling();
+	void searchOrderings(const Tech &tech);
 
-	void solve(int radix=2);
-	void print(const Circuit *base=nullptr);
+	void solve(const Tech &tech);
+	void print();
 };
 

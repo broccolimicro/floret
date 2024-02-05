@@ -1,11 +1,8 @@
 #include "Library.h"
+#include "Draw.h"
 
 #include <ruler/Layout.h>
-
 #include <vector>
-
-#include "Router.h"
-#include "Draw.h"
 
 using namespace std;
 
@@ -49,7 +46,7 @@ bool Library::loadFile(const Tech &tech, string path) {
 void Library::build(const Tech &tech) {
 	gdstk::Library lib = {};
 	lib.init("test", tech.dbunit*1e-6, tech.dbunit*1e-6);
-	for (int i = 0; i < (int)cells.size(); i++) {
+	/*for (int i = 0; i < (int)cells.size(); i++) {
 		printf("\rStarting %s\n", cells[i].name.c_str());
 		cells[i].solve(tech);
 		printf("\rDrawing %s\n", cells[i].name.c_str());
@@ -61,7 +58,7 @@ void Library::build(const Tech &tech) {
 			layout.emit(tech, lib);
 		}
 		printf("\rDone %s\n", cells[i].name.c_str());
-	}
+	}*/
 	lib.write_gds("test.gds", 0, NULL);
 	lib.free_all();
 }

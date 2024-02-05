@@ -1,9 +1,8 @@
 #include "Circuit.h"
 #include "Common.h"
 #include "spice.h"
-#include "Router.h"
 #include "Timer.h"
-#include "Placer.h"
+#include "Draw.h"
 
 Mos::Mos() {
 	model = -1;
@@ -34,15 +33,146 @@ Net::Net(string name, bool isIO) {
 Net::~Net() {
 }
 
+Index::Index() {
+	type = -1;
+	pin = -1;
+}
+
+Index::Index(int type, int pin) {
+	this->type = type;
+	this->pin = pin;
+}
+
+Index::~Index() {
+}
+
+Pin::Pin() {
+	device = -1;
+	outNet = -1;
+	leftNet = -1;
+	rightNet = -1;
+	
+	layer = 0;
+	width = 0;
+	height = 0;
+	off = 0;
+	pos = 0;
+}
+
+Pin::Pin(int outNet) {
+	this->device = -1;
+	this->outNet = outNet;
+	this->leftNet = outNet;
+	this->rightNet = outNet;
+
+	layer = 1;
+	width = 0;
+	height = 0;
+	off = 0;
+	pos = 0;
+}
+
+Pin::Pin(int device, int outNet, int leftNet, int rightNet) {
+	this->device = device;
+	this->outNet = outNet;
+	this->leftNet = leftNet;
+	this->rightNet = rightNet;
+
+	layer = 0;
+	width = 0;
+	height = 0;
+	off = 0;
+	pos = 0;
+}
+
+Pin::~Pin() {
+}
+
+CompareIndex::CompareIndex(const Circuit *s) {
+	this->s = s;
+}
+
+CompareIndex::~CompareIndex() {
+}
+
+bool CompareIndex::operator()(const Index &i0, const Index &i1) {
+	return s->stack[i0.type].pins[i0.pin].pos < s->stack[i1.type].pins[i1.pin].pos or
+		(s->stack[i0.type].pins[i0.pin].pos == s->stack[i1.type].pins[i1.pin].pos and (i0.type > i1.type or
+		(i0.type == i1.type and i0.pin < i1.pin)));
+}
+
+Wire::Wire() {
+	net = -1;
+	left = -1;
+	right = -1;
+	pOffset = 0;
+	nOffset = 0;
+}
+
+Wire::Wire(int net) {
+	this->net = net;
+	this->left = -1;
+	this->right = -1;
+	this->pOffset = 0;
+	this->nOffset = 0;
+}
+
+Wire::~Wire() {
+}
+
+void Wire::addPin(const Circuit *s, Index pin) {
+	auto pos = lower_bound(pins.begin(), pins.end(), pin, CompareIndex(s));
+	pins.insert(pos, pin);
+	if (left < 0 or s->stack[pin.type].pins[pin.pin].pos < left) {
+		left = s->stack[pin.type].pins[pin.pin].pos;
+	}
+	if (right < 0 or s->stack[pin.type].pins[pin.pin].pos+s->stack[pin.type].pins[pin.pin].width > right) {
+		right = s->stack[pin.type].pins[pin.pin].pos + s->stack[pin.type].pins[pin.pin].width;
+	}
+}
+
+bool Wire::hasPin(const Circuit *s, Index pin, vector<Index>::iterator *out) {
+	auto pos = lower_bound(pins.begin(), pins.end(), pin, CompareIndex(s));
+	if (out != nullptr) {
+		*out = pos;
+	}
+	return pos != pins.end() and pos->type == pin.type and pos->pin == pin.pin;
+}
+
+int Wire::getLevel(int i) const {
+	if (level.size() == 0) {
+		return 2;
+	}
+
+	if (i < 0) {
+		return level[0];
+	}
+
+	if (i >= (int)level.size()) {
+		return level.back();
+	}
+
+	return level[i];
+}
+
+Stack::Stack() {
+}
+
+Stack::~Stack() {
+}
+
+void Stack::draw(const Tech &tech, int type) {
+	// Draw the stacks
+	for (int i = 0; i < (int)pins.size(); i++) {
+		drawLayout(layout, pins[i].pinLayout, vec2i(pins[i].pos, 0), vec2i(1, type == Model::NMOS ? -1 : 1));
+	}
+}
+
 Circuit::Circuit() {
-	layout = nullptr;
+	cellHeight = 0;
 }
 
 Circuit::~Circuit() {
-	if (layout != nullptr) {
-		delete layout;
-		layout = nullptr;
-	}
 }
 
 int Circuit::findNet(string name, bool create) {
@@ -57,6 +187,14 @@ int Circuit::findNet(string name, bool create) {
 		return index;
 	}
 	return -1;
+}
+
+Pin &Circuit::pin(Index i) {
+	return stack[i.type].pins[i.pin];
+}
+
+const Pin &Circuit::pin(Index i) const {
+	return stack[i.type].pins[i.pin];
 }
 
 bool Circuit::loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &dev) {
@@ -138,115 +276,5 @@ void Circuit::loadSubckt(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &le
 			}
 		}
 	}
-}
-
-void Circuit::solve(const Tech &tech, float cycleCoeff) {
-	Placer order;
-	order.build(this);
-	order.print(this);
-	order.solve();
-	order.print(this);
-
-	vector<Router> stack;
-	vector<array<Token, 2> > start = order.findStart();
-	for (int i = 0; i < (int)start.size(); i++) {
-		stack.push_back(Router(this));
-		stack.back().curr = start[i];
-	}
-
-	int count = 0;
-	Timer timer;
-
-	// DESIGN(edward.bingham) Depth first search through all useful
-	// orderings. These are orderings that try to keep the transistor
-	// stacks fully connected. Prioritise orderings that better align
-	// the nmos and pmos contacts. This will ensure that we test as few
-	// orderings as possible while maximizing the chance of hitting the
-	// global minimum for layout area.
-	int maxAlignment = -1;
-	stack.reserve(1000000);
-	while (stack.size() > 0) {
-		printf("\r%d %d      ", count, (int)stack.size());
-		fflush(stdout);
-		Router curr = stack.back();
-		stack.pop_back();
-
-		if (curr.dangling[Model::NMOS].size() == 0 and 
-		    curr.dangling[Model::PMOS].size() == 0) {
-			int alignment = curr.countAligned();
-			if (alignment > maxAlignment) {
-				if (layout != nullptr) {
-					delete layout;
-				}
-				layout = new Router(curr);
-				maxAlignment = alignment;
-			}
-			count++;
-			continue;
-		}
-
-		// DESIGN(edward.bingham) The following search order makes sure
-		// that we can't introduce redundant orderings of transistors:
-		// NMOS linked, NMOS unlinked, PMOS linked, PMOS unlinked
-
-		vector<Router> toadd;
-		vector<Token> n;
-
-		int type = 1;
-		if (curr.stack[0].size() == 0 or (curr.stack[1].size() != 0 and curr.stack[0].back().pos < curr.stack[1].back().pos)) {
-			type = 0;
-		}
-
-		bool found = false;
-		n = order.stack[type].next(curr.curr[type]);
-		for (int i = 0; i < (int)n.size(); i++) {
-			curr.curr[type] = n[i];
-			if (order.stack[type].edges[n[i].edge].mos.size() > 0) {
-				auto pos = find(curr.dangling[type].begin(), curr.dangling[type].end(), order.stack[type].edges[n[i].edge].mos[0]);
-				if (pos != curr.dangling[type].end()) {
-					int d = pos-curr.dangling[type].begin(); 
-					bool test = curr.tryLink(toadd, type, d) or
-					            curr.push(toadd, type, d);
-						found = found or test;
-				}
-			} else {
-				toadd.push_back(curr);
-			}
-		}
-
-		if (n.size() == 0) {
-			for (int type = 0; type < 2 and not found; type++) {
-				for (int link = 1; link >= 0 and not found; link--) {
-					for (int i = 0; i < (int)curr.dangling[type].size(); i++) {
-						bool test = (link ?
-							curr.tryLink(toadd, type, i) :
-							curr.push(toadd, type, i));
-						found = found or test;
-					}
-				}
-			}	
-		}
-		
-		vector<Router> best;
-		int bestCost = -1;
-		while (not toadd.empty()) {
-			int cost = toadd.back().countAligned();
-			if (bestCost < 0 or cost > bestCost) {
-				bestCost = cost;
-				best.clear();
-			}
-
-			if (cost == bestCost) {
-				best.push_back(toadd.back());
-			}
-
-			toadd.pop_back();
-		}
-
-		stack.insert(stack.end(), best.begin(), best.end());
-		best.clear();
-	}
-
-	printf("\rCircuit::solve explored %d layouts for %s in %fms\n", count, name.c_str(), timer.since()*1e3);
 }
 

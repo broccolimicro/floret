@@ -1,9 +1,9 @@
 #pragma once
 
-#include <ruler/Tech.h>
-
 #include "spice.h"
 #include "Circuit.h"
+
+#include <ruler/Tech.h>
 
 struct Library {
 	vector<string> spicePaths;

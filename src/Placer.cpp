@@ -1,4 +1,6 @@
 #include "Placer.h"
+#include "Draw.h"
+#include "Timer.h"
 
 #include <list>
 #include <set>
@@ -10,10 +12,10 @@ Edge::Edge() {
 	size = vec2i(0, 0);
 }
 
-Edge::Edge(int mos, int gate, vector<int> ports, vec2i size) {
+Edge::Edge(int mos, int gate, vector<int> verts, vec2i size) {
 	this->mos.push_back(mos);
 	this->gate = gate;
-	this->ports = ports;
+	this->verts = verts;
 	this->size = size;
 }
 
@@ -49,13 +51,13 @@ Token::Token(int edge, int port) {
 Token::~Token() {
 }
 
-Eulerian::Eulerian() {
+Network::Network() {
 }
 
-Eulerian::~Eulerian() {
+Network::~Network() {
 }
 
-vector<Token> Eulerian::next(Token t) {
+vector<Token> Network::next(Token t) {
 	vector<Token> result;
 
 	if (t.edge < 0) {
@@ -66,8 +68,8 @@ vector<Token> Eulerian::next(Token t) {
 		return result;*/
 	}
 
-	for (int i = 0; i < (int)edges[t.edge].ports.size(); i++) {
-		int port = edges[t.edge].ports[i];
+	for (int i = 0; i < (int)edges[t.edge].verts.size(); i++) {
+		int port = edges[t.edge].verts[i];
 		if (port != t.port) {
 			for (int j = 0; j < (int)verts[port].ports.size(); j++) {
 				auto pos = lower_bound(verts[port].ports[j].begin(), verts[port].ports[j].end(), t.edge);
@@ -85,7 +87,7 @@ vector<Token> Eulerian::next(Token t) {
 	return result;
 }
 
-void Eulerian::buildSupernodes() {
+void Network::buildSupernodes() {
 	// Create super nodes
 	int brk = -1;
 	for (int i = 0; i < (int)verts.size(); i++) {
@@ -97,22 +99,22 @@ void Eulerian::buildSupernodes() {
 			int edge = (int)edges.size();
 			edges.push_back(Edge());
 			verts[i].ports[0].push_back(edge);
-			edges[edge].ports.push_back(i);
+			edges[edge].verts.push_back(i);
 			verts[brk].ports[0].push_back(edge);
-			edges[edge].ports.push_back(brk);
+			edges[edge].verts.push_back(brk);
 		}
 	}
 }
 
-vector<vector<int> > Eulerian::findCycles() {
+vector<vector<int> > Network::findCycles() {
 	vector<vector<int> > cycles;
 
-	// index into Eulerian::edges
+	// index into Network::edges
 	unordered_set<int> seen;
-	// index into Eulerian::edges
+	// index into Network::edges
 	unordered_set<int> staged;
 
-	// index into Eulerian::edges, Eulerian::verts
+	// index into Network::edges, Network::verts
 	// pair<sequence of edges, last vert>
 	list<pair<vector<int>, Token> > tokens;
 	tokens.push_back(pair<vector<int>, Token>(vector<int>(1, 0), Token(0,0)));
@@ -164,7 +166,7 @@ vector<vector<int> > Eulerian::findCycles() {
 	return cycles;
 }
 
-void Eulerian::breakCycles(vector<vector<int> > cycles) {
+void Network::breakCycles(vector<vector<int> > cycles) {
 	for (int i = 0; i < (int)cycles.size(); i++) {
 		printf("cycle %d: {", i);
 		for (int j = 0; j < (int)cycles[i].size(); j++) {
@@ -183,7 +185,7 @@ void Eulerian::breakCycles(vector<vector<int> > cycles) {
 	}*/
 }
 
-vector<Sequence> Eulerian::buildSequences() {
+vector<Sequence> Network::buildSequences() {
 	vector<Sequence> result;
 
 	/*while (not edges.empty()) {
@@ -192,7 +194,7 @@ vector<Sequence> Eulerian::buildSequences() {
 	return result;
 } 
 
-void Eulerian::print(const Circuit *base) {
+void Network::print(const Circuit *base) {
 	printf("Vertices\n");
 	for (int i = 0; i < (int)verts.size(); i++) {
 		if (base != nullptr and i < (int)base->nets.size()) {
@@ -220,11 +222,11 @@ void Eulerian::print(const Circuit *base) {
 	printf("Edges\n");
 	for (int i = 0; i < (int)edges.size(); i++) {
 		if (edges[i].gate < 0) {
-			printf("brk %d: %s(%d) - %d {", i, base->nets[edges[i].ports[0]].name.c_str(), edges[i].ports[0], edges[i].ports[1]);
+			printf("brk %d: %s(%d) - %d {", i, base->nets[edges[i].verts[0]].name.c_str(), edges[i].verts[0], edges[i].verts[1]);
 		} else if (base != nullptr) {
-			printf("edge %d: %s(%d)\t-\t%s(%d)\t-\t%s(%d) {", i, base->nets[edges[i].ports[0]].name.c_str(), edges[i].ports[0], base->nets[edges[i].gate].name.c_str(), edges[i].gate, base->nets[edges[i].ports[1]].name.c_str(), edges[i].ports[1]);
+			printf("edge %d: %s(%d)\t-\t%s(%d)\t-\t%s(%d) {", i, base->nets[edges[i].verts[0]].name.c_str(), edges[i].verts[0], base->nets[edges[i].gate].name.c_str(), edges[i].gate, base->nets[edges[i].verts[1]].name.c_str(), edges[i].verts[1]);
 		} else {
-			printf("edge %d: %d-%d-%d {", i, edges[i].ports[0], edges[i].gate, edges[i].ports[1]);
+			printf("edge %d: %d-%d-%d {", i, edges[i].verts[0], edges[i].gate, edges[i].verts[1]);
 		}
 		for (int j = 0; j < (int)edges[i].mos.size(); j++) {
 			printf("%d ", edges[i].mos[j]);
@@ -233,6 +235,289 @@ void Eulerian::print(const Circuit *base) {
 	}
 }
 
+Placement::Placement() {
+}
+
+Placement::Placement(const Circuit *base) {
+	this->base = base;
+	dangling[0].reserve(base->mos.size());
+	dangling[1].reserve(base->mos.size());
+	for (int i = 0; i < (int)base->mos.size(); i++) {
+		dangling[base->mos[i].type].push_back(i);
+	}
+}
+
+Placement::~Placement() {
+}
+
+Pin &Placement::pin(Index i) {
+	return stack[i.type].pins[i.pin];
+}
+
+const Pin &Placement::pin(Index i) const {
+	return stack[i.type].pins[i.pin];
+}
+
+// index into Placement::dangling
+bool Placement::tryLink(vector<Placement> &dst, int type, int index) {
+	// Make sure that this transistor can be linked with the previous transistor
+	// on the stack. We cannot link this transistor if there isn't another
+	// transistor on the stack.
+	if (stack[type].pins.size() == 0) {
+		return false;
+	}
+
+	// Sanity check to make sure this transistor actually has ports. This should
+	// never fail as it should be guaranteed by the spice loader in Circuit.cpp
+	int device = dangling[type][index];
+	if (base->mos[device].ports.size() < 4) {
+		printf("error parsing spice circuit, mos should have four ports\n");
+		exit(1);
+	}
+
+	// Get information about the previous transistor on the stack. First if
+	// statement in the funtion guarantees that there is at least one transistor
+	// already on the stack.
+	int prevNet = stack[type].pins.back().rightNet;
+
+	// This does two things:
+	// 1. Determine if we can link this transistor to the previous one on the stack
+	// 2. Determine whether we need to flip this transistor to do so
+	int fromNet = base->mos[device].ports[0];
+	int toNet = base->mos[device].ports[1];
+	int gateNet = base->mos[device].gate;
+	if (toNet == prevNet) {
+		toNet = fromNet;
+		fromNet = prevNet;
+	} else if (fromNet != prevNet) {
+		return false;
+	}
+
+	// duplicate solution
+	dst.push_back(Placement(*this));
+	if (dst.back().stack[type].pins.size() == 0 or base->nets[fromNet].ports > 2 or base->nets[fromNet].isIO) {
+		// Add a contact for the first net or between two transistors.
+		dst.back().stack[type].pins.push_back(Pin(fromNet));
+	}
+	dst.back().stack[type].pins.push_back(Pin(device, gateNet, fromNet, toNet));
+
+	// remove item from dangling
+	dst.back().dangling[type].erase(dst.back().dangling[type].begin()+index);
+	if (dst.back().dangling[type].size() == 0) {
+		dst.back().stack[type].pins.push_back(Pin(toNet));
+	}
+	return true;
+}
+
+// index into Placement::dangling
+bool Placement::push(vector<Placement> &dst, int type, int index) {
+	// Sanity check to make sure this transistor actually has ports. This should
+	// never fail as it should be guaranteed by the spice loader in Circuit.cpp
+	int device = dangling[type][index];
+	if (base->mos[device].ports.size() < 4) {
+		printf("error parsing spice circuit, mos should have four ports\n");
+		exit(1);
+	}
+
+	int fromNet = base->mos[device].ports[0];
+	int toNet = base->mos[device].ports[1];
+	int gateNet = base->mos[device].gate;
+
+	// We can't link this transistor to the previous one in the stack, so we
+	// need to cap off the stack with a contact, start a new stack with a new
+	// contact, then add this transistor. We need to test both the flipped and
+	// unflipped orderings.
+
+	// duplicate solution for the unflipped ordering
+	for (int i = 0; i < 2; i++) {
+		dst.push_back(Placement(*this));
+		if (dst.back().stack[type].pins.size() > 0) {
+			dst.back().stack[type].pins.push_back(Pin(stack[type].pins.back().rightNet));
+		}
+		dst.back().stack[type].pins.push_back(Pin(fromNet));
+		dst.back().stack[type].pins.push_back(Pin(device, gateNet, fromNet, toNet));
+		// remove item from dangling
+		dst.back().dangling[type].erase(dst.back().dangling[type].begin()+index);
+		if (dst.back().dangling[type].size() == 0) {
+			dst.back().stack[type].pins.push_back(Pin(toNet));
+		}
+
+		swap(fromNet, toNet);
+	}
+
+	return true;
+}
+
+void Placement::buildPins(const Tech &tech) {
+	// Draw the pin contact and via
+	for (int type = 0; type < 2; type++) {
+		int pos = 0;
+		for (int i = 0; i < (int)stack[type].pins.size(); i++) {
+			stack[type].pins[i].width = pinWidth(tech, Index(type, i));
+			stack[type].pins[i].height = pinHeight(Index(type, i));
+			stack[type].pins[i].pinLayout.clear();
+			drawPin(tech, stack[type].pins[i].pinLayout, base, stack[type], i);
+			stack[type].pins[i].conLayout.clear();
+			drawViaStack(tech, stack[type].pins[i].conLayout, stack[type].pins[i].outNet, stack[type].pins[i].layer, 2, vec2i(0,0), vec2i(0,0));
+			//stack[type].pins[i].conLayout.push(tech.wires[stack[type].pins[i].layer], Rect(stack[type].pins[i].outNet, vec2i(0, 0), vec2i(stack[type].pins[i].width, 0)));
+			
+			stack[type].pins[i].off = 0;
+			if (i > 0) {
+				minOffset(&stack[type].pins[i].off, tech, 0, stack[type].pins[i-1].pinLayout.layers, 0, stack[type].pins[i].pinLayout.layers, 0, stack[type].pins[i-1].device >= 0 or stack[type].pins[i].device >= 0);
+			}
+
+			pos += stack[type].pins[i].off;
+			stack[type].pins[i].pos = pos;
+		}
+	}
+}
+
+int Placement::countAligned() {
+	int gateMatches = 0;
+	vector<Pin>::iterator idx[2] = {stack[0].pins.begin(),stack[1].pins.begin()};
+	int pos[2] = {0,0};
+	while (idx[0] != stack[0].pins.end() and idx[1] != stack[1].pins.end()) {
+		if (idx[0]->device < 0) {
+			pos[0] += idx[0]->off;
+			idx[0]++;
+		} else if (idx[1]->device < 0) {
+			pos[1] += idx[1]->off;
+			idx[1]++;
+		} else if (idx[0]->outNet == idx[1]->outNet and ((idx[0]->device < 0) == (idx[1]->device < 0))) {
+			gateMatches++;
+			pos[0] += idx[0]->off;
+			pos[1] += idx[1]->off;
+			idx[0]++;
+			idx[1]++;
+		} else if (pos[1]+idx[1]->off < pos[0]+idx[0]->off) {
+			pos[1] += idx[1]->off;
+			idx[1]++;
+		} else {
+			pos[0] += idx[0]->off;
+			idx[0]++;
+		}
+	}
+
+	int conMatches = 0;
+	idx[0] = stack[0].pins.begin();
+	idx[1] = stack[1].pins.begin();
+	pos[0] = 0;
+	pos[1] = 0;
+	while (idx[0] != stack[0].pins.end() and idx[1] != stack[1].pins.end()) {
+		if (idx[0]->device >= 0) {
+			pos[0] += idx[0]->off;
+			idx[0]++;
+		} else if (idx[1]->device >= 0) {
+			pos[1] += idx[1]->off;
+			idx[1]++;
+		} else if (idx[0]->outNet == idx[1]->outNet and ((idx[0]->device < 0) == (idx[1]->device < 0))) {
+			conMatches++;
+			pos[0] += idx[0]->off;
+			pos[1] += idx[1]->off;
+			idx[0]++;
+			idx[1]++;
+		} else if (pos[1]+idx[1]->off < pos[0]+idx[0]->off) {
+			pos[1] += idx[1]->off;
+			idx[1]++;
+		} else {
+			pos[0] += idx[0]->off;
+			idx[0]++;
+		}
+	}
+
+	return gateMatches*3 + conMatches*2;
+}
+
+
+int Placement::alignPins(int coeff) {
+	int matches = 0;
+	vector<Pin>::iterator idx[2] = {stack[0].pins.begin(),stack[1].pins.begin()};
+	int pos[2] = {0,0};
+	while (idx[0] != stack[0].pins.end() and idx[1] != stack[1].pins.end()) {
+		int axis = 0;
+		if (pos[1]+idx[1]->off < pos[0]+idx[0]->off) {
+			axis = 1;
+		}
+
+		int p = pos[1-axis];
+		int off = idx[axis]->off;
+		for (auto other = idx[1-axis]; other != stack[1-axis].pins.end() and p + other->off - pos[axis] < coeff*idx[axis]->off; other++) {
+			p += other->off;
+			other->pos = p;
+			if (other->outNet == idx[axis]->outNet and ((other->device < 0) == (idx[axis]->device < 0))) {
+				off = p - pos[axis];
+				//idx[1-axis] = other;
+				//pos[1-axis] = p;
+				matches++;
+				break;
+			}
+		}
+
+		pos[axis] += off;
+		idx[axis]->pos = pos[axis];
+		idx[axis]++;
+	}
+
+	for (int type = 0; type < 2; type++) {
+		for (; idx[type] != stack[type].pins.end(); idx[type]++) {
+			pos[type] += idx[type]->off;
+			idx[type]->pos = pos[type];
+		}
+	}
+	return matches;
+}
+
+void Placement::updatePinPos() {
+	// Determine location of each pin
+	for (int type = 0; type < 2; type++) {
+		int pos = 0;
+		for (int i = 0; i < (int)stack[type].pins.size(); i++) {
+			pos += stack[type].pins[i].off;
+			stack[type].pins[i].pos = pos;
+		}
+	}
+}
+
+// horizontal size of pin
+int Placement::pinWidth(const Tech &tech, Index p) const {
+	int device = pin(p).device;
+	if (device >= 0) {
+		// this pin is a transistor, use length of transistor
+		return tech.paint[tech.wires[0].draw].minWidth;
+		//return base->mos[device].size[0];
+	}
+	// this pin is a contact
+	return tech.paint[tech.wires[1].draw].minWidth;
+}
+
+// vertical size of pin
+int Placement::pinHeight(Index p) const {
+	int device = pin(p).device;
+	if (device >= 0) {
+		// this pin is a transistor, use width of transistor
+		return base->mos[device].size[1];
+	}
+	// this is a contact, height should be min of transistor widths on either side.
+	int result = -1;
+	if (p.pin > 0) {
+		int leftDevice = stack[p.type].pins[p.pin-1].device;
+		if (leftDevice >= 0 and (result < 0 or base->mos[leftDevice].size[1] < result)) {
+			result = base->mos[leftDevice].size[1];
+		}
+	}
+	if (p.pin+1 < (int)stack[p.type].pins.size()) {
+		int rightDevice = stack[p.type].pins[p.pin+1].device;
+		if (rightDevice >= 0 and (result < 0 or base->mos[rightDevice].size[1] < result)) {
+			result = base->mos[rightDevice].size[1];
+		}
+	}
+	if (result < 0) {
+		return 0;
+	}
+	return result;
+}
+
+
 Placer::Placer() {
 }
 
@@ -240,21 +525,21 @@ Placer::~Placer() {
 }
 
 void Placer::build(const Circuit *base) {
-	// Create a Eulerian graph for the nmos stack and for the pmos stack
+	// Create a Network graph for the nmos stack and for the pmos stack
 	// Nets represent vertices in that graph while transistors represent edges.
 	for (int i = 0; i < (int)base->mos.size(); i++) {
 		int type = base->mos[i].type;
 		vec2i size = base->mos[i].size;
-		int source = base->mos[i].ports[Mos::SOURCE];
-		int drain = base->mos[i].ports[Mos::DRAIN];
-		int gate = base->mos[i].ports[Mos::GATE];
+		int source = base->mos[i].ports[0];
+		int drain = base->mos[i].ports[1];
+		int gate = base->mos[i].gate;
 		int maxNet = max(max(source, drain), gate);
 		if ((int)stack[type].verts.size() <= maxNet) {
 			stack[type].verts.resize(maxNet+1);
 		}
-		vector<int> ports;
-		ports.push_back(min(source, drain));
-		ports.push_back(max(source, drain));
+		vector<int> verts;
+		verts.push_back(min(source, drain));
+		verts.push_back(max(source, drain));
 
 		// See if this is a folding of another transistor
 		// int s = 0;
@@ -267,7 +552,7 @@ void Placer::build(const Circuit *base) {
 		int s = (int)stack[type].edges.size();
 		// if not a folding, then add a new edge
 		// if (s >= (int)stack[type].edges.size()) {
-			stack[type].edges.push_back(Edge(i, gate, ports, base->mos[i].size));
+			stack[type].edges.push_back(Edge(i, gate, verts, base->mos[i].size));
 		// } else {
 		// 	mos[type].edges[s].mos.push_back(i);
 		// }
@@ -323,11 +608,10 @@ vector<array<Token, 2> > Placer::findStart() {
 	for (int i = 0; i < (int)stack[0].edges.size(); i++) {
 		for (int j = 0; j < (int)stack[1].edges.size(); j++) {
 			//if (stack[0].edges[i].gate == stack[1].edges[j].gate) {
-				int matchingPorts = 0;
-				for (int k = 0; k < (int)stack[0].edges[i].ports.size(); k++) {
-					for (int l = 0; l < (int)stack[1].edges[j].ports.size(); l++) {
-						if (stack[0].edges[i].ports[k] == stack[1].edges[j].ports[l]) {
-							result.push_back(array<Token, 2>({Token(i, stack[0].edges[i].ports[k]), Token(j, stack[1].edges[j].ports[l])}));
+				for (int k = 0; k < (int)stack[0].edges[i].verts.size(); k++) {
+					for (int l = 0; l < (int)stack[1].edges[j].verts.size(); l++) {
+						if (stack[0].edges[i].verts[k] == stack[1].edges[j].verts[l]) {
+							result.push_back(array<Token, 2>({Token(i, stack[0].edges[i].verts[k]), Token(j, stack[1].edges[j].verts[l])}));
 						}
 					}
 				}
@@ -458,12 +742,12 @@ void Placer::matchSequencing() {
 
 	// At this point we know two things. First, the above heuristic *does not*
 	// minimize the number of diffusion breaks. It can create loops in the
-	// Eulerian graph that wouldn't exist if we were to draw out a Eulerian
+	// Network graph that wouldn't exist if we were to draw out a Network
 	// Cycle.
 }
 
 void Placer::breakCycles() {
-	// Look for cycles in the Eulerian graph and cut them optimizing gate
+	// Look for cycles in the Network graph and cut them optimizing gate
 	// distance and reducing number of connections to the other stack. The result
 	// of this will be a set of gate strips which we need to align. We can create
 	// de-bruijn graphs following the DNA sequencing strategies.
@@ -481,7 +765,7 @@ void Placer::breakCycles() {
 void Placer::buildSequences() {
 	// Identify all of the stacks from the graph by exploring all of the nodes
 	// (hopefully in linear time). Then, we can free the memory associated with
-	// the Eulerian Graphs. While there are nodes left in the Eulerian graphs,
+	// the Network Graphs. While there are nodes left in the Network graphs,
 	// pick a node and walk the graph in both directions. Save the resulting
 	// stack and record whether there is a cycle. Delete the nodes from the graph
 	// as we explore them
@@ -513,13 +797,117 @@ void Placer::fixDangling() {
 	// occur too often.
 }
 
-void Placer::solve(int radix) {
+void Placer::searchOrderings(const Tech &tech) {
+	vector<Placement> orders;
+	vector<array<Token, 2> > start = findStart();
+	for (int i = 0; i < (int)start.size(); i++) {
+		orders.push_back(Placement(base));
+		orders.back().curr = start[i];
+	}
+
+	int count = 0;
+	Timer timer;
+
+	int maxAlignment = -1;
+	Placement result;
+
+	// DESIGN(edward.bingham) Depth first search through all useful
+	// orderings. These are orderings that try to keep the transistor
+	// stacks fully connected. Prioritise orderings that better align
+	// the nmos and pmos contacts. This will ensure that we test as few
+	// orderings as possible while maximizing the chance of hitting the
+	// global minimum for layout area.
+	orders.reserve(1000000);
+	while (not orders.empty()) {
+		printf("\r%d %d      ", count, (int)orders.size());
+		fflush(stdout);
+		Placement curr = orders.back();
+		orders.pop_back();
+
+		if (curr.dangling[Model::NMOS].size() == 0 and 
+		    curr.dangling[Model::PMOS].size() == 0) {
+			int alignment = curr.countAligned();
+			if (alignment > maxAlignment) {
+				result = curr;
+				maxAlignment = alignment;
+			}
+			count++;
+			continue;
+		}
+
+		// DESIGN(edward.bingham) The following search order makes sure
+		// that we can't introduce redundant orderings of transistors:
+		// NMOS linked, NMOS unlinked, PMOS linked, PMOS unlinked
+
+		vector<Placement> toadd;
+		vector<Token> n;
+
+		int type = 1;
+		if (curr.stack[0].pins.empty() or (not curr.stack[1].pins.empty() and curr.stack[0].pins.back().pos < curr.stack[1].pins.back().pos)) {
+			type = 0;
+		}
+
+		bool found = false;
+		n = stack[type].next(curr.curr[type]);
+		for (int i = 0; i < (int)n.size(); i++) {
+			curr.curr[type] = n[i];
+			if (stack[type].edges[n[i].edge].mos.size() > 0) {
+				auto pos = find(curr.dangling[type].begin(), curr.dangling[type].end(), stack[type].edges[n[i].edge].mos[0]);
+				if (pos != curr.dangling[type].end()) {
+					int d = pos-curr.dangling[type].begin(); 
+					bool test = curr.tryLink(toadd, type, d) or
+					            curr.push(toadd, type, d);
+						found = found or test;
+				}
+			} else {
+				toadd.push_back(curr);
+			}
+		}
+
+		if (n.size() == 0) {
+			for (int type = 0; type < 2 and not found; type++) {
+				for (int link = 1; link >= 0 and not found; link--) {
+					for (int i = 0; i < (int)curr.dangling[type].size(); i++) {
+						bool test = (link ?
+							curr.tryLink(toadd, type, i) :
+							curr.push(toadd, type, i));
+						found = found or test;
+					}
+				}
+			}	
+		}
+		
+		vector<Placement> best;
+		int bestCost = -1;
+		while (not toadd.empty()) {
+			int cost = toadd.back().countAligned();
+			if (bestCost < 0 or cost > bestCost) {
+				bestCost = cost;
+				best.clear();
+			}
+
+			if (cost == bestCost) {
+				best.push_back(toadd.back());
+			}
+
+			toadd.pop_back();
+		}
+
+		orders.insert(orders.end(), best.begin(), best.end());
+		best.clear();
+	}
+
+	printf("\rCircuit::solve explored %d layouts for %s in %fms\n", count, base->name.c_str(), timer.since()*1e3);
+}
+
+void Placer::solve(const Tech &tech) {
 	matchSequencing();
 	//breakCycles();
 	//buildSequences();
 	//buildConstraints();
 	//solveConstraints();
 	//fixDangling();
+	searchOrderings(tech);
 	
 	// Old Code
 
@@ -547,10 +935,10 @@ void Placer::solve(int radix) {
 	}*/
 }
 
-void Placer::print(const Circuit *base) {
-	printf("NMOS Stack\n");
+void Placer::print() {
+	printf("NMOS Network\n");
 	stack[Model::NMOS].print(base);
-	printf("\nPMOS Stack\n");
+	printf("\nPMOS Network\n");
 	stack[Model::PMOS].print(base);
 	printf("\n");
 }

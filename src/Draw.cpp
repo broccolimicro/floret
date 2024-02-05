@@ -7,7 +7,7 @@ void drawTransistor(const Tech &tech, Layout &dst, const Mos &mos, bool flip, ve
 	// draw poly
 	vec2i polyOverhang = vec2i(0, tech.models[mos.model].polyOverhang)*dir;
 	dst.box.bound(ll - polyOverhang, ur + polyOverhang);
-	dst.push(tech.wires[0], Rect(mos.ports[Mos::GATE], ll - polyOverhang, ur + polyOverhang));
+	dst.push(tech.wires[0], Rect(mos.gate, ll - polyOverhang, ur + polyOverhang));
 
 	// draw diffusion
 	for (auto layer = tech.models[mos.model].paint.begin(); layer != tech.models[mos.model].paint.end(); layer++) {
@@ -127,7 +127,7 @@ void drawViaStack(const Tech &tech, Layout &dst, int net, int downLevel, int upL
 	}
 }
 
-void drawWire(const Tech &tech, Layout &dst, const Router *ckt, const Wire &wire, vec2i pos, vec2i dir) {
+void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wire, vec2i pos, vec2i dir) {
 	int prevPos = 0;
 	Layout prevLayout;
 	Layout nextLayout;
@@ -223,7 +223,7 @@ void drawWire(const Tech &tech, Layout &dst, const Router *ckt, const Wire &wire
 	//}
 }
 
-void drawRoute(const Tech &tech, Layout &dst, const Router *ckt, const Wire &wire, vec2i pos, vec2i dir) {
+void drawRoute(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wire, vec2i pos, vec2i dir) {
 	//printf("drawing route %d\n", wire.pOffset);
 	drawLayout(dst, wire.layout, vec2i(0, wire.pOffset)*dir, dir);
 
@@ -247,21 +247,21 @@ void drawRoute(const Tech &tech, Layout &dst, const Router *ckt, const Wire &wir
 	}
 }
 
-void drawPin(const Tech &tech, Layout &dst, const Router *ckt, int type, int pinID, vec2i pos, vec2i dir) {
-	pos[0] += ckt->stack[type][pinID].pos;
-	if (ckt->stack[type][pinID].device < 0) {
+void drawPin(const Tech &tech, Layout &dst, const Circuit *ckt, const Stack &stack, int pinID, vec2i pos, vec2i dir) {
+	pos[0] += stack.pins[pinID].pos;
+	if (stack.pins[pinID].device < 0) {
 		int model = -1;
-		if (pinID-1 >= 0 and ckt->stack[type][pinID-1].device >= 0) {
-			model = ckt->base->mos[ckt->stack[type][pinID-1].device].model;
-		} else if (pinID+1 < (int)ckt->stack[type].size() and ckt->stack[type][pinID+1].device >= 0) {
-			model = ckt->base->mos[ckt->stack[type][pinID+1].device].model;
+		if (pinID-1 >= 0 and stack.pins[pinID-1].device >= 0) {
+			model = ckt->mos[stack.pins[pinID-1].device].model;
+		} else if (pinID+1 < (int)stack.pins.size() and stack.pins[pinID+1].device >= 0) {
+			model = ckt->mos[stack.pins[pinID+1].device].model;
 		}
 
 		if (model >= 0) {
-			drawViaStack(tech, dst, ckt->stack[type][pinID].outNet, -model-1, 1, vec2i(ckt->stack[type][pinID].width, ckt->stack[type][pinID].height), pos, dir);
+			drawViaStack(tech, dst, stack.pins[pinID].outNet, -model-1, 1, vec2i(stack.pins[pinID].width, stack.pins[pinID].height), pos, dir);
 		}
 	} else {
-		drawTransistor(tech, dst, ckt->base->mos[ckt->stack[type][pinID].device], ckt->stack[type][pinID].leftNet != ckt->base->mos[ckt->stack[type][pinID].device].ports[Mos::SOURCE], pos, dir);
+		drawTransistor(tech, dst, ckt->mos[stack.pins[pinID].device], stack.pins[pinID].leftNet != ckt->mos[stack.pins[pinID].device].ports[0], pos, dir);
 	}
 }
 
