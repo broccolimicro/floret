@@ -802,7 +802,7 @@ void Placer::fixDangling() {
 	// occur too often.
 }
 
-void Placer::searchOrderings(const Tech &tech) {
+Placement Placer::searchOrderings(const Tech &tech) {
 	vector<Placement> orders;
 	vector<array<Token, 2> > start = findStart();
 	for (int i = 0; i < (int)start.size(); i++) {
@@ -901,27 +901,27 @@ void Placer::searchOrderings(const Tech &tech) {
 		best.clear();
 	}
 
-	for (int type = 0; type < 2; type++) {
-		result.stack[type].draw(tech, type);
-	}
-
-	// Save to the Circuit
-	base->stack = result.stack;
-
 	printf("\rCircuit::solve explored %d layouts for %s in %fms\n", count, base->name.c_str(), timer.since()*1e3);
+	return result;
 }
 
 void Placer::solve(const Tech &tech) {
 	build(base);
 	print();
-	matchSequencing();
+	//matchSequencing();
 	print();
 	//breakCycles();
 	//buildSequences();
 	//buildConstraints();
 	//solveConstraints();
 	//fixDangling();
-	searchOrderings(tech);
+	Placement result = searchOrderings(tech);
+	result.buildPins(tech);
+	result.alignPins();
+	for (int type = 0; type < 2; type++) {
+		result.stack[type].draw(tech, type);
+	}
+	base->stack = result.stack;
 
 	// Old Code
 

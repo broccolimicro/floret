@@ -126,7 +126,7 @@ struct Placer {
 	void buildConstraints();
 	void solveConstraints();
 	void fixDangling();
-	void searchOrderings(const Tech &tech);
+	Placement searchOrderings(const Tech &tech);
 
 	void solve(const Tech &tech);
 	void print();
