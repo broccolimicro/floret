@@ -53,6 +53,9 @@ void Library::build(const Tech &tech) {
 		Placer placer(&cells[i]);
 		placer.solve(tech);
 		placer.print();
+		Router router(&cells[i]);
+		router.solve(tech);
+		router.print();
 		/*printf("\rDrawing %s\n", cells[i].name.c_str());
 		if (cells[i].layout != nullptr) {
 			cells[i].layout->solve(tech, -1, -1);

@@ -93,10 +93,10 @@ struct Router {
 	void buildPinConstraints(const Tech &tech);
 	void buildViaConstraints(const Tech &tech);
 	void buildRoutes();
-	bool findCycles(vector<vector<int> > &cycles, int maxCycles = -1);
+	void findCycles(vector<vector<int> > &cycles);
 	void breakRoute(int route, set<int> cycleRoutes);
 	void breakCycles(vector<vector<int> > cycles);
-	bool findAndBreakCycles(int maxCycles);
+	void findAndBreakCycles();
 	void drawRoutes(const Tech &tech);
 	void buildStackConstraints(const Tech &tech);
 	void buildRouteConstraints(const Tech &tech);
@@ -111,10 +111,10 @@ struct Router {
 	void assignRouteConstraints(const Tech &tech);
 	void lowerRoutes();
 	void updateRouteConstraints(const Tech &tech);
-	bool computeCost(int maxCost);
+	int computeCost();
 
 	// Solve the constraint and circuit graph, filling out layers and constraints
-	bool solve(const Tech &tech, int maxCost, int maxCycles);
+	int solve(const Tech &tech);
 
 	// Print the solution description
 	void print();

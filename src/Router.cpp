@@ -165,7 +165,7 @@ void Router::buildRoutes() {
 	}
 }
 
-bool Router::findCycles(vector<vector<int> > &cycles, int maxCycles) {
+void Router::findCycles(vector<vector<int> > &cycles) {
 	// DESIGN(edward.bingham) There can be multiple cycles with the same set of
 	// nodes as a result of multiple pin constraints. This function does not
 	// differentiate between those cycles. Doing so could introduce an
@@ -174,7 +174,7 @@ bool Router::findCycles(vector<vector<int> > &cycles, int maxCycles) {
 	// (maximising min(in.size(), out.size()))
 
 	if (routes.size() == 0) {
-		return true;
+		return;
 	}
 	
 	vector<vector<int> > A(routes.size(), vector<int>());
@@ -245,10 +245,6 @@ bool Router::findCycles(vector<vector<int> > &cycles, int maxCycles) {
 					staged.insert(A[i][j]);
 				}
 			}
-
-			if (maxCycles > 0 and (int)cycles.size() >= maxCycles) {
-				return false;
-			}
 		}
 
 		seen.insert(staged.begin(), staged.end());
@@ -261,8 +257,6 @@ bool Router::findCycles(vector<vector<int> > &cycles, int maxCycles) {
 			}
 		}
 	}
-
-	return true;
 }
 
 void Router::breakRoute(int route, set<int> cycleRoutes) {
@@ -1012,14 +1006,10 @@ void Router::assignRouteConstraints(const Tech &tech) {
 	}
 }
 
-bool Router::findAndBreakCycles(int maxCycles) {
+void Router::findAndBreakCycles() {
 	vector<vector<int> > cycles;
-	if (not findCycles(cycles, maxCycles)) {
-		return false;
-	}
-	cycleCount = (int)cycles.size();
+	findCycles(cycles);
 	breakCycles(cycles);
-	return true;
 }
 
 void Router::lowerRoutes() {
@@ -1093,7 +1083,7 @@ void Router::updateRouteConstraints(const Tech &tech) {
 	}
 }
 
-bool Router::computeCost(int maxCost) {
+int Router::computeCost() {
 	int left = 1000000000;
 	int right = -1000000000;
 	for (int type = 0; type < 2; type++) {
@@ -1105,23 +1095,16 @@ bool Router::computeCost(int maxCost) {
 		}
 	}
 
-	int cellHeightOverhead = 10;
+	//int cellHeightOverhead = 10;
 	cost = cellHeight;//(cellHeightOverhead+right-left)*cellHeight*(int)(1+aStar.size());
-
-	if (maxCost > 0 and cost >= maxCost)
-		return false;
-
-	return true;
-
+	return cost;
 }
 
-bool Router::solve(const Tech &tech, int maxCost, int maxCycles) {
+int Router::solve(const Tech &tech) {
 	buildPinConstraints(tech);
 	//buildViaConstraints(tech);
 	buildRoutes();
-	if (not findAndBreakCycles(maxCycles)) {
-		return false;
-	}
+	findAndBreakCycles();
 	//drawStacks(tech);
 	drawRoutes(tech);
 	buildStackConstraints(tech);
@@ -1141,7 +1124,7 @@ bool Router::solve(const Tech &tech, int maxCost, int maxCycles) {
 	assignRouteConstraints(tech);
 	//updateRouteConstraints(tech);
 	//print();
-	return computeCost(maxCost);
+	return computeCost();
 }
 
 void Router::print() {
