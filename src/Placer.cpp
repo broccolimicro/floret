@@ -902,6 +902,10 @@ void Placer::searchOrderings(const Tech &tech) {
 		best.clear();
 	}
 
+	for (int type = 0; type < 2; type++) {
+		result.stack[type].draw(tech, type);
+	}
+
 	// Save to the Circuit
 	base->stack = result.stack;
 

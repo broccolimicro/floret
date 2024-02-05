@@ -66,7 +66,7 @@ Router::Router() {
 	cost = 0;
 }
 
-Router::Router(Circuit *basee) {
+Router::Router(Circuit *base) {
 	this->base = base;
 	this->cycleCount = 0;
 	this->cellHeight = 0;
