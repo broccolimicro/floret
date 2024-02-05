@@ -166,5 +166,7 @@ struct Circuit {
 
 	bool loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &dev);
 	void loadSubckt(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &subckt);
+
+	void draw(const Tech &tech, Layout &dst);
 };
 

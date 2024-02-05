@@ -118,5 +118,4 @@ struct Router {
 
 	// Print the solution description
 	void print();
-	void draw(const Tech &tech, Layout &dst); 
 };

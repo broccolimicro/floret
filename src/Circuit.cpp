@@ -278,3 +278,30 @@ void Circuit::loadSubckt(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &le
 	}
 }
 
+void Circuit::draw(const Tech &tech, Layout &dst) {
+	vec2i dir(1,1);
+	dst.name = name;
+
+	dst.nets.reserve(nets.size());
+	for (int i = 0; i < (int)nets.size(); i++) {
+		dst.nets.push_back(nets[i].name);
+	}
+
+	for (int type = 0; type < 2; type++) {
+		drawLayout(dst, stack[type].layout, vec2i(0, (type == Model::NMOS)*cellHeight)*dir, dir);
+	}
+
+	for (int i = 0; i < (int)routes.size(); i++) {
+		drawRoute(tech, dst, this, routes[i], vec2i(0,0), dir);
+	}
+
+	for (int i = 0; i < (int)dst.layers.size(); i++) {
+		if (tech.paint[dst.layers[i].draw].fill) {
+			Rect box = dst.layers[i].bbox();
+			dst.layers[i].clear();
+			dst.layers[i].push(box, true);
+		}
+	}
+
+	dst.merge();
+}
