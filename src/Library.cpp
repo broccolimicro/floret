@@ -1,5 +1,7 @@
 #include "Library.h"
 #include "Draw.h"
+#include "Placer.h"
+#include "Router.h"
 
 #include <ruler/Layout.h>
 #include <vector>
@@ -46,19 +48,21 @@ bool Library::loadFile(const Tech &tech, string path) {
 void Library::build(const Tech &tech) {
 	gdstk::Library lib = {};
 	lib.init("test", tech.dbunit*1e-6, tech.dbunit*1e-6);
-	/*for (int i = 0; i < (int)cells.size(); i++) {
+	for (int i = 0; i < (int)cells.size(); i++) {
 		printf("\rStarting %s\n", cells[i].name.c_str());
-		cells[i].solve(tech);
-		printf("\rDrawing %s\n", cells[i].name.c_str());
+		Placer placer(&cells[i]);
+		placer.solve(tech);
+		placer.print();
+		/*printf("\rDrawing %s\n", cells[i].name.c_str());
 		if (cells[i].layout != nullptr) {
 			cells[i].layout->solve(tech, -1, -1);
 			Layout layout;
 			cells[i].layout->print();
 			cells[i].layout->draw(tech, layout);
 			layout.emit(tech, lib);
-		}
+		}*/
 		printf("\rDone %s\n", cells[i].name.c_str());
-	}*/
+	}
 	lib.write_gds("test.gds", 0, NULL);
 	lib.free_all();
 }

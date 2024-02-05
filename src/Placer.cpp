@@ -519,6 +519,11 @@ int Placement::pinHeight(Index p) const {
 
 
 Placer::Placer() {
+	base = nullptr;
+}
+
+Placer::Placer(Circuit *base) {
+	this->base = base;
 }
 
 Placer::~Placer() {
@@ -897,10 +902,14 @@ void Placer::searchOrderings(const Tech &tech) {
 		best.clear();
 	}
 
+	// Save to the Circuit
+	base->stack = result.stack;
+
 	printf("\rCircuit::solve explored %d layouts for %s in %fms\n", count, base->name.c_str(), timer.since()*1e3);
 }
 
 void Placer::solve(const Tech &tech) {
+	build(base);
 	matchSequencing();
 	//breakCycles();
 	//buildSequences();
@@ -908,7 +917,7 @@ void Placer::solve(const Tech &tech) {
 	//solveConstraints();
 	//fixDangling();
 	searchOrderings(tech);
-	
+
 	// Old Code
 
 	/*vector<int> dev;
