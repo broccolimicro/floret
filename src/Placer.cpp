@@ -270,8 +270,8 @@ bool Placement::tryLink(vector<Placement> &dst, int type, int index) {
 	// Sanity check to make sure this transistor actually has ports. This should
 	// never fail as it should be guaranteed by the spice loader in Circuit.cpp
 	int device = dangling[type][index];
-	if (base->mos[device].ports.size() < 4) {
-		printf("error parsing spice circuit, mos should have four ports\n");
+	if (base->mos[device].ports.size() < 2) {
+		printf("error parsing spice circuit, mos should have two ports\n");
 		exit(1);
 	}
 
@@ -314,8 +314,8 @@ bool Placement::push(vector<Placement> &dst, int type, int index) {
 	// Sanity check to make sure this transistor actually has ports. This should
 	// never fail as it should be guaranteed by the spice loader in Circuit.cpp
 	int device = dangling[type][index];
-	if (base->mos[device].ports.size() < 4) {
-		printf("error parsing spice circuit, mos should have four ports\n");
+	if (base->mos[device].ports.size() < 2) {
+		printf("error parsing spice circuit, mos should have two ports\n");
 		exit(1);
 	}
 
@@ -577,9 +577,9 @@ void Placer::build(const Circuit *base) {
 		}
 	}
 
-	for (int type = 0; type < 2; type++) {
+	/*for (int type = 0; type < 2; type++) {
 		stack[type].buildSupernodes();
-	}
+	}*/
 }
 
 struct PortPairing {
@@ -848,7 +848,8 @@ void Placer::searchOrderings(const Tech &tech) {
 		vector<Token> n;
 
 		int type = 1;
-		if (curr.stack[0].pins.empty() or (not curr.stack[1].pins.empty() and curr.stack[0].pins.back().pos < curr.stack[1].pins.back().pos)) {
+		if (curr.dangling[1].empty() or (not curr.dangling[0].empty() and (curr.stack[0].pins.empty() or
+		    (not curr.stack[1].pins.empty() and curr.stack[0].pins.back().pos < curr.stack[1].pins.back().pos)))) {
 			type = 0;
 		}
 
@@ -870,16 +871,14 @@ void Placer::searchOrderings(const Tech &tech) {
 		}
 
 		if (n.size() == 0) {
-			for (int type = 0; type < 2 and not found; type++) {
-				for (int link = 1; link >= 0 and not found; link--) {
-					for (int i = 0; i < (int)curr.dangling[type].size(); i++) {
-						bool test = (link ?
-							curr.tryLink(toadd, type, i) :
-							curr.push(toadd, type, i));
-						found = found or test;
-					}
+			for (int link = 1; link >= 0 and not found; link--) {
+				for (int i = 0; i < (int)curr.dangling[type].size(); i++) {
+					bool test = (link ?
+						curr.tryLink(toadd, type, i) :
+						curr.push(toadd, type, i));
+					found = found or test;
 				}
-			}	
+			}
 		}
 		
 		vector<Placement> best;
@@ -914,7 +913,9 @@ void Placer::searchOrderings(const Tech &tech) {
 
 void Placer::solve(const Tech &tech) {
 	build(base);
+	print();
 	matchSequencing();
+	print();
 	//breakCycles();
 	//buildSequences();
 	//buildConstraints();

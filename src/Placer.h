@@ -85,7 +85,6 @@ struct Placement {
 	// dangling is indexed by transistor type: Model::NMOS, Model::PMOS
 	array<vector<int>, 2> dangling;
 
-
 	array<Token, 2> curr;
 	array<int, 2> alignIdx;
 

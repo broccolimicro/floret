@@ -235,9 +235,10 @@ bool Circuit::loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &le
 		return false;
 	}
 
+	vector<int> ports;
 	this->mos.push_back(Mos(modelIdx, tech.models[modelIdx].type));
 	for (auto arg = args->tokens.begin(); arg != args->tokens.end(); arg++) {
-		int port = (int)this->mos.back().ports.size();
+		int port = (int)ports.size();
 		if (arg->type == lang.PARAM) {
 			string paramName = lower(lexer.read(arg->tokens[0].begin, arg->tokens[0].end));
 			vector<double> values;
@@ -255,9 +256,13 @@ bool Circuit::loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &le
 			string netName = lexer.read(arg->begin, arg->end);
 			int net = this->findNet(netName, true);
 			this->nets[net].ports++;
-			this->mos.back().ports.push_back(net);
+			ports.push_back(net);
 		}
 	}
+	this->mos.back().gate = ports[1];
+	this->mos.back().bulk = ports[3];
+	this->mos.back().ports.push_back(ports[0]);
+	this->mos.back().ports.push_back(ports[2]);
 
 	return true;
 }

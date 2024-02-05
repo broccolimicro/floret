@@ -155,7 +155,11 @@ void Router::buildRoutes() {
 	}
 	for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
-			routes[base->stack[type].pins[i].outNet].addPin(base, Index(type, i));
+			if (base->stack[type].pins[i].outNet < base->nets.size()) {
+				routes[base->stack[type].pins[i].outNet].addPin(base, Index(type, i));
+			} else {
+				printf("outNet is out of bounds\n");
+			}
 		}
 	}
 	for (int i = (int)routes.size()-1; i >= 0; i--) {
