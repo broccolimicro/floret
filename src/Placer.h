@@ -100,7 +100,7 @@ struct Placement {
 	// stack depending on type, creating any necessary contacts.
 	// type is either Model::NMOS or Model::PMOS
 	// index is a location in dangling[type]
-	void init(int type);
+	void init();
 	bool done(int type);
 	bool mark(int type, int edge);
 	void push(int type, Token token);

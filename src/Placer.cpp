@@ -239,8 +239,7 @@ Placement::Placement() {
 Placement::Placement(const Circuit *base, const Placer *place, array<Token, 2> start) {
 	this->base = base;
 	this->place = place;
-	this->init(0);
-	this->init(1);
+	this->init();
 	for (int type = 0; type < 2; type++) {
 		if (mark(type, start[type].edge)) {
 			push(type, start[type]);
@@ -259,11 +258,15 @@ const Pin &Placement::pin(Index i) const {
 	return stack[i.type].pins[i.pin];
 }
 
-void Placement::init(int type) {
-	dangling[type].clear();
-	dangling[type].reserve(place->stack[type].edges.size());
-	for (int i = 0; i < (int)place->stack[type].edges.size(); i++) {
-		dangling[type].push_back(i);
+void Placement::init() {
+	for (int type = 0; type < 2; type++) {
+		dangling[type].clear();
+		dangling[type].reserve(place->stack[type].edges.size());
+		for (int i = 0; i < (int)place->stack[type].edges.size(); i++) {
+			if (place->stack[type].edges[i].device >= 0) {
+				dangling[type].push_back(i);
+			}
+		}
 	}
 }
 
@@ -291,11 +294,6 @@ void Placement::push(int type, Token token) {
 
 	int device = place->stack[type].edges[token.edge].device;
 	if (device < 0) {
-		/*if (fromNet < (int)base->nets.size() and (stack[type].pins.empty() or stack[type].pins.back().device >= 0)) {
-			stack[type].pins.push_back(Pin(fromNet));
-		} else if (toNet < (int)base->nets.size() and (stack[type].pins.empty() or stack[type].pins.back().device >= 0)) {
-			stack[type].pins.push_back(Pin(toNet));
-		}*/
 		return;
 	}
 	
@@ -310,11 +308,11 @@ void Placement::push(int type, Token token) {
 	// contact, then add this transistor. We need to test both the flipped and
 	// unflipped orderings.
 
-	if (not link and not stack[type].pins.empty() and stack[type].pins.back().device >= 0) {
+	if (not link and not stack[type].pins.empty()) {
 		stack[type].pins.push_back(Pin(stack[type].pins.back().rightNet));
 	}
 
-	if (not link or stack[type].pins.empty() or (stack[type].pins.back().device >= 0 and (base->nets[fromNet].ports > 2 or base->nets[fromNet].isIO))) {
+	if (not link or stack[type].pins.empty() or base->nets[fromNet].ports > 2 or base->nets[fromNet].isIO) {
 		// Add a contact for the first net or between two transistors.
 		stack[type].pins.push_back(Pin(fromNet));
 	}
