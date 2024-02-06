@@ -90,8 +90,21 @@ int Placement::score() {
 	B = brk[0]+brk[1];
 	W = min(brk[0]+d[0]-Wmin,brk[1]+d[1]-Wmin);
 
-	for (int i = 0; i < (int)min(stack[0].size(), stack[1].size()); i++) {
-		G += (stack[0][i].device >= 0 and stack[1][i].device >= 0 and base->mos[stack[0][i].device].gate == base->mos[stack[1][i].device].gate);
+	for (auto i = stack[0].begin(), j = stack[1].begin(); i != stack[0].end() and j != stack[1].end(); i++, j++) {
+		bool ibrk = (i != stack[0].begin() and (i-1)->device >= 0 and i->device >= 0 and base->mos[(i-1)->device].ports[not (i-1)->flip] != base->mos[i->device].ports[i->flip]);
+		bool jbrk = (j != stack[1].begin() and (j-1)->device >= 0 and j->device >= 0 and base->mos[(j-1)->device].ports[not (j-1)->flip] != base->mos[j->device].ports[j->flip]);
+
+		if (ibrk and not jbrk) {
+			j++;
+		} else if (jbrk and not ibrk) {
+			i++;
+		}
+		
+		if (i == stack[0].end() or j == stack[1].end()) {
+			break;
+		}
+
+		G += (i->device >= 0 and j->device >= 0 and base->mos[i->device].gate == base->mos[j->device].gate);
 	}
 
 	return b*B*B + l*L + w*W*W - g*G;
@@ -116,6 +129,8 @@ void Placement::solve(const Tech &tech, Circuit *base, int starts, int b, int l,
 	}
 
 	for (int i = 0; i < starts; i++) {
+		printf("start %d/%d\r", i, starts);
+		fflush(stdout);
 		Placement curr(base, b, l, w, g);
 		int score = 0;
 		int newScore = curr.score();
