@@ -4,138 +4,27 @@
 
 struct Placer;
 
-struct Edge {
-	Edge();
-	Edge(int device, int gate, vector<int> ports, vec2i size); 
-	~Edge();
-
-	// In most cases, this should list a single device
-	// However, if there are two devices that are identical, then they should be
-	// both counted in the same edge.
+struct Device {
 	int device;
-
-	int gate;
-	vec2i size;
-	vector<int> verts;
-};
-
-struct Vertex {
-	Vertex();
-	~Vertex();
-
-	// number of ports in this stack minus the number of ports in the opposite stack
-	int score;
-
-	// index into Network::edges
-	vector<int> gates;
-
-	// index into Network::edges
-	// ports[0] contains all of the unpaired ports if it's size is greater than 2
-	// each port set should be kept in sorted order to facilitate search
-	vector<vector<int> > ports;
-
-	void addPort(int e);
-	void addGate(int e);
-};
-
-struct Sequence {
-	vector<int> mos;
-	int source;
-	int drain;
-};
-
-struct Token {
-	Token();
-	Token(int edge, int port);
-	~Token();
-
-	// index into Network::edges
-	int edge;
-	// index into Network::edges[edge].verts
-	int port;
-};
-
-struct Network {
-	Network();
-	~Network();
-
-	vector<Vertex> verts;
-	vector<Edge> edges;
-
-	vector<Token> next(Token t);
-
-	void buildSupernodes();
-	vector<vector<int> > findCycles();
-	void breakCycles(vector<vector<int> > cycles);
-	vector<Sequence> buildSequences();
-	void print(const Circuit *base=nullptr); 
+	bool flip;
 };
 
 struct Placement {
 	Placement();
-	Placement(const Circuit *base, const Placer *place, array<Token, 2> start);
+	Placement(const Circuit *base, int b, int l, int w, int g);
 	~Placement();
 
+	// These are needed to be able to compute the cost of the ordering
 	const Circuit *base;
-	const Placer *place;
-	// This is determined by device ordering
+	int b, l, w, g;
+	int Wmin;
+	array<int, 2> d;
+
 	// stack is indexed by transistor type: Model::NMOS, Model::PMOS
-	array<Stack, 2> stack;
+	array<vector<Device>, 2> stack;
 
-	// This keeps track of the transistors in the Circuit we haven't placed on
-	// the stack yet. This is filled by the constructor, then successively
-	// removed as transistor ordering is done and we place wires in the
-	// constraint graph.
-	// index into Circuit::mos
-	// dangling is indexed by transistor type: Model::NMOS, Model::PMOS
-	array<vector<int>, 2> dangling;
-
-	array<Token, 2> curr;
-	array<int, 2> alignIdx;
-
-	const Pin &pin(Index i) const;
-	Pin &pin(Index i);
-
-	// Push another transistor into the circuit solution place on pmos or nmos
-	// stack depending on type, creating any necessary contacts.
-	// type is either Model::NMOS or Model::PMOS
-	// index is a location in dangling[type]
-	void init();
-	bool done(int type);
-	bool mark(int type, int edge);
-	void push(int type, Token token);
-	
-
-	int pinWidth(const Tech &tech, Index i) const;
-	int pinHeight(Index i) const;
-
-	void buildPins(const Tech &tech);
-	float scorePlacement();
-	int alignPins(int coeff=2);
-	void updatePinPos();
-};
-
-struct Placer {
-	Placer();
-	Placer(Circuit *base);
-	~Placer();
-
-	Circuit *base;
-
-	array<Network, 2> stack;
-
-	void build(const Circuit *base);
-
-	vector<array<Token, 2> > findStart();
-	void matchSequencing();
-	void breakCycles();
-	void buildSequences();
-	void buildConstraints();
-	void solveConstraints();
-	void fixDangling();
-	Placement searchOrderings(const Tech &tech);
-
-	void solve(const Tech &tech);
-	void print();
+	void move(vec4i choice);	
+	int score();
+	static void solve(const Tech &tech, Circuit *base, int starts=100, int b=12, int l=1, int w=1, int g=3, float step=1.0, float rate=0.1);
 };
 

@@ -44,7 +44,9 @@ struct Net {
 	~Net();
 
 	string name;
-	int ports;
+	// TODO(edward.bingham) split out gates and ports
+	array<int, 2> gates;
+	array<int, 2> ports;
 	bool isIO;
 };
 
@@ -134,12 +136,15 @@ struct Wire {
 
 struct Stack {
 	Stack();
+	Stack(int type);
 	~Stack();
 
+	int type;
 	vector<Pin> pins;
 	Layout layout;
-
-	void draw(const Tech &tech, int type);
+	
+	void push(const Circuit *ckt, int device, bool flip);
+	void draw(const Tech &tech);
 };
 
 struct Circuit {
@@ -166,6 +171,12 @@ struct Circuit {
 
 	bool loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &dev);
 	void loadSubckt(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &subckt);
+
+	int pinWidth(const Tech &tech, Index i) const;
+	int pinHeight(Index i) const;
+	void buildPins(const Tech &tech);
+	int alignPins(int coeff=2);
+	void updatePinPos();
 
 	void draw(const Tech &tech, Layout &dst);
 };

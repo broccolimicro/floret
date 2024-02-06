@@ -50,9 +50,12 @@ void Library::build(const Tech &tech) {
 	lib.init("test", tech.dbunit*1e-6, tech.dbunit*1e-6);
 	for (int i = 0; i < (int)cells.size(); i++) {
 		printf("\rPlacing %s\n", cells[i].name.c_str());
-		Placer placer(&cells[i]);
-		placer.solve(tech);
-		placer.print();
+		Placement::solve(tech, &cells[i]);
+		cells[i].buildPins(tech);
+		cells[i].alignPins();
+		for (int type = 0; type < 2; type++) {
+			cells[i].stack[type].draw(tech);
+		}
 		printf("\rRouting %s\n", cells[i].name.c_str());
 		Router router(&cells[i]);
 		router.solve(tech);
