@@ -2,15 +2,17 @@
 
 #include "Circuit.h"
 
+struct Placer;
+
 struct Edge {
 	Edge();
-	Edge(int mos, int gate, vector<int> ports, vec2i size); 
+	Edge(int device, int gate, vector<int> ports, vec2i size); 
 	~Edge();
 
 	// In most cases, this should list a single device
 	// However, if there are two devices that are identical, then they should be
 	// both counted in the same edge.
-	vector<int> mos;
+	int device;
 
 	int gate;
 	vec2i size;
@@ -47,7 +49,9 @@ struct Token {
 	Token(int edge, int port);
 	~Token();
 
+	// index into Network::edges
 	int edge;
+	// index into Network::edges[edge].verts
 	int port;
 };
 
@@ -69,10 +73,11 @@ struct Network {
 
 struct Placement {
 	Placement();
-	Placement(const Circuit *base);
+	Placement(const Circuit *base, const Placer *place, array<Token, 2> start);
 	~Placement();
 
 	const Circuit *base;
+	const Placer *place;
 	// This is determined by device ordering
 	// stack is indexed by transistor type: Model::NMOS, Model::PMOS
 	array<Stack, 2> stack;
@@ -92,18 +97,20 @@ struct Placement {
 	Pin &pin(Index i);
 
 	// Push another transistor into the circuit solution place on pmos or nmos
-	// stack depending on type. Create any necessary contacts, and flip the
-	// device when possible. These functions build the constraint graph.
+	// stack depending on type, creating any necessary contacts.
 	// type is either Model::NMOS or Model::PMOS
 	// index is a location in dangling[type]
-	bool tryLink(vector<Placement> &dst, int type, int index);
-	bool push(vector<Placement> &dst, int type, int index);
+	void init(int type);
+	bool done(int type);
+	bool mark(int type, int edge);
+	void push(int type, Token token);
+	
 
 	int pinWidth(const Tech &tech, Index i) const;
 	int pinHeight(Index i) const;
 
 	void buildPins(const Tech &tech);
-	int countAligned();
+	float scorePlacement();
 	int alignPins(int coeff=2);
 	void updatePinPos();
 };

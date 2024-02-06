@@ -8,12 +8,13 @@
 #include <vector>
 
 Edge::Edge() {
+	device = -1;
 	gate = -1;
 	size = vec2i(0, 0);
 }
 
-Edge::Edge(int mos, int gate, vector<int> verts, vec2i size) {
-	this->mos.push_back(mos);
+Edge::Edge(int device, int gate, vector<int> verts, vec2i size) {
+	this->device = device;
 	this->gate = gate;
 	this->verts = verts;
 	this->size = size;
@@ -62,22 +63,19 @@ vector<Token> Network::next(Token t) {
 
 	if (t.edge < 0) {
 		return result;
-		/*for (int i = 0; i < (int)edges.size(); i++) {
-			result.push_back(Token(i, -1));
-		}
-		return result;*/
 	}
 
 	for (int i = 0; i < (int)edges[t.edge].verts.size(); i++) {
-		int port = edges[t.edge].verts[i];
-		if (port != t.port) {
-			for (int j = 0; j < (int)verts[port].ports.size(); j++) {
-				auto pos = lower_bound(verts[port].ports[j].begin(), verts[port].ports[j].end(), t.edge);
-				if (pos != verts[port].ports[j].end() and *pos == t.edge) {
-					for (int k = 0; k < (int)verts[port].ports[j].size(); k++) {
-						int next = verts[port].ports[j][k];
+		if (i != t.port) {
+			int net = edges[t.edge].verts[i];
+			for (int j = 0; j < (int)verts[net].ports.size(); j++) {
+				auto pos = lower_bound(verts[net].ports[j].begin(), verts[net].ports[j].end(), t.edge);
+				if (pos != verts[net].ports[j].end() and *pos == t.edge) {
+					for (int k = 0; k < (int)verts[net].ports[j].size(); k++) {
+						int next = verts[net].ports[j][k];
 						if (next != t.edge) {
-							result.push_back(Token(next, port));
+							auto pos2 = find(edges[next].verts.begin(), edges[next].verts.end(), net);
+							result.push_back(Token(next, pos2-edges[next].verts.begin()));
 						}
 					}
 				}
@@ -228,22 +226,25 @@ void Network::print(const Circuit *base) {
 		} else {
 			printf("edge %d: %d-%d-%d {", i, edges[i].verts[0], edges[i].gate, edges[i].verts[1]);
 		}
-		for (int j = 0; j < (int)edges[i].mos.size(); j++) {
-			printf("%d ", edges[i].mos[j]);
-		}
+		printf("%d ", edges[i].device);
 		printf("}\n");
 	}
 }
 
 Placement::Placement() {
+	this->base = nullptr;
+	this->place = nullptr;
 }
 
-Placement::Placement(const Circuit *base) {
+Placement::Placement(const Circuit *base, const Placer *place, array<Token, 2> start) {
 	this->base = base;
-	dangling[0].reserve(base->mos.size());
-	dangling[1].reserve(base->mos.size());
-	for (int i = 0; i < (int)base->mos.size(); i++) {
-		dangling[base->mos[i].type].push_back(i);
+	this->place = place;
+	this->init(0);
+	this->init(1);
+	for (int type = 0; type < 2; type++) {
+		if (mark(type, start[type].edge)) {
+			push(type, start[type]);
+		}
 	}
 }
 
@@ -258,94 +259,71 @@ const Pin &Placement::pin(Index i) const {
 	return stack[i.type].pins[i.pin];
 }
 
-// index into Placement::dangling
-bool Placement::tryLink(vector<Placement> &dst, int type, int index) {
-	// Make sure that this transistor can be linked with the previous transistor
-	// on the stack. We cannot link this transistor if there isn't another
-	// transistor on the stack.
-	if (stack[type].pins.size() == 0) {
-		return false;
+void Placement::init(int type) {
+	dangling[type].clear();
+	dangling[type].reserve(place->stack[type].edges.size());
+	for (int i = 0; i < (int)place->stack[type].edges.size(); i++) {
+		dangling[type].push_back(i);
 	}
+}
 
-	// Sanity check to make sure this transistor actually has ports. This should
-	// never fail as it should be guaranteed by the spice loader in Circuit.cpp
-	int device = dangling[type][index];
-	if (base->mos[device].ports.size() < 2) {
-		printf("error parsing spice circuit, mos should have two ports\n");
-		exit(1);
+bool Placement::done(int type) {
+	return dangling[type].empty();
+}
+
+bool Placement::mark(int type, int edge) {
+	// remove item from dangling
+	auto pos = lower_bound(dangling[type].begin(), dangling[type].end(), edge);
+	if (pos != dangling[type].end() and *pos == edge) {
+		dangling[type].erase(pos);
+		return true;
 	}
+	return false;
+}
+
+// index into Placement::dangling
+void Placement::push(int type, Token token) {
+	curr[type] = token;
+
+	int fromNet = place->stack[type].edges[token.edge].verts[token.port];
+	int toNet = place->stack[type].edges[token.edge].verts[1-token.port];
+	int gateNet = place->stack[type].edges[token.edge].gate;
+
+	int device = place->stack[type].edges[token.edge].device;
+	if (device < 0) {
+		/*if (fromNet < (int)base->nets.size() and (stack[type].pins.empty() or stack[type].pins.back().device >= 0)) {
+			stack[type].pins.push_back(Pin(fromNet));
+		} else if (toNet < (int)base->nets.size() and (stack[type].pins.empty() or stack[type].pins.back().device >= 0)) {
+			stack[type].pins.push_back(Pin(toNet));
+		}*/
+		return;
+	}
+	
 
 	// Get information about the previous transistor on the stack. First if
 	// statement in the funtion guarantees that there is at least one transistor
 	// already on the stack.
-	int prevNet = stack[type].pins.back().rightNet;
-
-	// This does two things:
-	// 1. Determine if we can link this transistor to the previous one on the stack
-	// 2. Determine whether we need to flip this transistor to do so
-	int fromNet = base->mos[device].ports[0];
-	int toNet = base->mos[device].ports[1];
-	int gateNet = base->mos[device].gate;
-	if (toNet == prevNet) {
-		toNet = fromNet;
-		fromNet = prevNet;
-	} else if (fromNet != prevNet) {
-		return false;
-	}
-
-	// duplicate solution
-	dst.push_back(Placement(*this));
-	if (dst.back().stack[type].pins.size() == 0 or base->nets[fromNet].ports > 2 or base->nets[fromNet].isIO) {
-		// Add a contact for the first net or between two transistors.
-		dst.back().stack[type].pins.push_back(Pin(fromNet));
-	}
-	dst.back().stack[type].pins.push_back(Pin(device, gateNet, fromNet, toNet));
-
-	// remove item from dangling
-	dst.back().dangling[type].erase(dst.back().dangling[type].begin()+index);
-	if (dst.back().dangling[type].size() == 0) {
-		dst.back().stack[type].pins.push_back(Pin(toNet));
-	}
-	return true;
-}
-
-// index into Placement::dangling
-bool Placement::push(vector<Placement> &dst, int type, int index) {
-	// Sanity check to make sure this transistor actually has ports. This should
-	// never fail as it should be guaranteed by the spice loader in Circuit.cpp
-	int device = dangling[type][index];
-	if (base->mos[device].ports.size() < 2) {
-		printf("error parsing spice circuit, mos should have two ports\n");
-		exit(1);
-	}
-
-	int fromNet = base->mos[device].ports[0];
-	int toNet = base->mos[device].ports[1];
-	int gateNet = base->mos[device].gate;
+	bool link = (stack[type].pins.size() > 0 and fromNet == stack[type].pins.back().rightNet);
 
 	// We can't link this transistor to the previous one in the stack, so we
 	// need to cap off the stack with a contact, start a new stack with a new
 	// contact, then add this transistor. We need to test both the flipped and
 	// unflipped orderings.
 
-	// duplicate solution for the unflipped ordering
-	for (int i = 0; i < 2; i++) {
-		dst.push_back(Placement(*this));
-		if (dst.back().stack[type].pins.size() > 0) {
-			dst.back().stack[type].pins.push_back(Pin(stack[type].pins.back().rightNet));
-		}
-		dst.back().stack[type].pins.push_back(Pin(fromNet));
-		dst.back().stack[type].pins.push_back(Pin(device, gateNet, fromNet, toNet));
-		// remove item from dangling
-		dst.back().dangling[type].erase(dst.back().dangling[type].begin()+index);
-		if (dst.back().dangling[type].size() == 0) {
-			dst.back().stack[type].pins.push_back(Pin(toNet));
-		}
-
-		swap(fromNet, toNet);
+	if (not link and not stack[type].pins.empty() and stack[type].pins.back().device >= 0) {
+		stack[type].pins.push_back(Pin(stack[type].pins.back().rightNet));
 	}
 
-	return true;
+	if (not link or stack[type].pins.empty() or (stack[type].pins.back().device >= 0 and (base->nets[fromNet].ports > 2 or base->nets[fromNet].isIO))) {
+		// Add a contact for the first net or between two transistors.
+		stack[type].pins.push_back(Pin(fromNet));
+	}
+
+	stack[type].pins.push_back(Pin(device, gateNet, fromNet, toNet));
+
+	if (done(type)) {
+		stack[type].pins.push_back(Pin(toNet));
+	}
 }
 
 void Placement::buildPins(const Tech &tech) {
@@ -372,31 +350,50 @@ void Placement::buildPins(const Tech &tech) {
 	}
 }
 
-int Placement::countAligned() {
+float Placement::scorePlacement() {
+	int conCount = 0;
 	int gateMatches = 0;
 	vector<Pin>::iterator idx[2] = {stack[0].pins.begin(),stack[1].pins.begin()};
+	bool prevContact[2] = {false, false};
 	int pos[2] = {0,0};
 	while (idx[0] != stack[0].pins.end() and idx[1] != stack[1].pins.end()) {
 		if (idx[0]->device < 0) {
+			conCount += prevContact[0];
 			pos[0] += idx[0]->off;
 			idx[0]++;
+			prevContact[0] = true;
 		} else if (idx[1]->device < 0) {
+			conCount += prevContact[1];
 			pos[1] += idx[1]->off;
 			idx[1]++;
+			prevContact[1] = true;
 		} else if (idx[0]->outNet == idx[1]->outNet and ((idx[0]->device < 0) == (idx[1]->device < 0))) {
 			gateMatches++;
 			pos[0] += idx[0]->off;
 			pos[1] += idx[1]->off;
 			idx[0]++;
 			idx[1]++;
+			prevContact[0] = false;
+			prevContact[1] = false;
 		} else if (pos[1]+idx[1]->off < pos[0]+idx[0]->off) {
 			pos[1] += idx[1]->off;
 			idx[1]++;
+			prevContact[1] = false;
 		} else {
 			pos[0] += idx[0]->off;
 			idx[0]++;
+			prevContact[0] = false;
 		}
 	}
+	/*while (idx[0] != stack[0].pins.end()) {
+		pos[0] += idx[0]->off;
+		idx[0]++;
+	}
+	while (idx[1] != stack[1].pins.end()) {
+		pos[1] += idx[1]->off;
+		idx[1]++;
+	}
+	width = 1+max(pos[0], pos[1]);*/
 
 	int conMatches = 0;
 	idx[0] = stack[0].pins.begin();
@@ -425,7 +422,8 @@ int Placement::countAligned() {
 		}
 	}
 
-	return gateMatches*3 + conMatches*2;
+	//return (float)(gateMatches*3 + conMatches*2)/(float)width;
+	return (float)(gateMatches*3 + conMatches*2 - conCount);
 }
 
 
@@ -577,9 +575,9 @@ void Placer::build(const Circuit *base) {
 		}
 	}
 
-	/*for (int type = 0; type < 2; type++) {
+	for (int type = 0; type < 2; type++) {
 		stack[type].buildSupernodes();
-	}*/
+	}
 }
 
 struct PortPairing {
@@ -611,16 +609,20 @@ bool operator<(PortPairing p0, PortPairing p1) {
 vector<array<Token, 2> > Placer::findStart() {
 	vector<array<Token, 2> > result;
 	for (int i = 0; i < (int)stack[0].edges.size(); i++) {
-		for (int j = 0; j < (int)stack[1].edges.size(); j++) {
-			//if (stack[0].edges[i].gate == stack[1].edges[j].gate) {
-				for (int k = 0; k < (int)stack[0].edges[i].verts.size(); k++) {
-					for (int l = 0; l < (int)stack[1].edges[j].verts.size(); l++) {
-						if (stack[0].edges[i].verts[k] == stack[1].edges[j].verts[l]) {
-							result.push_back(array<Token, 2>({Token(i, stack[0].edges[i].verts[k]), Token(j, stack[1].edges[j].verts[l])}));
+		if (stack[0].edges[i].device >= 0) {
+			for (int j = 0; j < (int)stack[1].edges.size(); j++) {
+				if (stack[1].edges[j].device >= 0) {
+					if (stack[0].edges[i].gate == stack[1].edges[j].gate) {
+						for (int k = 0; k < (int)stack[0].edges[i].verts.size(); k++) {
+							for (int l = 0; l < (int)stack[1].edges[j].verts.size(); l++) {
+								if (stack[0].edges[i].verts[k] == stack[1].edges[j].verts[l]) {
+									result.push_back(array<Token, 2>({Token(i, k), Token(j, l)}));
+								}
+							}
 						}
 					}
 				}
-			//}
+			}
 		}
 	}
 
@@ -806,14 +808,13 @@ Placement Placer::searchOrderings(const Tech &tech) {
 	vector<Placement> orders;
 	vector<array<Token, 2> > start = findStart();
 	for (int i = 0; i < (int)start.size(); i++) {
-		orders.push_back(Placement(base));
-		orders.back().curr = start[i];
+		orders.push_back(Placement(base, this, start[i]));
 	}
 
 	int count = 0;
 	Timer timer;
 
-	int maxAlignment = -1;
+	float maxScore = -1;
 	Placement result;
 
 	// DESIGN(edward.bingham) Depth first search through all useful
@@ -829,12 +830,12 @@ Placement Placer::searchOrderings(const Tech &tech) {
 		Placement curr = orders.back();
 		orders.pop_back();
 
-		if (curr.dangling[Model::NMOS].size() == 0 and 
-		    curr.dangling[Model::PMOS].size() == 0) {
-			int alignment = curr.countAligned();
-			if (alignment > maxAlignment) {
+		if (curr.done(0) and curr.done(1)) {
+			float score = curr.scorePlacement();
+			if (score > maxScore) {
+				printf("\nscore %f\n", score);
 				result = curr;
-				maxAlignment = alignment;
+				maxScore = score;
 			}
 			count++;
 			continue;
@@ -843,62 +844,67 @@ Placement Placer::searchOrderings(const Tech &tech) {
 		// DESIGN(edward.bingham) The following search order makes sure
 		// that we can't introduce redundant orderings of transistors:
 		// NMOS linked, NMOS unlinked, PMOS linked, PMOS unlinked
-
-		vector<Placement> toadd;
-		vector<Token> n;
-
 		int type = 1;
-		if (curr.dangling[1].empty() or (not curr.dangling[0].empty() and (curr.stack[0].pins.empty() or
+		if (curr.done(1) or (not curr.done(0) and (curr.stack[0].pins.empty() or
 		    (not curr.stack[1].pins.empty() and curr.stack[0].pins.back().pos < curr.stack[1].pins.back().pos)))) {
 			type = 0;
 		}
 
-		bool found = false;
-		n = stack[type].next(curr.curr[type]);
+		vector<Placement> toadd;
+		vector<Token> n = stack[type].next(curr.curr[type]);
 		for (int i = 0; i < (int)n.size(); i++) {
-			curr.curr[type] = n[i];
-			if (stack[type].edges[n[i].edge].mos.size() > 0) {
-				auto pos = find(curr.dangling[type].begin(), curr.dangling[type].end(), stack[type].edges[n[i].edge].mos[0]);
-				if (pos != curr.dangling[type].end()) {
-					int d = pos-curr.dangling[type].begin(); 
-					bool test = curr.tryLink(toadd, type, d) or
-					            curr.push(toadd, type, d);
-						found = found or test;
-				}
+			toadd.push_back(curr);
+			if (toadd.back().mark(type, n[i].edge)) {
+				toadd.back().push(type, n[i]);
 			} else {
-				toadd.push_back(curr);
+				toadd.pop_back();
 			}
 		}
 
-		if (n.size() == 0) {
-			for (int link = 1; link >= 0 and not found; link--) {
-				for (int i = 0; i < (int)curr.dangling[type].size(); i++) {
-					bool test = (link ?
-						curr.tryLink(toadd, type, i) :
-						curr.push(toadd, type, i));
-					found = found or test;
+		/*if (toadd.empty()) {
+			for (int i = 0; i < (int)start.size(); i++) {
+				toadd.push_back(curr);
+				if (toadd.back().mark(type, start[i][0].edge) and toadd.back().mark(type, start[i][0].edge)) {
+					toadd.back().push(type, start[i][0]);
+					toadd.back().push(type, start[i][1]);
+				} else {
+					toadd.pop_back();
+				}
+			}
+		}*/
+
+		if (toadd.empty()) {
+			for (auto edge = curr.dangling[type].begin(); edge != curr.dangling[type].end(); edge++) {
+				for (int j = 0; j < (int)stack[type].edges[*edge].verts.size(); j++) {
+					toadd.push_back(curr);
+					if (toadd.back().mark(type, *edge)) {
+						toadd.back().push(type, Token(*edge, j));
+					} else {
+						toadd.pop_back();
+					}
 				}
 			}
 		}
 		
-		vector<Placement> best;
-		int bestCost = -1;
+		/*vector<Placement> best;
+		float bestScore = -1;
 		while (not toadd.empty()) {
-			int cost = toadd.back().countAligned();
-			if (bestCost < 0 or cost > bestCost) {
-				bestCost = cost;
+			float score = toadd.back().scorePlacement();
+			if (score > bestScore) {
+				bestScore = score;
 				best.clear();
 			}
 
-			if (cost == bestCost) {
+			if (score == bestScore) {
 				best.push_back(toadd.back());
 			}
 
 			toadd.pop_back();
 		}
 
-		orders.insert(orders.end(), best.begin(), best.end());
-		best.clear();
+		orders.insert(orders.end(), best.begin(), best.end());*/
+		orders.insert(orders.end(), toadd.begin(), toadd.end());
+		//best.clear();
 	}
 
 	printf("\rCircuit::solve explored %d layouts for %s in %fms\n", count, base->name.c_str(), timer.since()*1e3);
@@ -908,7 +914,7 @@ Placement Placer::searchOrderings(const Tech &tech) {
 void Placer::solve(const Tech &tech) {
 	build(base);
 	print();
-	//matchSequencing();
+	matchSequencing();
 	print();
 	//breakCycles();
 	//buildSequences();

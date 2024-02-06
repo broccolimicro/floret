@@ -732,8 +732,8 @@ void Router::buildRouteConstraints(const Tech &tech) {
 	for (int i = 0; i < (int)routes.size(); i++) {
 		for (int j = i+1; j < (int)routes.size(); j++) {
 			int off[2] = {0,0};
-			bool fromto = minOffset(off+0, tech, 1, routes[i].layout.layers, 0, routes[j].layout.layers, 0);
-			bool tofrom = minOffset(off+1, tech, 1, routes[j].layout.layers, 0, routes[i].layout.layers, 0);
+			bool fromto = minOffset(off+0, tech, 1, routes[i].layout.layers, 0, routes[j].layout.layers, 0, false);
+			bool tofrom = minOffset(off+1, tech, 1, routes[j].layout.layers, 0, routes[i].layout.layers, 0, false);
 			if (fromto or tofrom) {
 				routeConstraints.push_back(RouteConstraint(i, j, off[0], off[1]));
 			}
