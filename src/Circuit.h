@@ -127,6 +127,7 @@ struct Wire {
 
 	int pOffset;
 	int nOffset;
+	//int pos;
 	unordered_set<int> prevNodes;
 
 	void addPin(const Circuit *s, Index pin);

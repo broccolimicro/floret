@@ -1017,14 +1017,16 @@ void Router::findAndBreakCycles() {
 }
 
 void Router::lowerRoutes() {
-	// TODO(edward.bingham) there's a bug where two jog paths will be overlapped
-	// after lowering because there is only a route constraint, and there is no
-	// pin constraint when maybe there should be
-	//  | |
-	//  |_|__
-	//    |__|__
-	//       |  |
-	//       |  |
+	// TODO(edward.bingham) There's still an interaction between route lowering
+	// and via merging where it ends up creating a double route for two close
+	// pins, causing DRC violations
+
+	// TODO(edward.bingham) For routes that cross over one of the two transitor
+	// stacks, I can do one of two things. 1. I could not lower that route,
+	// keeping track of pin levels. 2. I could reduce the width of wide vias to
+	// provide space for local interconnect and keep the higher layers open.
+	// Manual layouts seem to prefer the second option.
+	
 	// int pinLevel = 1;
 	for (int i = 0; i < (int)routes.size(); i++) {
 		routes[i].level.clear();
@@ -1088,6 +1090,11 @@ void Router::updateRouteConstraints(const Tech &tech) {
 }
 
 int Router::computeCost() {
+	// TODO(edward.bingham) This may be useful for a second placement round where
+	// we use full cell area as the cost function. So, start with the simpler
+	// cost function, do an initial layout, then use the layout size as the new
+	// layout size as the cost function and each iteration does a full layout.
+	// This may be like the detail step of the placement algorithm.
 	int left = 1000000000;
 	int right = -1000000000;
 	for (int type = 0; type < 2; type++) {
@@ -1126,6 +1133,44 @@ int Router::solve(const Tech &tech) {
 	buildPOffsets(tech);
 	buildNOffsets(tech);
 	assignRouteConstraints(tech);
+	// TODO(edward.bingham) The route placement should start at the center and
+	// work it's way toward the bottom and top of the cell instead of starting at
+	// the bottom and working it's way to the top. This would make the cell more
+	// dense overall, but give more space for overcell routing. I might want to
+	// create directed routing constraints for power and ground that keeps them
+	// at the bottom and top of the cell routing so that the two sources can be
+	// easily routed in the larger context. Using pOffset and nOffset
+	// alternatively didn't really work.
+	/*
+	int minOff = -1;
+	int pOff = 0;
+	int nOff = 0;
+	for (int i = 0; i < (int)routes.size(); i++) {
+		if (routes[i].pins.size() != 0) {
+			int off = (routes[i].pOffset - routes[i].nOffset);
+			off = off < 0 ? -off : off;
+			if (minOff < 0 or off < minOff) {
+				printf("route %d is center\n", i);
+				minOff = off;
+				pOff = routes[i].pOffset;
+				nOff = routes[i].nOffset;
+			}
+		}
+	}
+
+	printf("off %d %d %d\n", minOff, pOff, nOff);
+	for (int i = 0; i < (int)routes.size(); i++) {
+		if (routes[i].pOffset < cellHeight/2) {
+			routes[i].pos = cellHeight - routes[i].nOffset;
+		} else {
+			routes[i].pos = routes[i].pOffset;
+		}
+	}*/
+
+	// TODO(edward.bingham) I may need to create the straps for power and ground
+	// depending on the cell placement and global and local routing engine that
+	// these cells are interfacing with.
+
 	base->routes = routes;
 	base->cellHeight = cellHeight;
 	//updateRouteConstraints(tech);

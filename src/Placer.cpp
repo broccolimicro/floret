@@ -115,6 +115,13 @@ void Placement::solve(const Tech &tech, Circuit *base, int starts, int b, int l,
 		return;
 	}
 
+	// TODO(edward.bingham) It might speed things up to scale the number of
+	// starts based upon the cell complexity. Though, given that it would really
+	// only reduce computation time for smaller cells and the larger cells
+	// account for the majority of the computation time, I'm not sure that this
+	// would really do that much to help.
+	//starts = 50*(int)base->mos.size();
+
 	Placement best(base, b, l, w, g);
 	float bestScore = (float)best.score();
 
@@ -162,6 +169,7 @@ void Placement::solve(const Tech &tech, Circuit *base, int starts, int b, int l,
 			best = curr;
 		}
 	}
+	printf("Placement complete after %d iterations\n", starts);
 
 	array<Stack, 2> result;
 	for (int type = 0; type < 2; type++) {
