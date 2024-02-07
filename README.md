@@ -2,7 +2,11 @@
 
 > *small flower buds at the head of a piece of broccoli.*
 
-Floret is a cell generator designed for advanced nodes.
+Floret is a cell generator designed with advanced nodes in mind. The underlying algorithms are built from the following papers:
+
+[1] Stauffer, André, and Ravi Nair. "Optimal CMOS cell transistor placement: a relaxation approach." 1988 IEEE International Conference on Computer-Aided Design. IEEE Computer Society, 1988.
+[2] Chen, Howard H., and Ernest S. Kuh. "Glitter: A gridless variable-width channel router." IEEE transactions on computer-aided design of integrated circuits and systems 5.4 (1986): 459-465.
+[3] Deutsch, David N. "A “Dogleg” channel router." Papers on Twenty-five years of electronic design automation. 1988. 111-119.
 
 ## Build and Install
 
@@ -30,34 +34,9 @@ This will create the `cells` directory and run cell layout for all cells in the 
 ./build-linux/floret -c cells test/*.spi
 ```
 
-## Cell Layout
-
-**Data Input:**
-* A spice netlist
-* Optionally a GDS file (partial solution)
-
-**Configuration Input:**
-* Design rule set for a process technology node
-* Transistor layer specifications
-* Heuristic preferences for each step
-
-**Output:**
-* GDS file
-
-**Steps:**
-1. Read input and configuration
-2. Determine transistor order for pull-up and pull-down stacks
-    * Align transistor gates
-    * Align source and drain connections
-    * Create sufficient space for vias
-3. Route over the stacks
-4. Route between stacks
-5. Identify DRC violations
-6. Modify decisions from earlier steps to fix DRC violation and repeat
-7. Draw geometry
-8. Emit output
-
 ## Status
 
-TODO
+Floret is being tested on Skywater's 130nm process technology node. It is not yet producing DRC clean layouts, but the layouts are often workable with minor manual alterations. There are two more things that need to be done to generate DRC clean layouts.
 
+1. I need to implement constraints for pins and vias that are next to eachother on the same stack to manage the interaction between via enclosure rules and spacing rules between the via and the pin.
+2. I need to implement a more advanced DRC checking engine that can handle more complex DRC rules to check poly against diffusion without causing havok with the transistor placement spacing.
