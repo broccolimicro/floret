@@ -289,7 +289,6 @@ void Router::breakRoute(int route, set<int> cycleRoutes) {
 	bool wpHasGate = false;
 	bool wnHasGate = false;
 
-	// TODO(edward.bingham) is this correct?
 	// Move all of the pins that participate in pin constraints associated
 	// with the cycle.	
 	for (int i = 0; i < (int)pinConstraints.size(); i++) {

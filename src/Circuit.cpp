@@ -364,6 +364,7 @@ void Circuit::buildPins(const Tech &tech) {
 
 
 int Circuit::alignPins(int coeff) {
+	// TODO(edward.bingham) There's a bug here where the pins get pushed out far too much for no particular reason
 	int matches = 0;
 	vector<Pin>::iterator idx[2] = {stack[0].pins.begin(),stack[1].pins.begin()};
 	int pos[2] = {0,0};

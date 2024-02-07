@@ -44,7 +44,6 @@ struct Net {
 	~Net();
 
 	string name;
-	// TODO(edward.bingham) split out gates and ports
 	array<int, 2> gates;
 	array<int, 2> ports;
 	bool isIO;
