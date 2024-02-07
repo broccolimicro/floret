@@ -518,6 +518,10 @@ void Router::breakRoute(int route, set<int> cycleRoutes) {
 	routes[route].pOffset = wp.pOffset;
 	routes[route].nOffset = wp.nOffset;
 	if (needAStar) {
+		// TODO(edward.bingham) We may not actually need A* here. Instead, we can
+		// create virtual pins on a third "stack" that exist in the holes left in
+		// the other two stacks and on the edges of the cell. These pins could be
+		// used to dependably route these connections.
 		aStar.push_back(pair<int, int>(route, (int)routes.size()));
 	}
 	routes.push_back(wn);
@@ -728,6 +732,13 @@ void Router::buildStackConstraints(const Tech &tech) {
 }
 
 void Router::buildRouteConstraints(const Tech &tech) {
+	// TODO(edward.bingham) There's a bug here where poly routes are placed too
+	// close to the diffusion. This is because the DRC rule involved is more than
+	// just a spacing rule between two single layers. It requires a larger DRC
+	// engine to be able to check that. Simply adding a spacing rule between poly
+	// and diffusion causes havok with the transistor placement in the nmos and
+	// pmos stacks.
+
 	// Compute route constraints
 	for (int i = 0; i < (int)routes.size(); i++) {
 		for (int j = i+1; j < (int)routes.size(); j++) {
