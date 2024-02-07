@@ -34,6 +34,8 @@ This will create the `cells` directory and run cell layout for all cells in the 
 ./build-linux/floret -c cells test/*.spi
 ```
 
+![cell9](https://github.com/broccolimicro/floret/assets/8902287/7a0c31fb-39dc-45f7-978e-13e30e06b2bb)
+
 ## Status
 
 Floret is being tested on Skywater's 130nm process technology node. It is not yet producing DRC clean layouts, but the layouts are often workable with minor manual alterations. There are two more things that need to be done to generate DRC clean layouts.
