@@ -218,7 +218,7 @@ void Stack::draw(const Tech &tech) {
 
 Circuit::Circuit() {
 	cellHeight = 0;
-	for (int type = 0; type < 2; type++) {
+	for (int type = 0; type < 3; type++) {
 		stack[type].type = type;
 	}
 }

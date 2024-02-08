@@ -180,7 +180,7 @@ void Placement::solve(const Tech &tech, Circuit *base, int starts, int b, int l,
 		if (best.stack[type].back().device >= 0) {
 			result[type].push(base, -1, false);
 		}
+		base->stack[type] = result[type];
 	}
-	base->stack = result;
 }
 

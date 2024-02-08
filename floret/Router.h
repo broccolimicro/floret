@@ -69,9 +69,6 @@ struct Router {
 
 	Circuit *base;
 
-	// Route pairs that need to be connected via A*
-	// index into Router::routes
-	vector<pair<int, int> > aStar;
 	enum {
 		PMOS_STACK=-1,
 		NMOS_STACK=-2,

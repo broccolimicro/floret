@@ -377,7 +377,6 @@ void Router::breakRoute(int route, set<int> cycleRoutes) {
 	// arbitrarily. This will move the vertical route out of the way as much as
 	// possible from all of the other constraint problems. If there are no
 	// remaining pins, then we need to record wp and wn for routing with A*
-	bool needAStar = false;
 	int sharedPin = -1;
 	int sharedCount = -1;
 	bool sharedIsGate = true;
@@ -409,8 +408,19 @@ void Router::breakRoute(int route, set<int> cycleRoutes) {
 		wpHasGate = wpHasGate or sharedIsGate;
 		wnHasGate = wnHasGate or sharedIsGate;
 	} else {
-		needAStar = true;
-		//printf("Need A* %d %d\n", route, (int)routes[route].pins.size());
+		// Add a virtual pin to facilitate dogleg routing where no current pin is useable because of some constraint conflict
+		// TODO(edward.bingham) Two things, I need to determine the horizontal
+		// position of the pin by looking for available vertical tracks. The
+		// problem is that I don't know the ordering of the routes at this point in
+		// time, so the only really safe vertical track at the moment is all the
+		// way at the end of the cell. I also need to create functionality for
+		// saving the vertical position of the pin so the drawing functionality
+		// knows where to draw the vertical path.
+		Index virtPin(2, (int)base->stack[2].pins.size());
+		base->stack[2].pins.push_back(Pin(routes[route].net));
+		base->stack[2].pins.back().pos = -50;
+		wp.addPin(base, virtPin);
+		wn.addPin(base, virtPin);
 	}
 
 	//printf("Step 2: w={");
@@ -516,13 +526,6 @@ void Router::breakRoute(int route, set<int> cycleRoutes) {
 	routes[route].right = wp.right;
 	routes[route].pOffset = wp.pOffset;
 	routes[route].nOffset = wp.nOffset;
-	if (needAStar) {
-		// TODO(edward.bingham) We may not actually need A* here. Instead, we can
-		// create virtual pins on a third "stack" that exist in the holes left in
-		// the other two stacks and on the edges of the cell. These pins could be
-		// used to dependably route these connections.
-		aStar.push_back(pair<int, int>(route, (int)routes.size()));
-	}
 	routes.push_back(wn);
 }
 
@@ -1221,11 +1224,6 @@ void Router::print() {
 	}
 	for (int i = 0; i < (int)viaConstraints.size(); i++) {
 		printf("via[%d] %d {%d,%d} -> %d -> {%d,%d}\n", i, viaConstraints[i].type, viaConstraints[i].from.idx, viaConstraints[i].from.off, viaConstraints[i].idx, viaConstraints[i].to.idx, viaConstraints[i].to.off);
-	}
-
-	printf("\nA* Routes\n");
-	for (int i = 0; i < (int)aStar.size(); i++) {
-		printf("astar %d %d\n", aStar[i].first, aStar[i].second);
 	}
 
 	printf("\n");

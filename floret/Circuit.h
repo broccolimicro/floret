@@ -158,7 +158,8 @@ struct Circuit {
 	vector<Mos> mos;
 
 	// Computed by the placement system
-	array<Stack, 2> stack;
+	// The third stack in the array is used for virtual pins that facilitate dogleg routing
+	array<Stack, 3> stack;
 
 	// Computed by the routing system
 	vector<Wire> routes;

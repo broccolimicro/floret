@@ -238,7 +238,12 @@ void drawRoute(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wi
 		int pinLayer = tech.wires[pinLevel].draw;
 		int width = tech.paint[pinLayer].minWidth;
 
-		int pinMid = (wire.pins[i].type == Model::NMOS)*ckt->cellHeight;
+		int pinMid = 0;
+		if (wire.pins[i].type == Model::NMOS) {
+			pinMid = ckt->cellHeight;
+		} else if (wire.pins[i].type == 2) {
+			pinMid = ckt->cellHeight/2;
+		}
 
 		int top = max(pinMid, wire.pOffset+height);
 		int bottom = min(pinMid, wire.pOffset);
