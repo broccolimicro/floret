@@ -830,7 +830,7 @@ void Router::buildPrevNodes(vector<int> start) {
 				if (routes[curr].hasPin(base, Index(Model::PMOS, pinConstraints[i].from))) {
 					for (int j = 0; j < (int)routes.size(); j++) {
 						if (j != curr and routes[j].hasPin(base, Index(Model::NMOS, pinConstraints[i].to))) {
-							bool change = routes[j].prevNodes.insert(curr).second;
+							bool change = routes[j].prevNodes.insert(pair<int, vector<int> >(curr, vector<int>())).second;
 							for (auto prev = routes[curr].prevNodes.begin(); prev != routes[curr].prevNodes.end(); prev++) {
 								bool inserted = routes[j].prevNodes.insert(*prev).second;
 								change = change or inserted;
@@ -858,7 +858,7 @@ void Router::buildPOffsets(const Tech &tech, vector<int> start) {
 				if (routes[curr].hasPin(base, Index(Model::PMOS, pinConstraints[i].from))) {
 					for (int j = 0; j < (int)routes.size(); j++) {
 						if (j != curr and routes[j].hasPin(base, Index(Model::NMOS, pinConstraints[i].to))) {
-							bool change = routes[j].prevNodes.insert(curr).second;
+							bool change = routes[j].prevNodes.insert(pair<int, vector<int> >(curr, vector<int>())).second;
 							for (auto prev = routes[curr].prevNodes.begin(); prev != routes[curr].prevNodes.end(); prev++) {
 								bool inserted = routes[j].prevNodes.insert(*prev).second;
 								change = change or inserted;
@@ -890,7 +890,7 @@ void Router::buildPOffsets(const Tech &tech, vector<int> start) {
 				// keep track of anscestor nodes
 				bool change = false;
 				if (curr >= 0) {
-					change = routes[out].prevNodes.insert(curr).second;
+					change = routes[out].prevNodes.insert(pair<int, vector<int> >(curr, vector<int>())).second;
 					for (auto prev = routes[curr].prevNodes.begin(); prev != routes[curr].prevNodes.end(); prev++) {
 						bool inserted = routes[out].prevNodes.insert(*prev).second;
 						change = change or inserted;

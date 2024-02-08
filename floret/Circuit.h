@@ -127,7 +127,8 @@ struct Wire {
 	int pOffset;
 	int nOffset;
 	//int pos;
-	unordered_set<int> prevNodes;
+	// <index into Circuit::routes, indices into Router::viaConstraints>
+	unordered_map<int, vector<int> > prevNodes;
 
 	void addPin(const Circuit *s, Index pin);
 	bool hasPin(const Circuit *s, Index pin, vector<Index>::iterator *out = nullptr);
