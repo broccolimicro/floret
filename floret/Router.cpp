@@ -973,6 +973,9 @@ void Router::assignRouteConstraints(const Tech &tech) {
 				outTokens.push_back(b);
 				unassigned.erase(unassigned.begin()+u);
 			}
+
+			// TODO(edward.bingham) Did doing this create a cycle when we include violated via constraints? If so, we resolve that cycle by pushing the associated pins out as much as needed.
+			// TODO(edward.bingham) In more advanced nodes, pushing the pin out may not be possible because poly routes are only allowed on a regular grid. So if we pushed the poly at all, we'd have to push it an entire grid unit. We may need to account for this in our placement algorithm. We may also be able to single out this pin from the route and route it separately. In that case, all of our previous understandings about the route direction assignments will change. So, this would have to be identified before running this algorithm.
 		}
 		if (inTokens.size() + outTokens.size() > 0) {
 			buildPOffsets(tech, inTokens);
@@ -985,6 +988,7 @@ void Router::assignRouteConstraints(const Tech &tech) {
 		int index = -1;
 		int uindex = -1;
 		for (int u = (int)unassigned.size()-1; u >= 0; u--) {
+			// TODO(edward.bingham) If there is a direction that violates a via constraint and a direction that doesn't, then we pre-emptively chose the direction that doesn't. If both directions violate the via constraint, then we need to resolve that conflict by pushing the associated pins out to make space for the via.
 			int i = unassigned[u];
 			int label = max(
 				routes[routeConstraints[i].wires[0]].pOffset + routes[routeConstraints[i].wires[1]].nOffset + routeConstraints[i].off[0], 
@@ -1123,7 +1127,7 @@ int Router::computeCost() {
 
 int Router::solve(const Tech &tech) {
 	buildPinConstraints(tech);
-	//buildViaConstraints(tech);
+	buildViaConstraints(tech);
 	buildRoutes();
 	findAndBreakCycles();
 	//drawStacks(tech);

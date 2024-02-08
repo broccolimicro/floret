@@ -148,6 +148,7 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 
 			int wireLayer = tech.wires[nextLevel].draw;
 			height = tech.paint[wireLayer].minWidth;
+			// TODO(edward.bingham) push the via down the route as needed to satisfy via constraints, then route the associated pin down the route as well.
 			if ((pinLevel <= tech.vias[i].downLevel and wireHigh >= tech.vias[i].upLevel) or
 			    (wireLow <= tech.vias[i].downLevel and pinLevel >= tech.vias[i].upLevel)) {
 				int pinLayer = tech.wires[pinLevel].draw;
