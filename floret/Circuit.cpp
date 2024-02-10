@@ -161,6 +161,10 @@ int Wire::getLevel(int i) const {
 	return level[i];
 }
 
+bool Wire::hasPrev(int r) const {
+	return prevNodes.find(r) != prevNodes.end();
+}
+
 Stack::Stack() {
 	type = -1;
 }

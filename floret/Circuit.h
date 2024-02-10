@@ -133,6 +133,7 @@ struct Wire {
 	void addPin(const Circuit *s, Index pin);
 	bool hasPin(const Circuit *s, Index pin, vector<Index>::iterator *out = nullptr);
 	int getLevel(int i) const;
+	bool hasPrev(int r) const;
 };
 
 struct Stack {

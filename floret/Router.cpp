@@ -43,20 +43,22 @@ RouteConstraint::~RouteConstraint() {
 ViaConstraint::ViaConstraint() {
 	type = -1;
 	idx = -1;
-	select = -1;
 }
 
 ViaConstraint::ViaConstraint(int type, int idx, int fromIdx, int fromOff, int toIdx, int toOff) {
 	this->type = type;
 	this->idx = idx;
-	this->select = -1;
-	this->from.idx = fromIdx;
-	this->from.off = fromOff;
-	this->to.idx = toIdx;
-	this->to.off = toOff;
+	this->side[0].idx = fromIdx;
+	this->side[0].off = fromOff;
+	this->side[1].idx = toIdx;
+	this->side[1].off = toOff;
 }
 
 ViaConstraint::~ViaConstraint() {
+}
+
+bool operator<(vector<ViaConstraint>::const_iterator v0, vector<ViaConstraint>::const_iterator v1) {
+	return v0->side[1].idx < v1->side[1].idx;
 }
 
 Router::Router() {
@@ -137,7 +139,7 @@ void Router::buildViaConstraints(const Tech &tech) {
 			for (int j = i-1; j >= 0; j--) {
 				if (conflict[j]) {
 					for (int k = i+1; k < (int)base->stack[type].pins.size(); k++) {
-						if (conflict[k] and base->stack[type].pins[k].pos - base->stack[type].pins[j].pos < offsets[j]+offsets[k]) {
+						if (conflict[k]) {
 							viaConstraints.push_back(ViaConstraint(type, i, j, offsets[j], k, offsets[k]));
 						}
 					}
@@ -702,6 +704,97 @@ void Router::breakCycles(vector<vector<int> > cycles) {
 	}*/
 }
 
+void Router::findAndBreakViaCycles() {
+	// After we have resolved all of the pin constraint cycles, we
+	// check for cycles introduced by via constraints. These can't be
+	// broken by breaking up the routes because all you'll do is add a
+	// new via without actually satisfying the via constraint.
+	//
+	// =|=|=|=|
+	// -|-O | | <-- breaking the route won't remove this via
+	//  O | O | <-- it just creates more violations
+	//    O---O
+	//
+	// So instead, when we encounter a cycle created by via
+	// constraints, we need to add spacing between the pins.
+	//
+	// =|==|==|=|
+	// -|--O--|-O
+	//  O     O 
+	//
+	// TODO(edward.bingham) One caveat, if breaking the route allows
+	// us to route over the cell, and doesn't create more violations,
+	// then it can fix the cycle.
+	//
+	// ---O
+	// =|=|=|
+	//  O | O
+	//    O--
+
+	// <index into Circuit::stack[via->type], index into Router::viaConstraints>
+	array<vector<vector<ViaConstraint>::iterator>, 2> to;
+	for (auto via = viaConstraints.begin(); via != viaConstraints.end(); via++) {
+		Index side[2] = {Index(via->type, via->side[0].idx), Index(via->type, via->side[1].idx)};
+		Index mid(via->type, via->idx);
+
+		// Because routes have been broken up at this point in order to
+		// fix pin constraint cycles, a pin could participate in
+		// multiple routes. We need to check all via relations.
+		array<vector<int>, 2> hasSide;
+		vector<int> hasMid;
+		for (int i = 0; i < (int)routes.size(); i++) {
+			if (routes[i].hasPin(base, side[0])) {
+				hasSide[0].push_back(i);
+			}
+			if (routes[i].hasPin(base, side[1])) {
+				hasSide[1].push_back(i);
+			}
+			if (routes[i].hasPin(base, mid)) {
+				hasMid.push_back(i);
+			}
+		}
+
+		// Identify potentially violated via constraints.
+		//
+		// DESIGN(edward.bingham) This could probably be done more
+		// intelligently by setting up a graph structure of vias and
+		// navigating that to look for violations, but I suspect that
+		// the number of vias we need to check across the three vectors
+		// will be quite low...  likely just a single via in each list
+		// most of the time. Occationally two vias in one of the lists.
+		// So just brute forcing the problem shouldn't cause too much of
+		// an issue.
+		for (auto s0 = hasSide[0].begin(); s0 != hasSide[0].end(); s0++) {
+			for (auto s1 = hasSide[1].begin(); s1 != hasSide[1].end(); s1++) {
+				for (auto m = hasMid.begin(); m != hasMid.end(); m++) {
+					if ((via->type == Model::PMOS and routes[*s0].hasPrev(*m) and routes[*s1].hasPrev(*m)) or
+					    (via->type == Model::NMOS and routes[*m].hasPrev(*s0) and routes[*m].hasPrev(*s1))) {
+						to[via->type].push_back(via);
+					}
+				}
+			}
+		}
+	}
+
+	// Moving a pin creates separation between all the pins before and that pin
+	// and all pins after. We have a set of potentially violated via constraints.
+	for (int type = 0; type < 2; type++) {
+		sort(to[type].begin(), to[type].end());
+		int off = 0;
+		for (int i = 0; i < (int)to[type].size(); i++) {
+			int s0 = to[type][i]->side[0].idx;
+			int s1 = to[type][i]->side[1].idx;
+
+			int p0 = base->stack[type].pins[s0].pos;
+			int p1 = base->stack[type].pins[s1].pos + off;
+			if (p1 - p0 < to[type][i]->side[0].off + to[type][i]->side[1].off) {
+				base->stack[type].pins[s1].pos = p0 + to[type][i]->side[0].off + to[type][i]->side[1].off;
+				base->stack[type].pins[s1].off += base->stack[type].pins[s1].pos - p1;
+			}
+		}
+	}
+}
+
 void Router::drawRoutes(const Tech &tech) {
 	// Draw the routes
 	for (int i = 0; i < (int)routes.size(); i++) {
@@ -826,10 +919,10 @@ void Router::buildPrevNodes(vector<int> start) {
 		tokens.pop_back();
 
 		if (curr >= 0) {
-			for (int i = 0; i < (int)pinConstraints.size(); i++) {
-				if (routes[curr].hasPin(base, Index(Model::PMOS, pinConstraints[i].from))) {
+			for (auto pin = pinConstraints.begin(); pin != pinConstraints.end(); pin++) {
+				if (routes[curr].hasPin(base, Index(Model::PMOS, pin->from))) {
 					for (int j = 0; j < (int)routes.size(); j++) {
-						if (j != curr and routes[j].hasPin(base, Index(Model::NMOS, pinConstraints[i].to))) {
+						if (j != curr and routes[j].hasPin(base, Index(Model::NMOS, pin->to))) {
 							bool change = routes[j].prevNodes.insert(pair<int, vector<int> >(curr, vector<int>())).second;
 							for (auto prev = routes[curr].prevNodes.begin(); prev != routes[curr].prevNodes.end(); prev++) {
 								bool inserted = routes[j].prevNodes.insert(*prev).second;
@@ -1133,6 +1226,7 @@ int Router::solve(const Tech &tech) {
 	buildViaConstraints(tech);
 	buildRoutes();
 	findAndBreakCycles();
+	findAndBreakViaCycles();
 	//drawStacks(tech);
 	drawRoutes(tech);
 	buildStackConstraints(tech);
@@ -1223,7 +1317,7 @@ void Router::print() {
 		printf("horiz[%d] %d %s %d: %d,%d\n", i, routeConstraints[i].wires[0], (routeConstraints[i].select == 0 ? "->" : (routeConstraints[i].select == 1 ? "<-" : "--")), routeConstraints[i].wires[1], routeConstraints[i].off[0], routeConstraints[i].off[1]);
 	}
 	for (int i = 0; i < (int)viaConstraints.size(); i++) {
-		printf("via[%d] %d {%d,%d} -> %d -> {%d,%d}\n", i, viaConstraints[i].type, viaConstraints[i].from.idx, viaConstraints[i].from.off, viaConstraints[i].idx, viaConstraints[i].to.idx, viaConstraints[i].to.off);
+		printf("via[%d] %d {%d,%d} -> %d -> {%d,%d}\n", i, viaConstraints[i].type, viaConstraints[i].side[0].idx, viaConstraints[i].side[0].off, viaConstraints[i].idx, viaConstraints[i].side[1].idx, viaConstraints[i].side[1].off);
 	}
 
 	printf("\n");
