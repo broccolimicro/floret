@@ -88,8 +88,12 @@ struct Pin {
 	int layer;
 	int width;
 	int height;
-	int off; // from previous pin
-	int pos; // absolute position in stack, computed from off
+
+	int alignPin;
+	int alignOff;
+
+	int off; // minimum offset from previous pin following spacing rules
+	int pos; // current absolute position, computed from off, pin alignment, via constraints
 };
 
 // DESIGN(edward.bingham) use this to keep Wire::pins sorted
@@ -178,8 +182,7 @@ struct Circuit {
 	int pinWidth(const Tech &tech, Index i) const;
 	int pinHeight(Index i) const;
 	void buildPins(const Tech &tech);
-	int alignPins(int coeff=2);
-	void updatePinPos();
+	void updatePinPos(int i = 0, int j = 0);
 
 	void draw(const Tech &tech, Layout &dst);
 };

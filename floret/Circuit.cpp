@@ -58,6 +58,9 @@ Pin::Pin() {
 	leftNet = -1;
 	rightNet = -1;
 	
+	alignPin = -1;
+	alignOff = 0;
+
 	layer = 0;
 	width = 0;
 	height = 0;
@@ -71,6 +74,9 @@ Pin::Pin(int outNet) {
 	this->leftNet = outNet;
 	this->rightNet = outNet;
 
+	alignPin = -1;
+	alignOff = 0;
+
 	layer = 1;
 	width = 0;
 	height = 0;
@@ -83,6 +89,9 @@ Pin::Pin(int device, int outNet, int leftNet, int rightNet) {
 	this->outNet = outNet;
 	this->leftNet = leftNet;
 	this->rightNet = rightNet;
+
+	alignPin = -1;
+	alignOff = 0;
 
 	layer = 0;
 	width = 0;
@@ -214,6 +223,7 @@ void Stack::push(const Circuit *ckt, int device, bool flip) {
 }
 
 void Stack::draw(const Tech &tech) {
+	layout.clear();
 	// Draw the stacks
 	for (int i = 0; i < (int)pins.size(); i++) {
 		drawLayout(layout, pins[i].pinLayout, vec2i(pins[i].pos, 0), vec2i(1, type == Model::NMOS ? -1 : 1));
@@ -366,55 +376,26 @@ void Circuit::buildPins(const Tech &tech) {
 	}
 }
 
+void Circuit::updatePinPos(int p, int n) {
+	bool done = false;
+	do {
+		done = true;
+		for (int type = 0; type < 2; type++) {
+			for (int i = (type == Model::PMOS ? p : n); i < (int)stack[type].pins.size(); i++) {
+				Pin &curr = stack[type].pins[i];
+				Pin &prev = stack[type].pins[i-1];
 
-int Circuit::alignPins(int coeff) {
-	// TODO(edward.bingham) There's a bug here where the pins get pushed out far too much for no particular reason
-	int matches = 0;
-	vector<Pin>::iterator idx[2] = {stack[0].pins.begin(),stack[1].pins.begin()};
-	int pos[2] = {0,0};
-	while (idx[0] != stack[0].pins.end() and idx[1] != stack[1].pins.end()) {
-		int axis = 0;
-		if (pos[1]+idx[1]->off < pos[0]+idx[0]->off) {
-			axis = 1;
-		}
-
-		int p = pos[1-axis];
-		int off = idx[axis]->off;
-		for (auto other = idx[1-axis]; other != stack[1-axis].pins.end() and p + other->off - pos[axis] < coeff*idx[axis]->off; other++) {
-			p += other->off;
-			other->pos = p;
-			if (other->outNet == idx[axis]->outNet and ((other->device < 0) == (idx[axis]->device < 0))) {
-				off = p - pos[axis];
-				//idx[1-axis] = other;
-				//pos[1-axis] = p;
-				matches++;
-				break;
+				int pos = max(curr.pos, prev.pos + curr.off);
+				if (curr.alignPin >= 0) {
+					pos = max(pos, stack[1-type].pins[curr.alignPin].pos);
+				}
+				if (pos != curr.pos) {
+					done = false;
+					curr.pos = pos;
+				}
 			}
 		}
-
-		pos[axis] += off;
-		idx[axis]->pos = pos[axis];
-		idx[axis]++;
-	}
-
-	for (int type = 0; type < 2; type++) {
-		for (; idx[type] != stack[type].pins.end(); idx[type]++) {
-			pos[type] += idx[type]->off;
-			idx[type]->pos = pos[type];
-		}
-	}
-	return matches;
-}
-
-void Circuit::updatePinPos() {
-	// Determine location of each pin
-	for (int type = 0; type < 2; type++) {
-		int pos = 0;
-		for (int i = 0; i < (int)stack[type].pins.size(); i++) {
-			pos += stack[type].pins[i].off;
-			stack[type].pins[i].pos = pos;
-		}
-	}
+	} while (not done);
 }
 
 // horizontal size of pin

@@ -52,7 +52,6 @@ void Library::build(const Tech &tech) {
 		printf("\rPlacing %s\n", cells[i].name.c_str());
 		Placement::solve(tech, &cells[i]);
 		cells[i].buildPins(tech);
-		cells[i].alignPins();
 		for (int type = 0; type < 2; type++) {
 			cells[i].stack[type].draw(tech);
 		}

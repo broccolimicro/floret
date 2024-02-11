@@ -779,20 +779,123 @@ void Router::findAndBreakViaCycles() {
 	// Moving a pin creates separation between all the pins before and that pin
 	// and all pins after. We have a set of potentially violated via constraints.
 	for (int type = 0; type < 2; type++) {
+		if (to[type].empty()) {
+			continue;
+		}
 		sort(to[type].begin(), to[type].end());
 		int off = 0;
-		for (int i = 0; i < (int)to[type].size(); i++) {
-			int s0 = to[type][i]->side[0].idx;
-			int s1 = to[type][i]->side[1].idx;
-
-			int p0 = base->stack[type].pins[s0].pos;
-			int p1 = base->stack[type].pins[s1].pos + off;
-			if (p1 - p0 < to[type][i]->side[0].off + to[type][i]->side[1].off) {
-				base->stack[type].pins[s1].pos = p0 + to[type][i]->side[0].off + to[type][i]->side[1].off;
-				base->stack[type].pins[s1].off += base->stack[type].pins[s1].pos - p1;
+		int idx = 0;
+		int s0 = to[type][idx]->side[0].idx;
+		int s1 = to[type][idx]->side[1].idx;
+		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
+			base->stack[type].pins[i].pos += off;
+			if (i == s1) {
+				int p0 = base->stack[type].pins[s0].pos;
+				int p1 = base->stack[type].pins[s1].pos;
+				int diff = p0 + to[type][idx]->side[0].off + to[type][idx]->side[1].off - p1;
+				if (diff > 0) {
+					base->stack[type].pins[s1].pos += diff;
+					base->stack[type].pins[s1].off += diff;
+					off += diff;
+					idx++;
+					if (idx < (int)to[type].size()) {
+						s0 = to[type][idx]->side[0].idx;
+						s1 = to[type][idx]->side[1].idx;
+					} else {
+						s0 = -1;
+						s1 = -1;
+					}
+				}
 			}
 		}
 	}
+}
+
+struct Alignment {
+	Alignment() {}
+	Alignment(const Circuit *base, int pmos, int nmos) {
+		this->base = base;
+		this->pin[Model::PMOS] = pmos;
+		this->pin[Model::NMOS] = nmos;
+	}
+	~Alignment() {}
+
+	const Circuit *base;
+	array<int, 2> pin;
+
+	int dist() const {
+		int result = base->stack[1].pins[pin[1]].pos - base->stack[0].pins[pin[0]].pos;
+		return result < 0 ? -result : result;
+	}
+
+	bool conflictsWith(const Alignment &a0) {
+		return pin[1] == a0.pin[1] or pin[0] == a0.pin[0] or
+			    (pin[1] < a0.pin[1] and pin[0] > a0.pin[0]) or
+			    (pin[1] > a0.pin[1] and pin[0] < a0.pin[0]);
+	}
+};
+
+bool operator>(const Alignment &a0, const Alignment &a1) {
+	return a0.dist() > a1.dist();
+}
+
+int Router::alignPins(int maxDist) {
+	vector<Alignment> align;
+	for (int i = 0; i < (int)routes.size(); i++) {
+		array<vector<int>, 2> ends;
+		for (int j = 0; j < (int)routes[i].pins.size(); j++) {
+			if (routes[i].pins[j].type >= 2) {
+				continue;
+			}
+
+			if ((int)ends[routes[i].pins[j].type].size() < 2) {
+				ends[routes[i].pins[j].type].push_back(routes[i].pins[j].pin);
+			} else {
+				ends[routes[i].pins[j].type][1] = routes[i].pins[j].pin;
+			}
+		}
+
+		if ((int)ends[Model::PMOS].size() == 1 and (int)ends[Model::NMOS].size() == 1) {
+			align.push_back(Alignment(base, ends[Model::PMOS][0], ends[Model::NMOS][0]));
+		}
+	}
+
+	int matches = 0;
+	while (not align.empty()) {
+		sort(align.begin(), align.end(), std::greater<>{});
+		bool found = false;
+		Alignment curr;
+		for (int i = align.size()-1; i >= 0; i--) {
+			if (maxDist < 0 or align[i].dist() <= maxDist) {
+				curr = align[i];
+				align.erase(align.begin()+i);
+				found = true;
+				break;
+			}
+		}
+		if (not found) {
+			break;
+		}
+
+		Pin &pmos = base->stack[Model::PMOS].pins[curr.pin[Model::PMOS]];
+		Pin &nmos = base->stack[Model::NMOS].pins[curr.pin[Model::NMOS]];
+
+		pmos.alignPin = curr.pin[Model::NMOS];
+		nmos.alignPin = curr.pin[Model::PMOS];
+		int pos = max(pmos.pos, nmos.pos);
+		pmos.pos = pos;
+		nmos.pos = pos;
+		matches++;
+
+		base->updatePinPos(curr.pin[Model::PMOS]+1, curr.pin[Model::NMOS]+1);
+		for (int i = (int)align.size()-1; i >= 0; i--) {
+			if (align[i].conflictsWith(curr)) {
+				align.erase(align.begin()+i);
+			}
+		}
+	}
+
+	return matches;
 }
 
 void Router::drawRoutes(const Tech &tech) {
@@ -1120,7 +1223,7 @@ void Router::assignRouteConstraints(const Tech &tech) {
 	}
 }
 
-void Router::findAndBreakCycles() {
+void Router::findAndBreakPinCycles() {
 	vector<vector<int> > cycles;
 	findCycles(cycles);
 	breakCycles(cycles);
@@ -1225,14 +1328,22 @@ int Router::solve(const Tech &tech) {
 	buildPinConstraints(tech);
 	buildViaConstraints(tech);
 	buildRoutes();
-	findAndBreakCycles();
+	findAndBreakPinCycles();
 	findAndBreakViaCycles();
+	for (int i = 0; i < 2; i++) {
+		base->stack[i].draw(tech);
+	}
 	//drawStacks(tech);
 	drawRoutes(tech);
 	buildStackConstraints(tech);
 	buildRouteConstraints(tech);
 	resetGraph(tech);
 	assignRouteConstraints(tech);
+	findAndBreakViaCycles();
+	alignPins(200);
+	for (int i = 0; i < 2; i++) {
+		base->stack[i].draw(tech);
+	}
 	//print();
 	lowerRoutes();
 	drawRoutes(tech);
@@ -1244,6 +1355,11 @@ int Router::solve(const Tech &tech) {
 	buildPOffsets(tech);
 	buildNOffsets(tech);
 	assignRouteConstraints(tech);
+	//findAndBreakViaCycles();
+	//for (int i = 0; i < 2; i++) {
+	//	base->stack[i].draw(tech);
+	//}
+	//drawRoutes(tech);
 	// TODO(edward.bingham) The route placement should start at the center and
 	// work it's way toward the bottom and top of the cell instead of starting at
 	// the bottom and working it's way to the top. This would make the cell more
