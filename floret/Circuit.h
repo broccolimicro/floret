@@ -61,6 +61,8 @@ struct Index {
 	int pin;
 };
 
+bool operator<(const Index &i0, const Index &i1);
+
 // Represents Transistors and Contacts
 struct Pin {
 	Pin();
@@ -89,11 +91,22 @@ struct Pin {
 	int width;
 	int height;
 
-	int alignPin;
-	int alignOff;
+	int align;
 
-	int off; // minimum offset from previous pin following spacing rules
+	// minimum offset from other pins following spacing rules
+	map<Index, int> pinToPin;
+	map<Index, int> pinToVia;
+	map<Index, int> viaToPin;
 	int pos; // current absolute position, computed from off, pin alignment, via constraints
+	int viaPos;
+
+	enum {
+		PINTOPIN = 0,
+		PINTOVIA = 1,
+		VIATOPIN = 2
+	};
+
+	void addOffset(int type, Index pin, int value);
 };
 
 // DESIGN(edward.bingham) use this to keep Wire::pins sorted
