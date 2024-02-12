@@ -41,24 +41,13 @@ RouteConstraint::~RouteConstraint() {
 }
 
 ViaConstraint::ViaConstraint() {
-	type = -1;
-	idx = -1;
 }
 
-ViaConstraint::ViaConstraint(int type, int idx, int fromIdx, int fromOff, int toIdx, int toOff) {
-	this->type = type;
+ViaConstraint::ViaConstraint(Index idx) {
 	this->idx = idx;
-	this->side[0].idx = fromIdx;
-	this->side[0].off = fromOff;
-	this->side[1].idx = toIdx;
-	this->side[1].off = toOff;
 }
 
 ViaConstraint::~ViaConstraint() {
-}
-
-bool operator<(vector<ViaConstraint>::const_iterator v0, vector<ViaConstraint>::const_iterator v1) {
-	return v0->side[1].idx < v1->side[1].idx;
 }
 
 Router::Router() {
@@ -119,27 +108,25 @@ void Router::buildViaConstraints(const Tech &tech) {
 				continue;
 			}
 
-			vector<bool> conflict(base->stack[type].pins.size(), false);
-			vector<int> offsets(base->stack[type].pins.size(), 0);
+			viaConstraints.push_back(ViaConstraint(Index(type, i)));
 	
 			// precache the minimum offsets between other pins and this via		
 			for (int j = i-1; j >= 0; j--) {
-				conflict[j] = minOffset(&offsets[j], tech, 0, base->stack[type].pins[j].pinLayout.layers, 0, base->stack[type].pins[i].conLayout.layers, base->stack[type].pins[j].height/2, true, true);	
+				int off = 0;
+				if (minOffset(&off, tech, 0, base->stack[type].pins[j].pinLayout.layers, 0, base->stack[type].pins[i].conLayout.layers, base->stack[type].pins[j].height/2, true, true)) {
+					viaConstraints.back().side[0].push_back(ViaConstraint::Pin{Index(type, j), off});
+				}
 			}
 
 			for (int j = i+1; j < (int)base->stack[type].pins.size(); j++) {
-				conflict[j] = minOffset(&offsets[j], tech, 0, base->stack[type].pins[i].conLayout.layers, base->stack[type].pins[j].height/2, base->stack[type].pins[j].pinLayout.layers, 0, true, true);
+				int off = 0;
+				if (minOffset(&off, tech, 0, base->stack[type].pins[i].conLayout.layers, base->stack[type].pins[j].height/2, base->stack[type].pins[j].pinLayout.layers, 0, true, true)) {
+					viaConstraints.back().side[1].push_back(ViaConstraint::Pin{Index(type, j), off});
+				}
 			}
 
-			// check whether there is an ordering constraint as a result of those minimum offsets
-			for (int j = i-1; j >= 0; j--) {
-				if (conflict[j]) {
-					for (int k = i+1; k < (int)base->stack[type].pins.size(); k++) {
-						if (conflict[k]) {
-							viaConstraints.push_back(ViaConstraint(type, i, j, offsets[j], k, offsets[k]));
-						}
-					}
-				}
+			if (viaConstraints.back().side[0].empty() or viaConstraints.back().side[1].empty()) {
+				viaConstraints.pop_back();
 			}
 		}
 	}
@@ -737,51 +724,54 @@ void Router::findAndBreakViaCycles() {
 	// <index into Circuit::stack[via->type], index into Router::viaConstraints>
 	vector<vector<ViaConstraint>::iterator> active;
 	for (auto via = viaConstraints.begin(); via != viaConstraints.end(); via++) {
-		Index side[2] = {Index(via->type, via->side[0].idx), Index(via->type, via->side[1].idx)};
-		Index mid(via->type, via->idx);
+		for (auto s0p = via->side[0].begin(); s0p != via->side[0].end(); s0p++) {
+			for (auto s1p = via->side[1].begin(); s1p != via->side[1].end(); s1p++) {
+				// Because routes have been broken up at this point in order to
+				// fix pin constraint cycles, a pin could participate in
+				// multiple routes. We need to check all via relations.
+				array<vector<int>, 2> hasSide;
+				vector<int> hasMid;
+				for (int i = 0; i < (int)routes.size(); i++) {
+					if (routes[i].hasPin(base, s0p->idx)) {
+						hasSide[0].push_back(i);
+					}
+					if (routes[i].hasPin(base, s1p->idx)) {
+						hasSide[1].push_back(i);
+					}
+					if (routes[i].hasPin(base, via->idx)) {
+						hasMid.push_back(i);
+					}
+				}
 
-		// Because routes have been broken up at this point in order to
-		// fix pin constraint cycles, a pin could participate in
-		// multiple routes. We need to check all via relations.
-		array<vector<int>, 2> hasSide;
-		vector<int> hasMid;
-		for (int i = 0; i < (int)routes.size(); i++) {
-			if (routes[i].hasPin(base, side[0])) {
-				hasSide[0].push_back(i);
-			}
-			if (routes[i].hasPin(base, side[1])) {
-				hasSide[1].push_back(i);
-			}
-			if (routes[i].hasPin(base, mid)) {
-				hasMid.push_back(i);
-			}
-		}
+				// Identify potentially violated via constraints.
+				//
+				// DESIGN(edward.bingham) This could probably be done more
+				// intelligently by setting up a graph structure of vias and
+				// navigating that to look for violations, but I suspect that
+				// the number of vias we need to check across the three vectors
+				// will be quite low...  likely just a single via in each list
+				// most of the time. Occationally two vias in one of the lists.
+				// So just brute forcing the problem shouldn't cause too much of
+				// an issue.
+				bool found = false;
+				for (auto s0 = hasSide[0].begin(); not found and s0 != hasSide[0].end(); s0++) {
+					for (auto s1 = hasSide[1].begin(); not found and s1 != hasSide[1].end(); s1++) {
+						for (auto m = hasMid.begin(); not found and m != hasMid.end(); m++) {
+							found = found or (
+								((s0p->idx.type == Model::PMOS and routes[*s0].hasPrev(*m)) or
+								(s0p->idx.type == Model::NMOS and routes[*m].hasPrev(*s0))) and
+								((s1p->idx.type == Model::PMOS and routes[*s1].hasPrev(*m)) or
+								(s1p->idx.type == Model::NMOS and routes[*m].hasPrev(*s1)))
+							);
+						}
+					}
+				}
 
-		// Identify potentially violated via constraints.
-		//
-		// DESIGN(edward.bingham) This could probably be done more
-		// intelligently by setting up a graph structure of vias and
-		// navigating that to look for violations, but I suspect that
-		// the number of vias we need to check across the three vectors
-		// will be quite low...  likely just a single via in each list
-		// most of the time. Occationally two vias in one of the lists.
-		// So just brute forcing the problem shouldn't cause too much of
-		// an issue.
-		bool found = false;
-		for (auto s0 = hasSide[0].begin(); not found and s0 != hasSide[0].end(); s0++) {
-			for (auto s1 = hasSide[1].begin(); not found and s1 != hasSide[1].end(); s1++) {
-				for (auto m = hasMid.begin(); not found and m != hasMid.end(); m++) {
-					found = found or (
-						(via->type == Model::PMOS and routes[*s0].hasPrev(*m) and routes[*s1].hasPrev(*m)) or
-						(via->type == Model::NMOS and routes[*m].hasPrev(*s0) and routes[*m].hasPrev(*s1))
-					);
+				if (found) {
+					base->pin(via->idx).addOffset(Pin::PINTOVIA, s0p->idx, s0p->off);
+					base->pin(s1p->idx).addOffset(Pin::VIATOPIN, via->idx, s1p->off);
 				}
 			}
-		}
-
-		if (found) {
-			base->stack[via->type].pins[via->idx].addOffset(Pin::PINTOVIA, Index(via->type, via->side[0].idx), via->side[0].off);
-			base->stack[via->type].pins[via->side[1].idx].addOffset(Pin::VIATOPIN, Index(via->type, via->idx), via->side[1].off);
 		}
 	}
 }
@@ -1409,7 +1399,15 @@ void Router::print() {
 		printf("horiz[%d] %d %s %d: %d,%d\n", i, routeConstraints[i].wires[0], (routeConstraints[i].select == 0 ? "->" : (routeConstraints[i].select == 1 ? "<-" : "--")), routeConstraints[i].wires[1], routeConstraints[i].off[0], routeConstraints[i].off[1]);
 	}
 	for (int i = 0; i < (int)viaConstraints.size(); i++) {
-		printf("via[%d] %d {%d,%d} -> %d -> {%d,%d}\n", i, viaConstraints[i].type, viaConstraints[i].side[0].idx, viaConstraints[i].side[0].off, viaConstraints[i].idx, viaConstraints[i].side[1].idx, viaConstraints[i].side[1].off);
+		printf("via[%d] {", i);
+		for (auto j = viaConstraints[i].side[0].begin(); j != viaConstraints[i].side[0].end(); j++) {
+			printf("(%d %d):%d ", j->idx.type, j->idx.pin, j->off);
+		}
+		printf("} -> (%d %d) -> {", viaConstraints[i].idx.type, viaConstraints[i].idx.pin);
+		for (auto j = viaConstraints[i].side[1].begin(); j != viaConstraints[i].side[1].end(); j++) {
+			printf("(%d %d):%d ", j->idx.type, j->idx.pin, j->off);
+		}
+		printf("}\n");
 	}
 
 	printf("\n");

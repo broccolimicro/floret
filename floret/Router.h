@@ -49,9 +49,11 @@ struct PinConstraint {
 // not allowed if the three pins are too close for the via
 // enclosure and via-pin spacing rules.
 //
-// |=|=|    O   O
-// | O |    | O |
-// O   O    |=|=|
+//                   |====   ====|
+//                   |   O   O   |
+// |=|=|    O   O    | O |   | O |
+// | O |    | O |    O | |   | | O
+// O   O    |=|=|    ==|=|   |=|==
 //
 // The remaining relations are allowed:
 //                                                           O 
@@ -71,26 +73,20 @@ struct PinConstraint {
 // Or go back and look for a new placement.
 struct ViaConstraint {
 	ViaConstraint();
-	ViaConstraint(int type, int idx, int fromIdx, int fromOff, int toIdx, int toOff);
+	ViaConstraint(Index idx);
 	~ViaConstraint();
 
 	struct Pin {
 		// index to the pin in this constraint
-		int idx;
+		Index idx;
 		// horizontal offset between the previous pin's gate and this pin's via to the route
 		int off;
 	};
 
-	// Model::PMOS or Mode::NMOS since via constraints are between pins
-	// on the same stack.
-	int type;
-	// index into Router::stack[type]
-	int idx;
-
-	array<ViaConstraint::Pin, 2> side;
+	// index into Router::stack
+	Index idx;
+	array<vector<ViaConstraint::Pin>, 2> side;
 };
-
-bool operator<(vector<ViaConstraint>::const_iterator v0, vector<ViaConstraint>::const_iterator v1);
 
 // DESIGN(edward.bingham) If two routes are on the same layer, then
 // there must be an ordering between them. One must be below the
