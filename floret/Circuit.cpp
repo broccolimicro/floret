@@ -188,6 +188,14 @@ bool Wire::hasPrev(int r) const {
 	return prevNodes.find(r) != prevNodes.end();
 }
 
+vector<bool> Wire::pinTypes() const {
+	vector<bool> result(3,false);
+	for (int i = 0; i < (int)pins.size(); i++) {
+		result[pins[i].type] = true;
+	}
+	return result;
+}
+
 Stack::Stack() {
 	type = -1;
 }
@@ -236,11 +244,11 @@ void Stack::push(const Circuit *ckt, int device, bool flip) {
 	}
 }
 
-void Stack::draw(const Tech &tech) {
-	layout.clear();
+void Stack::draw(const Tech &tech, Layout &dst) {
+	dst.clear();
 	// Draw the stacks
 	for (int i = 0; i < (int)pins.size(); i++) {
-		drawLayout(layout, pins[i].pinLayout, vec2i(pins[i].pos, 0), vec2i(1, type == Model::NMOS ? -1 : 1));
+		drawLayout(dst, pins[i].pinLayout, vec2i(pins[i].pos, 0), vec2i(1, type == Model::NMOS ? -1 : 1));
 	}
 }
 
@@ -478,12 +486,36 @@ void Circuit::draw(const Tech &tech, Layout &dst) {
 		dst.nets.push_back(nets[i].name);
 	}
 
-	for (int type = 0; type < 2; type++) {
+	/*for (int type = 0; type < 2; type++) {
 		drawLayout(dst, stack[type].layout, vec2i(0, (type == Model::NMOS)*cellHeight)*dir, dir);
-	}
+	}*/
 
 	for (int i = 0; i < (int)routes.size(); i++) {
-		drawRoute(tech, dst, this, routes[i], vec2i(0,0), dir);
+		drawLayout(dst, routes[i].layout, vec2i(0, routes[i].pOffset)*dir, dir);
+	}
+
+	for (int type = 0; type < (int)stack.size(); type++) {
+		for (int i = 0; i < (int)stack[type].pins.size(); i++) {
+			const Pin &pin = stack[type].pins[i];
+			bool first = true;
+			int bottom = 0;
+			int top = 0;
+			
+			for (int j = 0; j < (int)routes.size(); j++) {
+				if (routes[j].hasPin(this, Index(type, i))) {
+					int v = routes[j].pOffset;
+					bottom = first ? v : min(bottom, v);
+					top = first ? v : max(top, v);
+					first = false;
+				}
+			}
+
+			int pinLevel = pin.layer;
+			int pinLayer = tech.wires[pinLevel].draw;
+			int width = tech.paint[pinLayer].minWidth;
+
+ 			dst.push(tech.wires[pinLevel], Rect(pin.outNet, vec2i(pin.pos, bottom), vec2i(pin.pos+width, top)));
+		}
 	}
 
 	for (int i = 0; i < (int)dst.layers.size(); i++) {

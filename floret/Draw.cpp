@@ -224,10 +224,14 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 	//}
 }
 
-void drawRoute(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wire, vec2i pos, vec2i dir) {
+/*void drawRoutes(const Tech &tech, Layout &dst, const Circuit *ckt, vec2i pos, vec2i dir) {
 	//printf("drawing route %d\n", wire.pOffset);
 	drawLayout(dst, wire.layout, vec2i(0, wire.pOffset)*dir, dir);
 
+	for (int type = 0; type < ckt->stack.size(); type++) {
+		for (int i = 0; i < (int)ckt->routes.size(); i++) {
+		}
+	}
 	for (int i = 0; i < (int)wire.pins.size(); i++) {
 		const Pin &pin = ckt->pin(wire.pins[i]);
 		int wireLevel = wire.getLevel(i);
@@ -251,7 +255,7 @@ void drawRoute(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wi
 		//printf("rect %d %d %d %d,%d %d,%d\n", pin->type, layer, wire.net, left, bottom, right, top);
 		dst.push(tech.wires[pinLevel], Rect(wire.net, vec2i(pin.pos, bottom), vec2i(pin.pos+width, top)));
 	}
-}
+}*/
 
 void drawPin(const Tech &tech, Layout &dst, const Circuit *ckt, const Stack &stack, int pinID, vec2i pos, vec2i dir) {
 	pos[0] += stack.pins[pinID].pos;

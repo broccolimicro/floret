@@ -12,6 +12,8 @@ using namespace std;
 
 struct Router;
 
+int flip(int idx);
+
 // DESIGN(edward.bingham) Two opposing pins on the two stacks will
 // create an ordering constraint on their associated routes.
 //
@@ -134,11 +136,6 @@ struct Router {
 
 	Circuit *base;
 
-	enum {
-		PMOS_STACK=-1,
-		NMOS_STACK=-2,
-	};
-
 	// channel routing constraint graph
 	vector<PinConstraint> pinConstraints;
 	vector<RouteConstraint> routeConstraints;
@@ -169,9 +166,9 @@ struct Router {
 	void zeroWeights();
 	void clearPrev();
 	void resetGraph(const Tech &tech);
-	void buildPrevNodes(vector<int> start=vector<int>(1, PMOS_STACK));
-	void buildPOffsets(const Tech &tech, vector<int> start=vector<int>(1, PMOS_STACK));
-	void buildNOffsets(const Tech &tech, vector<int> start=vector<int>(1, NMOS_STACK));
+	void buildPrevNodes(vector<int> start=vector<int>());
+	void buildPOffsets(const Tech &tech, vector<int> start=vector<int>());
+	void buildNOffsets(const Tech &tech, vector<int> start=vector<int>());
 	void assignRouteConstraints(const Tech &tech);
 	void lowerRoutes();
 	void updateRouteConstraints(const Tech &tech);

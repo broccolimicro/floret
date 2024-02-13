@@ -125,7 +125,14 @@ struct Wire {
 	Wire(int net);
 	~Wire();
 
+	enum {
+		PMOS_STACK=-1,
+		NMOS_STACK=-2,
+	};
+
+	// -1 for the pmos stack, -2 for the nmos stack, index into Circuit::nets otherwise
 	int net;
+
 	// index into Circuit::stack
 	// DESIGN(edward.bingham) We should always keep this array sorted based on
 	// horizontal location of the pin in the cell from left to right. This helps
@@ -145,12 +152,13 @@ struct Wire {
 	int nOffset;
 	//int pos;
 	// <index into Circuit::routes, indices into Router::viaConstraints>
-	unordered_map<int, vector<int> > prevNodes;
+	unordered_set<int> prevNodes;
 
 	void addPin(const Circuit *s, Index pin);
 	bool hasPin(const Circuit *s, Index pin, vector<Index>::iterator *out = nullptr);
 	int getLevel(int i) const;
 	bool hasPrev(int r) const;
+	vector<bool> pinTypes() const;
 };
 
 struct Stack {
@@ -160,10 +168,10 @@ struct Stack {
 
 	int type;
 	vector<Pin> pins;
-	Layout layout;
+	int route;
 	
 	void push(const Circuit *ckt, int device, bool flip);
-	void draw(const Tech &tech);
+	void draw(const Tech &tech, Layout &dst);
 };
 
 struct Circuit {
