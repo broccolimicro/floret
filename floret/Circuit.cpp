@@ -486,10 +486,6 @@ void Circuit::draw(const Tech &tech, Layout &dst) {
 		dst.nets.push_back(nets[i].name);
 	}
 
-	/*for (int type = 0; type < 2; type++) {
-		drawLayout(dst, stack[type].layout, vec2i(0, (type == Model::NMOS)*cellHeight)*dir, dir);
-	}*/
-
 	for (int i = 0; i < (int)routes.size(); i++) {
 		drawLayout(dst, routes[i].layout, vec2i(0, routes[i].pOffset)*dir, dir);
 	}

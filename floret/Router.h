@@ -159,7 +159,6 @@ struct Router {
 	void findAndBreakViaCycles();
 	int alignPins(int maxDist = -1);
 	void drawRoutes(const Tech &tech);
-	void buildStackConstraints(const Tech &tech);
 	void buildRouteConstraints(const Tech &tech);
 	vector<int> findTop();
 	vector<int> findBottom();

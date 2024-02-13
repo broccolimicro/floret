@@ -125,11 +125,6 @@ struct Wire {
 	Wire(int net);
 	~Wire();
 
-	enum {
-		PMOS_STACK=-1,
-		NMOS_STACK=-2,
-	};
-
 	// -1 for the pmos stack, -2 for the nmos stack, index into Circuit::nets otherwise
 	int net;
 

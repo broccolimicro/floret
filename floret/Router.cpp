@@ -891,29 +891,6 @@ void Router::drawRoutes(const Tech &tech) {
 	}
 }
 
-void Router::buildStackConstraints(const Tech &tech) {
-	/*// Compute stack constraints
-	for (int i = 0; i < (int)routes.size(); i++) {
-		// PMOS stack to route
-		int off = 0;
-		if (minOffset(&off, tech, 1, base->stack[Model::PMOS].layout.layers, 0, routes[i].layout.layers, 0)) {
-			routeConstraints.push_back(RouteConstraint(PMOS_STACK, i, off, 0, 0));
-		}
-
-		// Route to NMOS stack
-		off = 0;
-		if (minOffset(&off, tech, 1, routes[i].layout.layers, 0, base->stack[Model::NMOS].layout.layers, 0)) {
-			routeConstraints.push_back(RouteConstraint(i, NMOS_STACK, off, 0, 0));
-		}
-	}
-
-	// PMOS stack to NMOS stack
-	int off = 0;
-	if (minOffset(&off, tech, 1, base->stack[Model::PMOS].layout.layers, 0, base->stack[Model::NMOS].layout.layers, 0)) {
-		routeConstraints.push_back(RouteConstraint(PMOS_STACK, NMOS_STACK, off, 0, 0));
-	}*/
-}
-
 void Router::buildRouteConstraints(const Tech &tech) {
 	// TODO(edward.bingham) There's a bug here where poly routes are placed too
 	// close to the diffusion. This is because the DRC rule involved is more than
@@ -1418,36 +1395,26 @@ int Router::solve(const Tech &tech) {
 	buildRoutes();
 	findAndBreakPinCycles();
 	findAndBreakViaCycles();
-	//for (int i = 0; i < 2; i++) {
-	//	base->stack[i].draw(tech);
-	//}
-	//drawStacks(tech);
 	drawRoutes(tech);
-	//buildStackConstraints(tech);
 	buildRouteConstraints(tech);
 	resetGraph(tech);
 	assignRouteConstraints(tech);
-	//findAndBreakViaCycles();
+	findAndBreakViaCycles();
 	alignPins(200);
 	drawRoutes(tech);
-	/*for (int i = 0; i < 2; i++) {
-		base->stack[i].draw(tech);
-	}*/
+	
 	print();
+	
 	lowerRoutes();
 	drawRoutes(tech);
 	cellHeight = 0;
 	routeConstraints.clear();
-	//buildStackConstraints(tech);
 	buildRouteConstraints(tech);
 	zeroWeights();
 	buildPOffsets(tech);
 	buildNOffsets(tech);
 	assignRouteConstraints(tech);
 	//findAndBreakViaCycles();
-	//for (int i = 0; i < 2; i++) {
-	//	base->stack[i].draw(tech);
-	//}
 	//drawRoutes(tech);
 	// TODO(edward.bingham) The route placement should start at the center and
 	// work it's way toward the bottom and top of the cell instead of starting at
