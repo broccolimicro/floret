@@ -168,6 +168,10 @@ bool Wire::hasPin(const Circuit *s, Index pin, vector<Index>::iterator *out) {
 	return pos != pins.end() and pos->type == pin.type and pos->pin == pin.pin;
 }
 
+void Wire::resortPins(const Circuit *s) {
+	sort(pins.begin(), pins.end(), CompareIndex(s));
+}
+
 int Wire::getLevel(int i) const {
 	if (level.size() == 0) {
 		return 2;
@@ -444,6 +448,10 @@ void Circuit::updatePinPos(int p, int n) {
 			}
 		}
 	} while (not done);
+
+	for (int i = 0; i < (int)routes.size(); i++) {
+		routes[i].resortPins(this);
+	}
 }
 
 // horizontal size of pin

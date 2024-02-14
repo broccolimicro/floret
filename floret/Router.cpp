@@ -841,7 +841,7 @@ int Router::alignPins(int maxDist) {
 		sort(align.begin(), align.end(), std::greater<>{});
 		bool found = false;
 		Alignment curr;
-		for (int i = align.size()-1; i >= 0; i--) {
+		for (int i = (int)align.size()-1; i >= 0; i--) {
 			if (maxDist < 0 or align[i].dist() <= maxDist) {
 				curr = align[i];
 				align.erase(align.begin()+i);
@@ -853,17 +853,16 @@ int Router::alignPins(int maxDist) {
 			break;
 		}
 
-		Pin &pmos = base->stack[Model::PMOS].pins[curr.pin[Model::PMOS]];
-		Pin &nmos = base->stack[Model::NMOS].pins[curr.pin[Model::NMOS]];
-
-		pmos.align = curr.pin[Model::NMOS];
-		nmos.align = curr.pin[Model::PMOS];
-		int pos = max(pmos.pos, nmos.pos);
-		pmos.pos = pos;
-		nmos.pos = pos;
+		for (int type = 0; type < 2; type++) {
+			base->stack[type].pins[curr.pin[type]].align = curr.pin[type];
+		}
 		matches++;
 
-		base->updatePinPos(curr.pin[Model::PMOS]+1, curr.pin[Model::NMOS]+1);
+		base->updatePinPos(curr.pin[Model::PMOS], curr.pin[Model::NMOS]);
+		for (int i = 0; i < (int)routes.size(); i++) {
+			routes[i].resortPins(base);
+		}
+
 		for (int i = (int)align.size()-1; i >= 0; i--) {
 			if (align[i].conflictsWith(curr)) {
 				align.erase(align.begin()+i);

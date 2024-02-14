@@ -152,6 +152,7 @@ struct Wire {
 
 	void addPin(const Circuit *s, Index pin);
 	bool hasPin(const Circuit *s, Index pin, vector<Index>::iterator *out = nullptr);
+	void resortPins(const Circuit *s);
 	int getLevel(int i) const;
 	bool hasPrev(int r) const;
 	vector<bool> pinTypes() const;
