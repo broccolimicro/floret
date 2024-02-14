@@ -380,6 +380,7 @@ void Circuit::buildPins(const Tech &tech) {
 		for (int i = 0; i < (int)stack[type].pins.size(); i++) {
 			stack[type].pins[i].width = pinWidth(tech, Index(type, i));
 			stack[type].pins[i].height = pinHeight(Index(type, i));
+
 			stack[type].pins[i].pinLayout.clear();
 			drawPin(tech, stack[type].pins[i].pinLayout, this, stack[type], i);
 			stack[type].pins[i].conLayout.clear();
@@ -387,8 +388,12 @@ void Circuit::buildPins(const Tech &tech) {
 			//stack[type].pins[i].conLayout.push(tech.wires[stack[type].pins[i].layer], Rect(stack[type].pins[i].outNet, vec2i(0, 0), vec2i(stack[type].pins[i].width, 0)));
 			
 			int off = 0;
-			if (i > 0 and minOffset(&off, tech, 0, stack[type].pins[i-1].pinLayout.layers, 0, stack[type].pins[i].pinLayout.layers, 0, stack[type].pins[i-1].device >= 0 or stack[type].pins[i].device >= 0)) {
-				stack[type].pins[i].addOffset(Pin::PINTOPIN, Index(type, i-1), off);
+			if (i > 0) {
+				if (minOffset(&off, tech, 0, stack[type].pins[i-1].pinLayout.layers, 0, stack[type].pins[i].pinLayout.layers, 0, stack[type].pins[i-1].device >= 0 or stack[type].pins[i].device >= 0)) {
+					stack[type].pins[i].addOffset(Pin::PINTOPIN, Index(type, i-1), off);
+				} else {
+					printf("error: no offset found at pin (%d,%d)\n", type, i);
+				}
 			}
 		}
 	}
@@ -459,19 +464,23 @@ int Circuit::pinHeight(Index p) const {
 	}
 	// this is a contact, height should be min of transistor widths on either side.
 	int result = -1;
-	if (p.pin > 0) {
-		int leftDevice = stack[p.type].pins[p.pin-1].device;
+	for (int i = p.pin-1; i >= 0; i--) {
+		int leftDevice = stack[p.type].pins[i].device;
 		if (leftDevice >= 0 and (result < 0 or mos[leftDevice].size[1] < result)) {
 			result = mos[leftDevice].size[1];
+			break;
 		}
 	}
-	if (p.pin+1 < (int)stack[p.type].pins.size()) {
-		int rightDevice = stack[p.type].pins[p.pin+1].device;
+	for (int i = p.pin+1; i < (int)stack[p.type].pins.size(); i++) {
+		int rightDevice = stack[p.type].pins[i].device;
 		if (rightDevice >= 0 and (result < 0 or mos[rightDevice].size[1] < result)) {
 			result = mos[rightDevice].size[1];
+			break;
 		}
 	}
 	if (result < 0) {
+		// This should never happen.
+		printf("warning: failed to size the pin (%d,%d).\n", p.type, p.pin);
 		return 0;
 	}
 	return result;

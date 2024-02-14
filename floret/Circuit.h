@@ -125,7 +125,7 @@ struct Wire {
 	Wire(int net);
 	~Wire();
 
-	// -1 for the pmos stack, -2 for the nmos stack, index into Circuit::nets otherwise
+	// flip(stack ID) for a given stack (Model::NMOS, Model::PMOS, etc), index into Circuit::nets otherwise
 	int net;
 
 	// index into Circuit::stack
@@ -135,17 +135,18 @@ struct Wire {
 	vector<Index> pins;
 	vector<int> level;
 
+	// Used to choose how to break a route to fix a cycle
+	int left;
+	int right;
+
 	//-------------------------------
 	// Layout Information
 	//-------------------------------
 	Layout layout;
 
-	int left;
-	int right;
-
 	int pOffset;
 	int nOffset;
-	//int pos;
+	
 	// <index into Circuit::routes, indices into Router::viaConstraints>
 	unordered_set<int> prevNodes;
 
@@ -198,7 +199,7 @@ struct Circuit {
 	int pinWidth(const Tech &tech, Index i) const;
 	int pinHeight(Index i) const;
 	void buildPins(const Tech &tech);
-	void updatePinPos(int i = 0, int j = 0);
+	void updatePinPos(int p = 0, int n = 0);
 
 	void draw(const Tech &tech, Layout &dst);
 };

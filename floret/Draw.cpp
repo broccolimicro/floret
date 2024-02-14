@@ -261,14 +261,22 @@ void drawPin(const Tech &tech, Layout &dst, const Circuit *ckt, const Stack &sta
 	pos[0] += stack.pins[pinID].pos;
 	if (stack.pins[pinID].device < 0) {
 		int model = -1;
-		if (pinID-1 >= 0 and stack.pins[pinID-1].device >= 0) {
-			model = ckt->mos[stack.pins[pinID-1].device].model;
-		} else if (pinID+1 < (int)stack.pins.size() and stack.pins[pinID+1].device >= 0) {
-			model = ckt->mos[stack.pins[pinID+1].device].model;
+		for (int i = pinID-1; i >= 0 and model < 0; i--) {
+			if (stack.pins[i].device >= 0) {
+				model = ckt->mos[stack.pins[i].device].model;
+			}
+		}
+
+		for (int i = pinID+1; i < (int)stack.pins.size() and model < 0; i++) {
+			if (stack.pins[i].device >= 0) {
+				model = ckt->mos[stack.pins[i].device].model;
+			}
 		}
 
 		if (model >= 0) {
 			drawViaStack(tech, dst, stack.pins[pinID].outNet, -model-1, 1, vec2i(stack.pins[pinID].width, stack.pins[pinID].height), pos, dir);
+		} else {
+			printf("error: unable to identify transistor model for diffusion contact %d\n", pinID);
 		}
 	} else {
 		drawTransistor(tech, dst, ckt->mos[stack.pins[pinID].device], stack.pins[pinID].leftNet != ckt->mos[stack.pins[pinID].device].ports[0], pos, dir);

@@ -1400,10 +1400,11 @@ int Router::solve(const Tech &tech) {
 	resetGraph(tech);
 	assignRouteConstraints(tech);
 	findAndBreakViaCycles();
+
+	print();
+
 	alignPins(200);
 	drawRoutes(tech);
-	
-	print();
 	
 	lowerRoutes();
 	drawRoutes(tech);
@@ -1481,12 +1482,27 @@ void Router::print() {
 		printf("\n");
 	}
 
-	printf("\nConstraints\n");
+	printf("\nStack Constraints\n");
+	for (int type = 0; type < 2; type++) {
+		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
+			for (auto o = base->stack[type].pins[i].pinToPin.begin(); o != base->stack[type].pins[i].pinToPin.end(); o++) {
+				printf("pinToPin (%d,%d) -> %d -> (%d,%d)\n", o->first.type, o->first.pin, o->second, type, i);
+			}
+			for (auto o = base->stack[type].pins[i].pinToVia.begin(); o != base->stack[type].pins[i].pinToVia.end(); o++) {
+				printf("pinToVia (%d,%d) -> %d -> (%d,%d)\n", o->first.type, o->first.pin, o->second, type, i);
+			}
+			for (auto o = base->stack[type].pins[i].viaToPin.begin(); o != base->stack[type].pins[i].viaToPin.end(); o++) {
+				printf("viaToPin (%d,%d) -> %d -> (%d,%d)\n", o->first.type, o->first.pin, o->second, type, i);
+			}
+		}
+	}
+
+	printf("\nRouting Constraints\n");
 	for (int i = 0; i < (int)pinConstraints.size(); i++) {
-		printf("vert[%d] %d -> %d\n", i, pinConstraints[i].from, pinConstraints[i].to);
+		printf("pin[%d] %d -> %d\n", i, pinConstraints[i].from, pinConstraints[i].to);
 	}
 	for (int i = 0; i < (int)routeConstraints.size(); i++) {
-		printf("horiz[%d] %d %s %d: %d,%d\n", i, routeConstraints[i].wires[0], (routeConstraints[i].select == 0 ? "->" : (routeConstraints[i].select == 1 ? "<-" : "--")), routeConstraints[i].wires[1], routeConstraints[i].off[0], routeConstraints[i].off[1]);
+		printf("route[%d] %d %s %d: %d,%d\n", i, routeConstraints[i].wires[0], (routeConstraints[i].select == 0 ? "->" : (routeConstraints[i].select == 1 ? "<-" : "--")), routeConstraints[i].wires[1], routeConstraints[i].off[0], routeConstraints[i].off[1]);
 	}
 	for (int i = 0; i < (int)viaConstraints.size(); i++) {
 		printf("via[%d] {", i);

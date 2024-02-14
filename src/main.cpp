@@ -15,6 +15,7 @@ void printHelp() {
 	printf("    --version   Display version information\n");
 	printf(" -c,--cells <dir> Look for fully or partially completed cell layouts in this directory (default: use current working directory)\n");
 	printf(" -o,--output <dir> Place output files in this directory (default: use cells directory)\n");
+	printf(" -s,--select <cell>,<cell>,... do layout for only these cells from the spice file\n");
 }
 
 void printVersion() {
@@ -28,6 +29,7 @@ int main(int argc, char **argv) {
 	string cellsDir = "";
 	string outputDir = "";
 	vector<string> spiceFiles;
+	set<string> cellNames;
 	for (int i = 1; i < argc; i++) {
 		string arg = argv[i];
 		if (arg == "--help" or arg == "-h") {
@@ -42,6 +44,21 @@ int main(int argc, char **argv) {
 				cellsDir = argv[i];
 			} else {
 				cout << "expected rect directory" << endl;
+				return 1;
+			}
+		} else if (arg == "-s" or arg == "--select") {
+			i++;
+			if (i < argc) {
+				string cellList = argv[i];
+				size_t pos = 0;
+				std::string token;
+				while ((pos = cellList.find(",")) != string::npos) {
+					cellNames.insert(cellList.substr(0, pos));
+					cellList.erase(0, pos + 1);
+				}
+				cellNames.insert(cellList);
+			} else {
+				cout << "expected list of cell names" << endl;
 				return 1;
 			}
 		} else if (arg == "-o" or arg == "--output") {
@@ -69,7 +86,7 @@ int main(int argc, char **argv) {
 			printf("file not found: '%s'\n", spiceFiles[i].c_str());
 		}
 	}
-	cellLib.build(tech);
+	cellLib.build(tech, cellNames);
 	
 	/*Layout layout;
 	layout.drawCell(tech, vec2i(0,0), cellLib.cells[0]);

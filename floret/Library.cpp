@@ -5,6 +5,7 @@
 
 #include <ruler/Layout.h>
 #include <vector>
+#include <set>
 
 using namespace std;
 
@@ -45,25 +46,27 @@ bool Library::loadFile(const Tech &tech, string path) {
 	return true;
 }
 
-void Library::build(const Tech &tech) {
+void Library::build(const Tech &tech, set<string> cellNames) {
 	gdstk::Library lib = {};
 	lib.init("test", tech.dbunit*1e-6, tech.dbunit*1e-6);
 	for (int i = 0; i < (int)cells.size(); i++) {
-		printf("\rPlacing %s\n", cells[i].name.c_str());
-		Placement::solve(tech, &cells[i]);
-		cells[i].buildPins(tech);
-		/*for (int type = 0; type < 2; type++) {
-			cells[i].stack[type].draw(tech);
-		}*/
-		printf("\rRouting %s\n", cells[i].name.c_str());
-		Router router(&cells[i]);
-		router.solve(tech);
-		//router.print();
-		printf("\rDrawing %s\n", cells[i].name.c_str());
-		Layout layout;
-		cells[i].draw(tech, layout);
-		layout.emit(tech, lib);
-		printf("\rDone %s\n", cells[i].name.c_str());
+		if (cellNames.empty() or cellNames.find(cells[i].name) != cellNames.end()) {
+			printf("\rPlacing %s\n", cells[i].name.c_str());
+			Placement::solve(tech, &cells[i]);
+			cells[i].buildPins(tech);
+			/*for (int type = 0; type < 2; type++) {
+				cells[i].stack[type].draw(tech);
+			}*/
+			printf("\rRouting %s\n", cells[i].name.c_str());
+			Router router(&cells[i]);
+			router.solve(tech);
+			//router.print();
+			printf("\rDrawing %s\n", cells[i].name.c_str());
+			Layout layout;
+			cells[i].draw(tech, layout);
+			layout.emit(tech, lib);
+			printf("\rDone %s\n", cells[i].name.c_str());
+		}
 	}
 	lib.write_gds("test.gds", 0, NULL);
 	lib.free_all();
