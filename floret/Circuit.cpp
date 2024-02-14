@@ -233,7 +233,7 @@ void Stack::push(const Circuit *ckt, int device, bool flip) {
 		pins.push_back(Pin(pins.back().rightNet));
 	}
 
-	if (fromNet > 0) {
+	if (fromNet >= 0) {
 		bool hasContact = (ckt->nets[fromNet].ports[type] > 2 or ckt->nets[fromNet].ports[1-type] > 0 or ckt->nets[fromNet].gates[0] > 0 or ckt->nets[fromNet].gates[1] > 0);
 		if (fromNet >= 0 and (not link or pins.empty() or hasContact or ckt->nets[fromNet].isIO)) {
 			// Add a contact for the first net or between two transistors.
@@ -391,7 +391,8 @@ void Circuit::buildPins(const Tech &tech) {
 			
 			int off = 0;
 			if (i > 0) {
-				if (minOffset(&off, tech, 0, stack[type].pins[i-1].pinLayout.layers, 0, stack[type].pins[i].pinLayout.layers, 0, Layout::MERGENET, Layout::DEFAULT)) {
+				int substrateMode = stack[type].pins[i-1].device >= 0 or stack[type].pins[i].device >= 0 ? Layout::MERGENET : Layout::DEFAULT;
+				if (minOffset(&off, tech, 0, stack[type].pins[i-1].pinLayout.layers, 0, stack[type].pins[i].pinLayout.layers, 0, substrateMode, Layout::DEFAULT)) {
 					stack[type].pins[i].addOffset(Pin::PINTOPIN, Index(type, i-1), off);
 				} else {
 					printf("error: no offset found at pin (%d,%d)\n", type, i);
