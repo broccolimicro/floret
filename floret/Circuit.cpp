@@ -475,11 +475,10 @@ int Circuit::pinHeight(Index p) const {
 	}
 	// this is a contact, height should be min of transistor widths on either side.
 	int result = -1;
-	for (int i = p.pin-1; i >= 0; i--) {
-		int leftDevice = stack[p.type].pins[i].device;
+	if (p.pin-1 >= 0) {
+		int leftDevice = stack[p.type].pins[p.pin-1].device;
 		if (leftDevice >= 0 and (result < 0 or mos[leftDevice].size[1] < result)) {
 			result = mos[leftDevice].size[1];
-			break;
 		}
 	}
 	for (int i = p.pin+1; i < (int)stack[p.type].pins.size(); i++) {
@@ -487,6 +486,14 @@ int Circuit::pinHeight(Index p) const {
 		if (rightDevice >= 0 and (result < 0 or mos[rightDevice].size[1] < result)) {
 			result = mos[rightDevice].size[1];
 			break;
+		} else if (result >= 0) {
+			break;
+		}
+	}
+	for (int i = p.pin-1; result < 0 and i >= 0; i--) {
+		int leftDevice = stack[p.type].pins[i].device;
+		if (leftDevice >= 0 and (result < 0 or mos[leftDevice].size[1] < result)) {
+			result = mos[leftDevice].size[1];
 		}
 	}
 	if (result < 0) {
