@@ -89,6 +89,7 @@ void Router::delRoute(int route) {
 }
 
 void Router::buildPinConstraints(const Tech &tech) {
+	pinConstraints.clear();
 	// Compute the pin constraints
 	// TODO(edward.bingham) this could be more efficiently done as a 1d rectangle overlap problem
 	for (int p = 0; p < (int)base->stack[Model::PMOS].pins.size(); p++) {
@@ -104,6 +105,7 @@ void Router::buildPinConstraints(const Tech &tech) {
 }
 
 void Router::buildViaConstraints(const Tech &tech) {
+	viaConstraints.clear();
 	// Compute via constraints
 	for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
@@ -135,6 +137,8 @@ void Router::buildViaConstraints(const Tech &tech) {
 }
 
 void Router::buildRoutes() {
+	routes.clear();
+
 	// Create initial routes
 	routes.reserve(base->nets.size()+2);
 	for (int i = 0; i < (int)base->nets.size(); i++) {
@@ -815,6 +819,12 @@ bool operator>(const Alignment &a0, const Alignment &a1) {
 }
 
 int Router::alignPins(int maxDist) {
+	for (int type = 0; type < (int)base->stack.size(); type++) {
+		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
+			base->stack[type].pins[i].align = -1;
+		}
+	}
+
 	vector<Alignment> align;
 	for (int i = 0; i < (int)routes.size(); i++) {
 		// TODO(edward.bingham) optimize this
@@ -891,6 +901,7 @@ void Router::drawRoutes(const Tech &tech) {
 }
 
 void Router::buildRouteConstraints(const Tech &tech) {
+	routeConstraints.clear();
 	// TODO(edward.bingham) There's a bug here where poly routes are placed too
 	// close to the diffusion. This is because the DRC rule involved is more than
 	// just a spacing rule between two single layers. It requires a larger DRC
@@ -972,6 +983,7 @@ vector<int> Router::findBottom() {
 }
 
 void Router::zeroWeights() {
+	cellHeight = 0;
 	for (int i = 0; i < (int)routes.size(); i++) {
 		routes[i].pOffset = 0;
 		routes[i].nOffset = 0;
@@ -1407,8 +1419,6 @@ int Router::solve(const Tech &tech) {
 	
 	lowerRoutes();
 	drawRoutes(tech);
-	cellHeight = 0;
-	routeConstraints.clear();
 	buildRouteConstraints(tech);
 	zeroWeights();
 	buildPOffsets(tech);
