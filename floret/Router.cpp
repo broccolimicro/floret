@@ -95,9 +95,12 @@ void Router::buildPinConstraints(const Tech &tech) {
 	for (int p = 0; p < (int)base->stack[Model::PMOS].pins.size(); p++) {
 		for (int n = 0; n < (int)base->stack[Model::NMOS].pins.size(); n++) {
 			int off = 0;
-			if (base->stack[Model::PMOS].pins[p].outNet != base->stack[Model::NMOS].pins[n].outNet and
-				minOffset(&off, tech, 1, base->stack[Model::PMOS].pins[p].pinLayout.layers, base->stack[Model::PMOS].pins[p].pos,
-				                         base->stack[Model::NMOS].pins[n].pinLayout.layers, base->stack[Model::NMOS].pins[n].pos, Layout::IGNORE, Layout::MERGENET)) {
+			Pin &pmos = base->stack[Model::PMOS].pins[p];
+			Pin &nmos = base->stack[Model::NMOS].pins[n];
+			if (pmos.outNet != nmos.outNet and
+				minOffset(&off, tech, 1, pmos.pinLayout.layers, pmos.pos,
+				                         nmos.pinLayout.layers, nmos.pos,
+				          Layout::IGNORE, Layout::MERGENET)) {
 				pinConstraints.push_back(PinConstraint(p, n));
 			}
 		}
@@ -188,10 +191,12 @@ void Router::findCycles(vector<vector<int> > &cycles) {
 	for (int i = 0; i < (int)pinConstraints.size(); i++) {
 		vector<int> from, to;
 		for (int r = 0; r < (int)routes.size(); r++) {
-			if (routes[r].hasPin(base, Index(Model::PMOS, pinConstraints[i].from))) {
-				from.push_back(r);
-			} else if (routes[r].hasPin(base, Index(Model::NMOS, pinConstraints[i].to))) {
-				to.push_back(r);
+			if (routes[r].net >= 0) {
+				if (routes[r].hasPin(base, Index(Model::PMOS, pinConstraints[i].from))) {
+					from.push_back(r);
+				} else if (routes[r].hasPin(base, Index(Model::NMOS, pinConstraints[i].to))) {
+					to.push_back(r);
+				}
 			}
 		}
 
@@ -207,7 +212,7 @@ void Router::findCycles(vector<vector<int> > &cycles) {
 		int select = routeConstraints[i].select;
 		int from = routeConstraints[i].wires[select];
 		int to = routeConstraints[i].wires[1-select];
-		if (select >= 0 and from >= 0 and to >= 0) {
+		if (select >= 0) {
 			auto iter = lower_bound(A[from].begin(), A[from].end(), to);
 			A[from].insert(iter, to);
 		}
@@ -803,8 +808,28 @@ struct Alignment {
 	array<int, 2> pin;
 
 	int dist() const {
+		array<bool, 2> startOfStack = {
+			(pin[0] == 0 or base->stack[0].pins[1-pin[0]].device < 0) and base->stack[0].pins[pin[0]].device < 0,
+			(pin[1] == 0 or base->stack[1].pins[1-pin[1]].device < 0) and base->stack[1].pins[pin[1]].device < 0
+		};
+
 		int result = base->stack[1].pins[pin[1]].pos - base->stack[0].pins[pin[0]].pos;
-		return result < 0 ? -result : result;
+		if ((result < 0 and startOfStack[1]) or (result > 0 and startOfStack[0])) {
+			// We can move the start of the stack around as much as we want
+			result = 1;
+		}
+		result = (result < 0 ? -result : result) + 1;
+
+		int coeff = 1;
+		// If the two pins aren't on the same layer, we don't care as much
+		if (base->stack[1].pins[pin[1]].layer != base->stack[1].pins[pin[1]].layer) {
+			coeff = 3;
+		// Prefer matching up gates rather than source or drain
+		} else if (base->stack[1].pins[pin[1]].layer > 0) {
+			coeff = 2;
+		}
+
+		return result * coeff;
 	}
 
 	bool conflictsWith(const Alignment &a0) {
@@ -826,29 +851,54 @@ int Router::alignPins(int maxDist) {
 	}
 
 	vector<Alignment> align;
-	array<vector<int>, 2> ends;
-	for (int i = 0; i < (int)routes.size(); i++) {
-		if (routes[i].net < 0) {
-			continue;
-		}
+	if (routes.empty()) {
+		for (int i = 0; i < (int)base->nets.size(); i++) {
+			if (base->nets[i].gates[0] == 1 and base->nets[i].gates[1] == 1) {
+				array<int, 2> ports;
+				for (int type = 0; type < 2; type++) {
+					for (ports[type] = 0; ports[type] < (int)base->stack[type].pins.size() and (base->stack[type].pins[ports[type]].device < 0 or base->stack[type].pins[ports[type]].outNet != i); ports[type]++);
+				}
 
-		// TODO(edward.bingham) optimize this
-		ends[0].clear();
-		ends[1].clear();
-		for (int j = 0; j < (int)routes[i].pins.size(); j++) {
-			if (routes[i].pins[j].type >= 2) {
+				if (ports[0] < (int)base->stack[0].pins.size() and ports[1] < (int)base->stack[1].pins.size()) {
+					align.push_back(Alignment(base, ports[Model::PMOS], ports[Model::NMOS]));
+				}
+			}
+			if (base->nets[i].ports[0] == 1 and base->nets[i].ports[1] == 1) {
+				array<int, 2> ports;
+				for (int type = 0; type < 2; type++) {
+					for (ports[type] = 0; ports[type] < (int)base->stack[type].pins.size() and (base->stack[type].pins[ports[type]].device >= 0 or base->stack[type].pins[ports[type]].outNet != i); ports[type]++);
+				}
+
+				if (ports[0] < (int)base->stack[0].pins.size() and ports[1] < (int)base->stack[1].pins.size()) {
+					align.push_back(Alignment(base, ports[Model::PMOS], ports[Model::NMOS]));
+				}
+			}
+		}
+	} else {
+		array<vector<int>, 2> ends;
+		for (int i = 0; i < (int)routes.size(); i++) {
+			if (routes[i].net < 0) {
 				continue;
 			}
 
-			if ((int)ends[routes[i].pins[j].type].size() < 2) {
-				ends[routes[i].pins[j].type].push_back(routes[i].pins[j].pin);
-			} else {
-				ends[routes[i].pins[j].type][1] = routes[i].pins[j].pin;
-			}
-		}
+			// TODO(edward.bingham) optimize this
+			ends[0].clear();
+			ends[1].clear();
+			for (int j = 0; j < (int)routes[i].pins.size(); j++) {
+				if (routes[i].pins[j].type >= 2) {
+					continue;
+				}
 
-		if ((int)ends[Model::PMOS].size() == 1 and (int)ends[Model::NMOS].size() == 1) {
-			align.push_back(Alignment(base, ends[Model::PMOS][0], ends[Model::NMOS][0]));
+				if ((int)ends[routes[i].pins[j].type].size() < 2) {
+					ends[routes[i].pins[j].type].push_back(routes[i].pins[j].pin);
+				} else {
+					ends[routes[i].pins[j].type][1] = routes[i].pins[j].pin;
+				}
+			}
+
+			if ((int)ends[Model::PMOS].size() == 1 and (int)ends[Model::NMOS].size() == 1) {
+				align.push_back(Alignment(base, ends[Model::PMOS][0], ends[Model::NMOS][0]));
+			}
 		}
 	}
 
@@ -906,7 +956,7 @@ void Router::drawRoutes(const Tech &tech) {
 	}
 }
 
-void Router::buildRouteConstraints(const Tech &tech) {
+void Router::buildRouteConstraints(const Tech &tech, bool allowOverCell) {
 	routeConstraints.clear();
 	// TODO(edward.bingham) There's a bug here where poly routes are placed too
 	// close to the diffusion. This is because the DRC rule involved is more than
@@ -922,7 +972,10 @@ void Router::buildRouteConstraints(const Tech &tech) {
 			int off[2] = {0,0};
 			bool fromto = minOffset(off+0, tech, 1, routes[i].layout.layers, 0, routes[j].layout.layers, 0, Layout::DEFAULT, routingMode);
 			bool tofrom = minOffset(off+1, tech, 1, routes[j].layout.layers, 0, routes[i].layout.layers, 0, Layout::DEFAULT, routingMode);
-			if (fromto or tofrom) {
+			if (not allowOverCell and (routes[i].net < 0 or routes[j].net < 0)) {
+				routeConstraints.push_back(RouteConstraint(i, j, off[0], off[1]));
+				routeConstraints.back().select = (flip(routes[j].net) == Model::PMOS or flip(routes[i].net) == Model::NMOS);
+			} else if (fromto or tofrom) {
 				routeConstraints.push_back(RouteConstraint(i, j, off[0], off[1]));
 
 				array<vector<bool>, 2> hasType = {routes[i].pinTypes(), routes[j].pinTypes()};
@@ -1407,6 +1460,8 @@ int Router::computeCost() {
 }
 
 int Router::solve(const Tech &tech) {
+	alignPins(200);
+	print();
 	buildPinConstraints(tech);
 	buildViaConstraints(tech);
 	buildRoutes();
@@ -1416,18 +1471,18 @@ int Router::solve(const Tech &tech) {
 	buildRouteConstraints(tech);
 	resetGraph(tech);
 	assignRouteConstraints(tech);
-	findAndBreakViaCycles();
-	alignPins(200);
-	print();
-	drawRoutes(tech);
 	
+	findAndBreakViaCycles();	
+	alignPins(200);
+	buildPinConstraints(tech);
+	buildViaConstraints(tech);
+	drawRoutes(tech);	
 	lowerRoutes();
 	drawRoutes(tech);
 	buildRouteConstraints(tech);
-	zeroWeights();
-	buildPOffsets(tech);
-	buildNOffsets(tech);
+	resetGraph(tech);
 	assignRouteConstraints(tech);
+
 	findAndBreakViaCycles();
 	drawRoutes(tech);
 	// TODO(edward.bingham) The route placement should start at the center and
@@ -1470,7 +1525,6 @@ int Router::solve(const Tech &tech) {
 
 	base->routes = routes;
 	base->cellHeight = cellHeight;
-	//updateRouteConstraints(tech);
 	//print();
 	return computeCost();
 }
