@@ -1415,8 +1415,8 @@ int Router::solve(const Tech &tech) {
 	buildPOffsets(tech);
 	buildNOffsets(tech);
 	assignRouteConstraints(tech);
-	//findAndBreakViaCycles();
-	//drawRoutes(tech);
+	findAndBreakViaCycles();
+	drawRoutes(tech);
 	// TODO(edward.bingham) The route placement should start at the center and
 	// work it's way toward the bottom and top of the cell instead of starting at
 	// the bottom and working it's way to the top. This would make the cell more
