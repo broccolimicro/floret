@@ -826,9 +826,15 @@ int Router::alignPins(int maxDist) {
 	}
 
 	vector<Alignment> align;
+	array<vector<int>, 2> ends;
 	for (int i = 0; i < (int)routes.size(); i++) {
+		if (routes[i].net < 0) {
+			continue;
+		}
+
 		// TODO(edward.bingham) optimize this
-		array<vector<int>, 2> ends;
+		ends[0].clear();
+		ends[1].clear();
 		for (int j = 0; j < (int)routes[i].pins.size(); j++) {
 			if (routes[i].pins[j].type >= 2) {
 				continue;
@@ -864,7 +870,7 @@ int Router::alignPins(int maxDist) {
 		}
 
 		for (int type = 0; type < 2; type++) {
-			base->stack[type].pins[curr.pin[type]].align = curr.pin[type];
+			base->stack[type].pins[curr.pin[type]].align = curr.pin[1-type];
 		}
 		matches++;
 
@@ -1411,10 +1417,8 @@ int Router::solve(const Tech &tech) {
 	resetGraph(tech);
 	assignRouteConstraints(tech);
 	findAndBreakViaCycles();
-
-	print();
-
 	alignPins(200);
+	print();
 	drawRoutes(tech);
 	
 	lowerRoutes();
@@ -1474,12 +1478,12 @@ int Router::solve(const Tech &tech) {
 void Router::print() {
 	printf("NMOS\n");
 	for (int i = 0; i < (int)base->stack[0].pins.size(); i++) {
-		printf("pin[%d] %d %d->%d->%d: %dx%d %d\n", i, base->stack[0].pins[i].device, base->stack[0].pins[i].leftNet, base->stack[0].pins[i].outNet, base->stack[0].pins[i].rightNet, base->stack[0].pins[i].width, base->stack[0].pins[i].height, base->stack[0].pins[i].pos);
+		printf("pin[%d] dev=%d nets=%d->%d->%d size=%dx%d pos=%d align=%d\n", i, base->stack[0].pins[i].device, base->stack[0].pins[i].leftNet, base->stack[0].pins[i].outNet, base->stack[0].pins[i].rightNet, base->stack[0].pins[i].width, base->stack[0].pins[i].height, base->stack[0].pins[i].pos, base->stack[0].pins[i].align);
 	}
 
 	printf("\nPMOS\n");
 	for (int i = 0; i < (int)base->stack[1].pins.size(); i++) {
-		printf("pin[%d] %d %d->%d->%d: %dx%d %d\n", i, base->stack[1].pins[i].device, base->stack[1].pins[i].leftNet, base->stack[1].pins[i].outNet, base->stack[1].pins[i].rightNet, base->stack[1].pins[i].width, base->stack[1].pins[i].height, base->stack[1].pins[i].pos);
+		printf("pin[%d] dev=%d nets=%d->%d->%d size=%dx%d pos=%d align=%d\n", i, base->stack[1].pins[i].device, base->stack[1].pins[i].leftNet, base->stack[1].pins[i].outNet, base->stack[1].pins[i].rightNet, base->stack[1].pins[i].width, base->stack[1].pins[i].height, base->stack[1].pins[i].pos, base->stack[1].pins[i].align);
 	}
 
 	printf("\nRoutes\n");
