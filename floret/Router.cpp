@@ -860,11 +860,11 @@ void Router::buildPins(const Tech &tech) {
 			curr.height = base->pinHeight(Index(type, i));
 
 			curr.pinLayout.clear();
-			drawPin(tech, curr.pinLayout, base, base->stack[type], i);
 			curr.conLayout.clear();
+
+			drawPin(tech, curr.pinLayout, base, base->stack[type], i);
 			drawViaStack(tech, curr.conLayout, curr.outNet, curr.layer, 2, vec2i(0, 0), vec2i(0,0), vec2i(0,0));
-			//curr.conLayout.push(tech.wires[curr.layer], Rect(curr.outNet, vec2i(0, 0), vec2i(curr.width, 0)));
-			
+
 			int off = 0;
 			if (i > 0) {
 				Pin &prev = base->stack[type].pins[i-1];
@@ -874,17 +874,39 @@ void Router::buildPins(const Tech &tech) {
 				} else {
 					printf("error: no offset found at pin (%d,%d)\n", type, i);
 				}
+			}
+		}
+	}
 
-				for (int j = i-1; j >= 0; j--) {
-					Pin &prev = base->stack[type].pins[j];
-
-					// TODO(edward.bingham) can I create these constraints with pins on other stacks?
-					if (minOffset(&off, tech, 0, prev.pinLayout.layers, 0, curr.conLayout.layers, 0, Layout::IGNORE, Layout::MERGENET)) {
-						curr.addOffset(Pin::PINTOVIA, Index(type, j), off);
+	for (int t0 = 0; t0 < 2; t0++) {
+		for (int t1 = 0; t1 < 2; t1++) {
+			for (int i = 0; i < (int)base->stack[t0].pins.size(); i++) {
+				for (int j = 0; j < (int)base->stack[t1].pins.size(); j++) {
+					if (t0 == t1 and i == j) {
+						continue;
 					}
 
-					if (minOffset(&off, tech, 0, prev.conLayout.layers, 0, curr.pinLayout.layers, 0, Layout::IGNORE, Layout::MERGENET)) {
-						curr.addOffset(Pin::VIATOPIN, Index(type, j), off);
+					Pin &p0 = base->stack[t0].pins[i];
+					Pin &p1 = base->stack[t1].pins[j];
+
+					int off = 0;
+					if (minOffset(&off, tech, 0, p0.pinLayout.layers, 0, p1.conLayout.layers, 0, Layout::IGNORE, Layout::MERGENET)) {
+						p1.addOffset(Pin::PINTOVIA, Index(t0, i), off);
+					}
+
+					off = 0;
+					if (minOffset(&off, tech, 0, p0.conLayout.layers, 0, p1.pinLayout.layers, 0, Layout::IGNORE, Layout::MERGENET)) {
+						p1.addOffset(Pin::VIATOPIN, Index(t0, i), off);
+					}
+
+					off = 0;
+					if (minOffset(&off, tech, 0, p1.pinLayout.layers, 0, p0.conLayout.layers, 0, Layout::IGNORE, Layout::MERGENET)) {
+						p0.addOffset(Pin::PINTOVIA, Index(t1, j), off);
+					}
+
+					off = 0;
+					if (minOffset(&off, tech, 0, p1.conLayout.layers, 0, p0.pinLayout.layers, 0, Layout::IGNORE, Layout::MERGENET)) {
+						p0.addOffset(Pin::VIATOPIN, Index(t1, j), off);
 					}
 				}
 			}
@@ -910,9 +932,11 @@ void Router::updatePinPos(int p, int n) {
 					pos = max(pos, base->pin(from->first).pos + from->second);
 				}
 				for (auto from = curr.viaToPin.begin(); from != curr.viaToPin.end(); from++) {
+					Pin &fromPin = base->pin(from->first);
 					for (int j = 0; j < (int)routes.size(); j++) {
 						vector<Contact>::iterator fromVia;
 						if (not routes[j].hasPin(base, Index(type, i)) and
+								fromPin.pos < curr.pos and
 						    routes[j].pOffset >= curr.lo and routes[j].pOffset <= curr.hi and
 						    routes[j].hasPin(base, from->first, &fromVia)) {
 							pos = max(pos, fromVia->left + from->second);
@@ -932,6 +956,7 @@ void Router::updatePinPos(int p, int n) {
 						for (auto from = curr.pinToVia.begin(); from != curr.pinToVia.end(); from++) {
 							const Pin &fromPin = base->pin(from->first);
 							if (not routes[j].hasPin(base, from->first) and
+								fromPin.pos < curr.pos and
 							  routes[j].pOffset >= fromPin.lo and routes[j].pOffset <= fromPin.hi) {
 								pos = max(pos, fromPin.pos + from->second);
 							}
@@ -948,11 +973,13 @@ void Router::updatePinPos(int p, int n) {
 
 	for (int i = 0; i < (int)routes.size(); i++) {
 		for (int j = 0; j < (int)routes[i].pins.size(); j++) {
+			const Pin &fromPin = base->pin(routes[i].pins[j].idx);
 			int pos = numeric_limits<int>::max();
 			for (int type = 0; type < 2; type++) {
 				for (int k = 0; k < (int)base->stack[type].pins.size(); k++) {
 					const Pin &to = base->pin(Index(type, k));
 					if (not routes[i].hasPin(base, Index(type, k)) and
+							fromPin.pos < to.pos and
 					    routes[i].pOffset >= to.lo and routes[i].pOffset <= to.hi) {
 						auto from = to.viaToPin.find(routes[i].pins[j].idx);
 						if (from != to.viaToPin.end()) {
@@ -1621,7 +1648,7 @@ int Router::computeCost() {
 int Router::solve(const Tech &tech) {
 	buildPins(tech);
 	alignPins(200);
-	buildPinConstraints(tech, 1);
+	buildPinConstraints(tech, 0);
 	buildViaConstraints(tech);
 	buildRoutes();
 	findAndBreakPinCycles();
@@ -1631,12 +1658,13 @@ int Router::solve(const Tech &tech) {
 	assignRouteConstraints(tech);
 	buildPinBounds();
 	alignPins(200);
+	updatePinPos();
 	
 	/*for (int i = 0; i < 10; i++) {	
 		buildPinConstraints(tech);
 		buildViaConstraints(tech);
-		drawRoutes(tech);	
-		lowerRoutes(tech);
+		//drawRoutes(tech);	
+		//lowerRoutes(tech);
 		drawRoutes(tech);
 		buildRouteConstraints(tech);
 		resetGraph(tech);
@@ -1645,7 +1673,6 @@ int Router::solve(const Tech &tech) {
 		alignPins(200);
 	}*/
 
-	//findAndBreakViaCycles();
 	drawRoutes(tech);
 	// TODO(edward.bingham) The route placement should start at the center and
 	// work it's way toward the bottom and top of the cell instead of starting at

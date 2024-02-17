@@ -224,7 +224,7 @@ void Wire::resortPins(const Circuit *s) {
 }
 
 int Wire::getLevel(int i) const {
-	if (pins.empty()) {
+	if ((int)pins.size() <= 1) {
 		return 2;
 	}
 
@@ -510,18 +510,22 @@ void Circuit::draw(const Tech &tech, Layout &dst) {
 			int bottom = 0;
 			int top = 0;
 			
-			for (int j = 0; j < (int)routes.size(); j++) {
-				if (routes[j].hasPin(this, Index(type, i))) {
-					int v = routes[j].pOffset;
-					bottom = first ? v : min(bottom, v);
-					top = first ? v : max(top, v);
-					first = false;
-				}
-			}
-
 			int pinLevel = pin.layer;
 			int pinLayer = tech.wires[pinLevel].draw;
 			int width = tech.paint[pinLayer].minWidth;
+
+			for (int j = 0; j < (int)routes.size(); j++) {
+				if (routes[j].hasPin(this, Index(type, i))) {
+					int v = routes[j].pOffset;
+					if (routes[j].net >= 0) {
+						top = first ? v+width : max(top, v+width);
+					} else {
+						top = first ? v : max(top, v);
+					}
+					bottom = first ? v : min(bottom, v);
+					first = false;
+				}
+			}
 
  			dst.push(tech.wires[pinLevel], Rect(pin.outNet, vec2i(pin.pos, bottom), vec2i(pin.pos+width, top)));
 		}

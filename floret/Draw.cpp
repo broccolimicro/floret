@@ -163,7 +163,7 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 			if (viaPos < wire.pins[j].left) {
 				viaPos = wire.pins[j].left;
 			}
-			if (wire.pins[j].left >= wire.pins[j].right) {
+			if (wire.pins[j].left > wire.pins[j].right) {
 				printf("error: pin violation on pin %d\n", j);
 				printf("pinPos=%d left=%d right=%d viaPos=%d\n", pin.pos, wire.pins[j].left, wire.pins[j].right, viaPos);
 			}
