@@ -78,8 +78,6 @@ Pin::Pin() {
 	pos = 0;
 	lo = numeric_limits<int>::max();
 	hi = numeric_limits<int>::min();
-	viaMin = numeric_limits<int>::min();
-	viaMax = numeric_limits<int>::max();
 }
 
 Pin::Pin(int outNet) {
@@ -96,8 +94,6 @@ Pin::Pin(int outNet) {
 	pos = 0;
 	lo = numeric_limits<int>::max();
 	hi = numeric_limits<int>::min();
-	viaMin = numeric_limits<int>::min();
-	viaMax = numeric_limits<int>::max();
 }
 
 Pin::Pin(int device, int outNet, int leftNet, int rightNet) {
@@ -114,8 +110,6 @@ Pin::Pin(int device, int outNet, int leftNet, int rightNet) {
 	pos = 0;
 	lo = numeric_limits<int>::max();
 	hi = numeric_limits<int>::min();
-	viaMin = numeric_limits<int>::min();
-	viaMax = numeric_limits<int>::max();
 }
 
 Pin::~Pin() {
@@ -230,12 +224,16 @@ void Wire::resortPins(const Circuit *s) {
 }
 
 int Wire::getLevel(int i) const {
+	if (pins.empty()) {
+		return 2;
+	}
+
 	if (i < 0) {
 		return pins[0].level;
 	}
 
-	if (i >= (int)pins.size()) {
-		return pins.back().level;
+	if (i >= (int)pins.size()-1) {
+		return pins[pins.size()-2].level;
 	}
 
 	return pins[i].level;

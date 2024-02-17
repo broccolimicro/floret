@@ -103,9 +103,6 @@ struct Pin {
 	int lo;
 	int hi;
 
-	int viaMin;
-	int viaMax;
-
 	enum {
 		PINTOPIN = 0,
 		PINTOVIA = 1,

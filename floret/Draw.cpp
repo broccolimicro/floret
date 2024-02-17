@@ -157,13 +157,13 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 			// TODO(edward.bingham) push the via down the route as
 			// needed to satisfy via constraints, then route the
 			// associated pin down the route as well.
-			if (viaPos < pin.viaMin) {
-				viaPos = pin.viaMin;
+			if (viaPos < wire.pins[j].left) {
+				viaPos = wire.pins[j].left;
 			}
-			if (viaPos > pin.viaMax) {
-				viaPos = pin.viaMax;
+			if (viaPos > wire.pins[j].right) {
+				viaPos = wire.pins[j].right;
 			}
-			printf("pinPos=%d viaMin=%d viaMax=%d viaPos=%d\n", pin.pos, pin.viaMin, pin.viaMax, viaPos);
+			printf("pinPos=%d left=%d right=%d viaPos=%d\n", pin.pos, wire.pins[j].left, wire.pins[j].right, viaPos);
 
 
 			int wireLayer = tech.wires[nextLevel].draw;

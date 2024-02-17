@@ -909,19 +909,19 @@ void Router::updatePinPos(int p, int n) {
 				for (auto o = curr.pinToPin.begin(); o != curr.pinToPin.end(); o++) {
 					pos = max(pos, base->stack[o->first.type].pins[o->first.pin].pos + o->second);
 				}
-				for (auto o = curr.viaToPin.begin(); o != curr.viaToPin.end(); o++) {
+				/*for (auto o = curr.viaToPin.begin(); o != curr.viaToPin.end(); o++) {
 					Pin &other = base->pin(o->first);
 					if (not other.pinToVia.empty()) {
 						pos = max(pos, other.viaMin + o->second);
 					}
-				}
+				}*/
 				
 				if (pos != curr.pos) {
 					done = false;
 					curr.pos = pos;
 				}
 
-				pos = numeric_limits<int>::min();
+				/*pos = numeric_limits<int>::min();
 				for (auto o = curr.pinToVia.begin(); o != curr.pinToVia.end(); o++) {
 					pos = max(pos, base->pin(o->first).pos + o->second);
 				}
@@ -929,12 +929,12 @@ void Router::updatePinPos(int p, int n) {
 				if (pos != curr.viaMin) {
 					done = false;
 					curr.viaMin = pos;
-				}
+				}*/
 			}
 		}
 	} while (not done);
 
-	for (int type = 0; type < 2; type++) {
+	/*for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
 			base->stack[type].pins[i].viaMax = numeric_limits<int>::max();
 		}
@@ -948,7 +948,7 @@ void Router::updatePinPos(int p, int n) {
 				other.viaMax = min(other.viaMax, curr.pos - o->second);
 			}
 		}
-	}
+	}*/
 
 	for (int i = 0; i < (int)routes.size(); i++) {
 		routes[i].resortPins(base);
@@ -1621,7 +1621,7 @@ int Router::solve(const Tech &tech) {
 		//findAndBreakViaCycles();	
 		alignPins(200);
 		print();
-		/*buildPinConstraints(tech);
+		buildPinConstraints(tech);
 		buildViaConstraints(tech);
 		drawRoutes(tech);	
 		lowerRoutes(tech);
@@ -1629,7 +1629,7 @@ int Router::solve(const Tech &tech) {
 		//updateRouteConstraints(tech);
 		buildRouteConstraints(tech);
 		resetGraph(tech);
-		assignRouteConstraints(tech);*/
+		assignRouteConstraints(tech);
 	//}
 
 	//findAndBreakViaCycles();
@@ -1682,13 +1682,13 @@ void Router::print() {
 	printf("NMOS\n");
 	for (int i = 0; i < (int)base->stack[0].pins.size(); i++) {
 		const Pin &pin = base->stack[0].pins[i];
-		printf("pin[%d] dev=%d nets=%d->%d->%d size=%dx%d pos=%d via=(%d %d) align=%d\n", i, pin.device, pin.leftNet, pin.outNet, pin.rightNet, pin.width, pin.height, pin.pos, pin.viaMin, pin.viaMax, pin.align);
+		printf("pin[%d] dev=%d nets=%d->%d->%d size=%dx%d pos=%d align=%d\n", i, pin.device, pin.leftNet, pin.outNet, pin.rightNet, pin.width, pin.height, pin.pos, pin.align);
 	}
 
 	printf("\nPMOS\n");
 	for (int i = 0; i < (int)base->stack[1].pins.size(); i++) {
 		const Pin &pin = base->stack[1].pins[i];
-		printf("pin[%d] dev=%d nets=%d->%d->%d size=%dx%d pos=%d via=(%d %d) align=%d\n", i, pin.device, pin.leftNet, pin.outNet, pin.rightNet, pin.width, pin.height, pin.pos, pin.viaMin, pin.viaMax, pin.align);
+		printf("pin[%d] dev=%d nets=%d->%d->%d size=%dx%d pos=%d align=%d\n", i, pin.device, pin.leftNet, pin.outNet, pin.rightNet, pin.width, pin.height, pin.pos, pin.align);
 	}
 
 	printf("\nRoutes\n");
