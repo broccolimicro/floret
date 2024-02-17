@@ -115,6 +115,21 @@ struct Pin {
 	void addOffset(int type, Index pin, int value);
 };
 
+struct Contact {
+	Contact();
+	Contact(Index idx);
+	~Contact();
+	
+	Index idx;
+	int level;
+	int left;
+	int right;
+};
+
+bool operator<(const Contact &c0, const Contact &c1);
+bool operator==(const Contact &c0, const Contact &c1);
+bool operator!=(const Contact &c0, const Contact &c1);
+
 // DESIGN(edward.bingham) use this to keep Wire::pins sorted
 struct CompareIndex {
 	CompareIndex(const Circuit *s);
@@ -123,6 +138,8 @@ struct CompareIndex {
 	const Circuit *s;
 
 	bool operator()(const Index &i0, const Index &i1);
+	bool operator()(const Contact &c0, const Index &i1);
+	bool operator()(const Contact &c0, const Contact &c1);
 };
 
 // Represents a wire between two Devices
@@ -138,9 +155,7 @@ struct Wire {
 	// DESIGN(edward.bingham) We should always keep this array sorted based on
 	// horizontal location of the pin in the cell from left to right. This helps
 	// us pick pins to dogleg when breaking cycles.
-	vector<Index> pins;
-	vector<int> level;
-	vector<vec2i> bounds;
+	vector<Contact> pins;
 
 	// Used to choose how to break a route to fix a cycle
 	int left;
@@ -158,7 +173,7 @@ struct Wire {
 	unordered_set<int> prevNodes;
 
 	void addPin(const Circuit *s, Index pin);
-	bool hasPin(const Circuit *s, Index pin, vector<Index>::iterator *out = nullptr);
+	bool hasPin(const Circuit *s, Index pin, vector<Contact>::iterator *out = nullptr);
 	void resortPins(const Circuit *s);
 	int getLevel(int i) const;
 	bool hasPrev(int r) const;

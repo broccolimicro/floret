@@ -146,7 +146,7 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 
 		int height = 0;
 		for (int j = 0; j < (int)wire.pins.size(); j++) {
-			const Pin &pin = ckt->pin(wire.pins[j]);
+			const Pin &pin = ckt->pin(wire.pins[j].idx);
 			int pinLevel = pin.layer;
 			int prevLevel = wire.getLevel(j-1);
 			int nextLevel = wire.getLevel(j);
@@ -221,8 +221,8 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 	}
 
 	for (int i = 0; i < (int)wire.pins.size()-1; i++) {
-		const Pin &pin = ckt->pin(wire.pins[i]);
-		const Pin &next = ckt->pin(wire.pins[i+1]);
+		const Pin &pin = ckt->pin(wire.pins[i].idx);
+		const Pin &next = ckt->pin(wire.pins[i+1].idx);
 		int pinLevel = next.layer;
 		int pinLayer = tech.wires[pinLevel].draw;
 		int width = tech.paint[pinLayer].minWidth;

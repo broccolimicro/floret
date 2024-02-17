@@ -194,7 +194,7 @@ void Router::buildPinBounds() {
 
 	for (int i = 0; i < (int)routes.size(); i++) {
 		for (int j = 0; j < (int)routes[i].pins.size(); j++) {
-			Pin &pin = base->pin(routes[i].pins[j]);
+			Pin &pin = base->pin(routes[i].pins[j].idx);
 			if (routes[i].pOffset < pin.lo) {
 				pin.lo = routes[i].pOffset;
 			}
@@ -330,8 +330,8 @@ void Router::breakRoute(int route, set<int> cycleRoutes) {
 	// Move all of the pins that participate in pin constraints associated
 	// with the cycle.	
 	for (int i = 0; i < (int)pinConstraints.size(); i++) {
-		vector<Index>::iterator from = routes[route].pins.end();
-		vector<Index>::iterator to = routes[route].pins.end();
+		vector<Contact>::iterator from = routes[route].pins.end();
+		vector<Contact>::iterator to = routes[route].pins.end();
 		// A pin cannot have both a pin constraint in and a pin
 		// constraint out because a pin is either PMOS or NMOS and pin
 		// constraints always go out PMOS pins and in NMOS pins.
@@ -383,13 +383,13 @@ void Router::breakRoute(int route, set<int> cycleRoutes) {
 
 		// Move the pin to wp or wn depending on hasFrom and hasTo
 		if (hasFrom) {
-			wp.addPin(base, *from);
-			wpHasGate = wpHasGate or base->stack[from->type].pins[from->pin].device >= 0;
+			wp.addPin(base, from->idx);
+			wpHasGate = wpHasGate or base->pin(from->idx).device >= 0;
 			count.erase(count.begin()+fromIdx);
 			routes[route].pins.erase(from);
 		} else if (hasTo) {
-			wn.addPin(base, *to);
-			wnHasGate = wnHasGate or base->stack[to->type].pins[to->pin].device >= 0;
+			wn.addPin(base, to->idx);
+			wnHasGate = wnHasGate or base->pin(to->idx).device >= 0;
 			count.erase(count.begin()+toIdx);
 			routes[route].pins.erase(to);
 		}
@@ -420,27 +420,26 @@ void Router::breakRoute(int route, set<int> cycleRoutes) {
 	bool sharedIsGate = true;
 	int sharedDistanceFromCenter = 0;
 	for (int i = 0; i < (int)routes[route].pins.size(); i++) {
-		bool isGate = base->stack[routes[route].pins[i].type].pins[routes[route].pins[i].pin].device >= 0;
-		int pinPosition = base->stack[routes[route].pins[i].type].pins[routes[route].pins[i].pin].pos;
-		int distanceFromCenter = abs(pinPosition-center);
+		const Pin &pin = base->pin(routes[route].pins[i].idx);
+		int distanceFromCenter = abs(pin.pos-center);
 
 		if ((sharedCount < 0 or count[i] < sharedCount) or
-		    (count[i] == sharedCount and ((sharedIsGate and not isGate) or
+		    (count[i] == sharedCount and ((sharedIsGate and pin.device < 0) or
 		    distanceFromCenter > sharedDistanceFromCenter))) {
 		//if (sharedCount < 0 or (count[i] < sharedCount or
-		//    (count[i] == sharedCount and ((sharedIsGate and not isGate) or
-		//    (sharedIsGate == isGate and distanceFromCenter > sharedDistanceFromCenter))))) {
+		//    (count[i] == sharedCount and ((sharedIsGate and pin.device < 0) or
+		//    (sharedIsGate == (pin.device >= 0) and distanceFromCenter > sharedDistanceFromCenter))))) {
 			sharedPin = i;
 			sharedCount = count[i];
-			sharedIsGate = isGate;
+			sharedIsGate = pin.device >= 0;
 			sharedDistanceFromCenter = distanceFromCenter;
 		}
 	}
 
 	if (sharedPin >= 0) {
 		// TODO(edward.bingham) bug in which a non-cycle is being split resulting in redundant vias on various vertical routes
-		wp.addPin(base, routes[route].pins[sharedPin]);
-		wn.addPin(base, routes[route].pins[sharedPin]);
+		wp.addPin(base, routes[route].pins[sharedPin].idx);
+		wn.addPin(base, routes[route].pins[sharedPin].idx);
 		routes[route].pins.erase(routes[route].pins.begin()+sharedPin);
 		count.erase(count.begin()+sharedPin);
 		wpHasGate = wpHasGate or sharedIsGate;
@@ -485,7 +484,7 @@ void Router::breakRoute(int route, set<int> cycleRoutes) {
 	if (not wpHasGate) {
 		// Put all non-gate PMOS pins into wp and all remaining pins into wn
 		for (int i = (int)routes[route].pins.size()-1; i >= 0; i--) {
-			Index pin = routes[route].pins[i];
+			Index pin = routes[route].pins[i].idx;
 			bool isGate = base->stack[pin.type].pins[pin.pin].device < 0;
 			if (pin.type == Model::PMOS and not isGate) {
 				wp.addPin(base, pin);
@@ -499,7 +498,7 @@ void Router::breakRoute(int route, set<int> cycleRoutes) {
 	}	else if (not wnHasGate) {
 		// Put all non-gate NMOS pins into wn and all remaining pins into wp
 		for (int i = (int)routes[route].pins.size()-1; i >= 0; i--) {
-			Index pin = routes[route].pins[i];
+			Index pin = routes[route].pins[i].idx;
 			bool isGate = base->stack[pin.type].pins[pin.pin].device < 0;
 			if (pin.type == Model::NMOS and not isGate) {
 				wn.addPin(base, pin);
@@ -512,7 +511,7 @@ void Router::breakRoute(int route, set<int> cycleRoutes) {
 		}
 	} else {
 		for (int i = (int)routes[route].pins.size()-1; i >= 0; i--) {
-			Index pin = routes[route].pins[i];
+			Index pin = routes[route].pins[i].idx;
 			// Determine horizontal location of wp and wn relative to sharedPin, then
 			// place all pins on same side of sharedPin as wp or wn into that wp or wn
 			// respectively.
@@ -998,14 +997,16 @@ int Router::alignPins(int maxDist) {
 			ends[0].clear();
 			ends[1].clear();
 			for (int j = 0; j < (int)routes[i].pins.size(); j++) {
-				if (routes[i].pins[j].type >= 2) {
+				const Index &pin = routes[i].pins[j].idx;
+
+				if (pin.type >= 2) {
 					continue;
 				}
 
-				if ((int)ends[routes[i].pins[j].type].size() < 2) {
-					ends[routes[i].pins[j].type].push_back(routes[i].pins[j].pin);
+				if ((int)ends[pin.type].size() < 2) {
+					ends[pin.type].push_back(pin.pin);
 				} else {
-					ends[routes[i].pins[j].type][1] = routes[i].pins[j].pin;
+					ends[pin.type][1] = pin.pin;
 				}
 			}
 
@@ -1508,9 +1509,9 @@ void Router::lowerRoutes(const Tech &tech, int window) {
 
 				int i0 = 0, i1 = 0, i2 = 0;
 				while (i0 < (int)routes[lo].pins.size() and i1 < (int)routes[mid].pins.size() and i2 < (int)routes[hi].pins.size()) {
-					const Pin &p0 = base->pin(routes[lo].pins[i0]);
-					const Pin &p1 = base->pin(routes[mid].pins[i1]);
-					const Pin &p2 = base->pin(routes[hi].pins[i2]);
+					const Pin &p0 = base->pin(routes[lo].pins[i0].idx);
+					const Pin &p1 = base->pin(routes[mid].pins[i1].idx);
+					const Pin &p2 = base->pin(routes[hi].pins[i2].idx);
 					
 					if (i1 > 0 and routes[lo].pins[i0] == routes[hi].pins[i2] and (p0.pos < p1.pos or (p0.pos == p1.pos and routes[lo].pins[i0] != routes[mid].pins[i1]))) {
 						if (i1 > (int)blockedLevels[mid].size()) {
@@ -1545,13 +1546,12 @@ void Router::lowerRoutes(const Tech &tech, int window) {
 	}
 
 	for (int i = 0; i < (int)routes.size(); i++) {
-		routes[i].level.clear();
 		vector<bool> types = routes[i].pinTypes();
 		if ((not types[Model::PMOS] or not types[Model::NMOS]) and not routes[i].hasGate(base)) {
 			continue;
 		}
 		for (int j = 0; j < (int)routes[i].pins.size()-1; j++) {
-			int level = min(base->pin(routes[i].pins[j]).layer, base->pin(routes[i].pins[j+1]).layer);
+			int level = min(base->pin(routes[i].pins[j].idx).layer, base->pin(routes[i].pins[j+1].idx).layer);
 			for (; level < (int)tech.wires.size(); level++) {
 				bool found = false;
 				for (int k = max(0, j-window); k < min(j+window+1, (int)blockedLevels[i].size()); k++) {
@@ -1564,7 +1564,7 @@ void Router::lowerRoutes(const Tech &tech, int window) {
 					break;
 				}
 			}
-			routes[i].level.push_back(level);
+			routes[i].pins[j].level = level;
 		}
 	}
 }
@@ -1621,7 +1621,7 @@ int Router::solve(const Tech &tech) {
 		//findAndBreakViaCycles();	
 		alignPins(200);
 		print();
-		buildPinConstraints(tech);
+		/*buildPinConstraints(tech);
 		buildViaConstraints(tech);
 		drawRoutes(tech);	
 		lowerRoutes(tech);
@@ -1629,7 +1629,7 @@ int Router::solve(const Tech &tech) {
 		//updateRouteConstraints(tech);
 		buildRouteConstraints(tech);
 		resetGraph(tech);
-		assignRouteConstraints(tech);
+		assignRouteConstraints(tech);*/
 	//}
 
 	//findAndBreakViaCycles();
@@ -1695,7 +1695,7 @@ void Router::print() {
 	for (int i = 0; i < (int)routes.size(); i++) {
 		printf("wire[%d] %s(%d) %d->%d in:%d out:%d: ", i, (routes[i].net >= 0 and routes[i].net < (int)base->nets.size() ? base->nets[routes[i].net].name.c_str() : ""), routes[i].net, routes[i].left, routes[i].right, routes[i].pOffset, routes[i].nOffset);
 		for (int j = 0; j < (int)routes[i].pins.size(); j++) {
-			printf("(%d,%d) ", routes[i].pins[j].type, routes[i].pins[j].pin);
+			printf("(%d,%d) ", routes[i].pins[j].idx.type, routes[i].pins[j].idx.pin);
 		}
 		printf("\n");
 	}

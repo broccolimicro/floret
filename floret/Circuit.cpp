@@ -134,6 +134,34 @@ void Pin::addOffset(int type, Index pin, int value) {
 	}
 }
 
+Contact::Contact() {
+	level = 2;
+	left = numeric_limits<int>::min();
+	right = numeric_limits<int>::max();
+}
+
+Contact::Contact(Index idx) {
+	this->idx = idx;
+	this->level = 2;
+	this->left = numeric_limits<int>::min();
+	this->right = numeric_limits<int>::max();
+}
+
+Contact::~Contact() {
+}
+
+bool operator<(const Contact &c0, const Contact &c1) {
+	return c0.idx < c1.idx;
+}
+
+bool operator==(const Contact &c0, const Contact &c1) {
+	return c0.idx == c1.idx;
+}
+
+bool operator!=(const Contact &c0, const Contact &c1) {
+	return c0.idx != c1.idx;
+}
+
 CompareIndex::CompareIndex(const Circuit *s) {
 	this->s = s;
 }
@@ -142,9 +170,21 @@ CompareIndex::~CompareIndex() {
 }
 
 bool CompareIndex::operator()(const Index &i0, const Index &i1) {
-	return s->stack[i0.type].pins[i0.pin].pos < s->stack[i1.type].pins[i1.pin].pos or
-		(s->stack[i0.type].pins[i0.pin].pos == s->stack[i1.type].pins[i1.pin].pos and (i0.type > i1.type or
-		(i0.type == i1.type and i0.pin < i1.pin)));
+	const Pin &p0 = s->pin(i0);
+	const Pin &p1 = s->pin(i1);
+	return p0.pos < p1.pos or (p0.pos == p1.pos and i0 < i1);
+}
+
+bool CompareIndex::operator()(const Contact &c0, const Index &i1) {
+	const Pin &p0 = s->pin(c0.idx);
+	const Pin &p1 = s->pin(i1);
+	return p0.pos < p1.pos or (p0.pos == p1.pos and c0.idx < i1);
+}
+
+bool CompareIndex::operator()(const Contact &c0, const Contact &c1) {
+	const Pin &p0 = s->pin(c0.idx);
+	const Pin &p1 = s->pin(c1.idx);
+	return p0.pos < p1.pos or (p0.pos == p1.pos and c0.idx < c1.idx);
 }
 
 Wire::Wire() {
@@ -177,12 +217,12 @@ void Wire::addPin(const Circuit *s, Index pin) {
 	}
 }
 
-bool Wire::hasPin(const Circuit *s, Index pin, vector<Index>::iterator *out) {
+bool Wire::hasPin(const Circuit *s, Index pin, vector<Contact>::iterator *out) {
 	auto pos = lower_bound(pins.begin(), pins.end(), pin, CompareIndex(s));
 	if (out != nullptr) {
 		*out = pos;
 	}
-	return pos != pins.end() and pos->type == pin.type and pos->pin == pin.pin;
+	return pos != pins.end() and pos->idx == pin;
 }
 
 void Wire::resortPins(const Circuit *s) {
@@ -190,19 +230,15 @@ void Wire::resortPins(const Circuit *s) {
 }
 
 int Wire::getLevel(int i) const {
-	if (level.size() == 0) {
-		return 2;
-	}
-
 	if (i < 0) {
-		return level[0];
+		return pins[0].level;
 	}
 
-	if (i >= (int)level.size()) {
-		return level.back();
+	if (i >= (int)pins.size()) {
+		return pins.back().level;
 	}
 
-	return level[i];
+	return pins[i].level;
 }
 
 bool Wire::hasPrev(int r) const {
@@ -211,7 +247,7 @@ bool Wire::hasPrev(int r) const {
 
 bool Wire::hasGate(const Circuit *s) const {
 	for (int i = 0; i < (int)pins.size(); i++) {
-		if (s->pin(pins[i]).device >= 0) {
+		if (s->pin(pins[i].idx).device >= 0) {
 			return true;
 		}
 	}
@@ -221,7 +257,7 @@ bool Wire::hasGate(const Circuit *s) const {
 vector<bool> Wire::pinTypes() const {
 	vector<bool> result(3,false);
 	for (int i = 0; i < (int)pins.size(); i++) {
-		result[pins[i].type] = true;
+		result[pins[i].idx.type] = true;
 	}
 	return result;
 }
