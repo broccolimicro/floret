@@ -120,7 +120,7 @@ void drawVia(const Tech &tech, Layout &dst, int net, int viaLevel, vec2i axis, v
 	}
 }
 
-void drawViaStack(const Tech &tech, Layout &dst, int net, int downLevel, int upLevel, vec2i size, vec2i pos, vec2i dir) {
+void drawViaStack(const Tech &tech, Layout &dst, int net, int downLevel, int upLevel, vec2i axis, vec2i size, vec2i pos, vec2i dir) {
 	if (downLevel == upLevel) {
 		int layer = tech.wires[downLevel].draw;
 		int width = tech.paint[layer].minWidth;
@@ -130,7 +130,7 @@ void drawViaStack(const Tech &tech, Layout &dst, int net, int downLevel, int upL
 
 	vector<int> vias = tech.findVias(downLevel, upLevel);
 	for (int i = 0; i < (int)vias.size(); i++) {
-		drawVia(tech, dst, net, vias[i], vec2i(1,1), size, pos, dir);
+		drawVia(tech, dst, net, vias[i], axis, size, pos, dir);
 	}
 }
 
@@ -157,14 +157,16 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 			// TODO(edward.bingham) push the via down the route as
 			// needed to satisfy via constraints, then route the
 			// associated pin down the route as well.
-			if (viaPos < wire.pins[j].left) {
-				viaPos = wire.pins[j].left;
-			}
 			if (viaPos > wire.pins[j].right) {
 				viaPos = wire.pins[j].right;
 			}
-			printf("pinPos=%d left=%d right=%d viaPos=%d\n", pin.pos, wire.pins[j].left, wire.pins[j].right, viaPos);
-
+			if (viaPos < wire.pins[j].left) {
+				viaPos = wire.pins[j].left;
+			}
+			if (wire.pins[j].left >= wire.pins[j].right) {
+				printf("error: pin violation on pin %d\n", j);
+				printf("pinPos=%d left=%d right=%d viaPos=%d\n", pin.pos, wire.pins[j].left, wire.pins[j].right, viaPos);
+			}
 
 			int wireLayer = tech.wires[nextLevel].draw;
 			height = tech.paint[wireLayer].minWidth;
@@ -293,7 +295,7 @@ void drawPin(const Tech &tech, Layout &dst, const Circuit *ckt, const Stack &sta
 		}
 
 		if (model >= 0) {
-			drawViaStack(tech, dst, stack.pins[pinID].outNet, -model-1, 1, vec2i(stack.pins[pinID].width, stack.pins[pinID].height), pos, dir);
+			drawViaStack(tech, dst, stack.pins[pinID].outNet, -model-1, 1, vec2i(1,1), vec2i(stack.pins[pinID].width, stack.pins[pinID].height), pos, dir);
 		} else {
 			printf("error: unable to identify transistor model for diffusion contact %d\n", pinID);
 		}

@@ -110,7 +110,7 @@ void Router::buildPinConstraints(const Tech &tech, int level) {
 				                         nmos.conLayout.layers, nmos.pos,
 				          Layout::IGNORE, Layout::MERGENET))) {
 				pinConstraints.push_back(PinConstraint(p, n));
-			} else if (pmos.outNet != nmos.outNet and
+			} else if (level == 2 and pmos.outNet != nmos.outNet and
 				minOffset(&off, tech, 1, pmos.conLayout.layers, pmos.pos,
 				                         nmos.conLayout.layers, nmos.pos,
 				          Layout::IGNORE, Layout::MERGENET)) {
@@ -862,7 +862,7 @@ void Router::buildPins(const Tech &tech) {
 			curr.pinLayout.clear();
 			drawPin(tech, curr.pinLayout, base, base->stack[type], i);
 			curr.conLayout.clear();
-			drawViaStack(tech, curr.conLayout, curr.outNet, curr.layer, 2, vec2i(0,0), vec2i(0,0));
+			drawViaStack(tech, curr.conLayout, curr.outNet, curr.layer, 2, vec2i(0, 0), vec2i(0,0), vec2i(0,0));
 			//curr.conLayout.push(tech.wires[curr.layer], Rect(curr.outNet, vec2i(0, 0), vec2i(curr.width, 0)));
 			
 			int off = 0;
@@ -906,49 +906,64 @@ void Router::updatePinPos(int p, int n) {
 				if (curr.align >= 0) {
 					pos = base->stack[1-type].pins[curr.align].pos;
 				}
-				for (auto o = curr.pinToPin.begin(); o != curr.pinToPin.end(); o++) {
-					pos = max(pos, base->stack[o->first.type].pins[o->first.pin].pos + o->second);
+				for (auto from = curr.pinToPin.begin(); from != curr.pinToPin.end(); from++) {
+					pos = max(pos, base->pin(from->first).pos + from->second);
 				}
-				/*for (auto o = curr.viaToPin.begin(); o != curr.viaToPin.end(); o++) {
-					Pin &other = base->pin(o->first);
-					if (not other.pinToVia.empty()) {
-						pos = max(pos, other.viaMin + o->second);
+				for (auto from = curr.viaToPin.begin(); from != curr.viaToPin.end(); from++) {
+					for (int j = 0; j < (int)routes.size(); j++) {
+						vector<Contact>::iterator fromVia;
+						if (not routes[j].hasPin(base, Index(type, i)) and
+						    routes[j].pOffset >= curr.lo and routes[j].pOffset <= curr.hi and
+						    routes[j].hasPin(base, from->first, &fromVia)) {
+							pos = max(pos, fromVia->left + from->second);
+						}
 					}
-				}*/
+				}
 				
 				if (pos != curr.pos) {
 					done = false;
 					curr.pos = pos;
 				}
 
-				/*pos = numeric_limits<int>::min();
-				for (auto o = curr.pinToVia.begin(); o != curr.pinToVia.end(); o++) {
-					pos = max(pos, base->pin(o->first).pos + o->second);
+				for (int j = 0; j < (int)routes.size(); j++) {
+					vector<Contact>::iterator toVia;
+					if (routes[j].hasPin(base, Index(type, i), &toVia)) {
+						int pos = numeric_limits<int>::min();
+						for (auto from = curr.pinToVia.begin(); from != curr.pinToVia.end(); from++) {
+							const Pin &fromPin = base->pin(from->first);
+							if (not routes[j].hasPin(base, from->first) and
+							  routes[j].pOffset >= fromPin.lo and routes[j].pOffset <= fromPin.hi) {
+								pos = max(pos, fromPin.pos + from->second);
+							}
+						}
+						if (pos != toVia->left) {
+							done = false;
+							toVia->left = pos;
+						}
+					}
 				}
-
-				if (pos != curr.viaMin) {
-					done = false;
-					curr.viaMin = pos;
-				}*/
 			}
 		}
 	} while (not done);
 
-	/*for (int type = 0; type < 2; type++) {
-		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
-			base->stack[type].pins[i].viaMax = numeric_limits<int>::max();
+	for (int i = 0; i < (int)routes.size(); i++) {
+		for (int j = 0; j < (int)routes[i].pins.size(); j++) {
+			int pos = numeric_limits<int>::max();
+			for (int type = 0; type < 2; type++) {
+				for (int k = 0; k < (int)base->stack[type].pins.size(); k++) {
+					const Pin &to = base->pin(Index(type, k));
+					if (not routes[i].hasPin(base, Index(type, k)) and
+					    routes[i].pOffset >= to.lo and routes[i].pOffset <= to.hi) {
+						auto from = to.viaToPin.find(routes[i].pins[j].idx);
+						if (from != to.viaToPin.end()) {
+							pos = min(pos, to.pos - from->second);
+						}
+					}
+				}
+			}
+			routes[i].pins[j].right = pos;
 		}
 	}
-
-	for (int type = 0; type < 2; type++) {
-		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
-			Pin &curr = base->stack[type].pins[i];
-			for (auto o = curr.viaToPin.begin(); o != curr.viaToPin.end(); o++) {
-				Pin &other = base->pin(o->first);
-				other.viaMax = min(other.viaMax, curr.pos - o->second);
-			}
-		}
-	}*/
 
 	for (int i = 0; i < (int)routes.size(); i++) {
 		routes[i].resortPins(base);
@@ -1606,31 +1621,29 @@ int Router::computeCost() {
 int Router::solve(const Tech &tech) {
 	buildPins(tech);
 	alignPins(200);
-	buildPinConstraints(tech);
+	buildPinConstraints(tech, 1);
 	buildViaConstraints(tech);
 	buildRoutes();
 	findAndBreakPinCycles();
-	//findAndBreakViaCycles();
 	drawRoutes(tech);
 	buildRouteConstraints(tech);
 	resetGraph(tech);
 	assignRouteConstraints(tech);
 	buildPinBounds();
-
-	//for (int i = 0; i < 1; i++) {	
-		//findAndBreakViaCycles();	
-		alignPins(200);
-		print();
+	alignPins(200);
+	
+	/*for (int i = 0; i < 10; i++) {	
 		buildPinConstraints(tech);
 		buildViaConstraints(tech);
 		drawRoutes(tech);	
 		lowerRoutes(tech);
 		drawRoutes(tech);
-		//updateRouteConstraints(tech);
 		buildRouteConstraints(tech);
 		resetGraph(tech);
 		assignRouteConstraints(tech);
-	//}
+		buildPinBounds();
+		alignPins(200);
+	}*/
 
 	//findAndBreakViaCycles();
 	drawRoutes(tech);

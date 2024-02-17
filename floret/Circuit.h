@@ -96,8 +96,24 @@ struct Pin {
 	int align;
 
 	// minimum offset from other pins following spacing rules
+	// <from, offset>
+	// |==|==|
+	//  ---->
+	//     ->
 	map<Index, int> pinToPin;
+	
+	// <from, offset>
+	// |==|==|
+	//       O
+	//  ---->
+	//     ->
 	map<Index, int> pinToVia;
+
+	// <from, offset>
+	// |==|==|
+	// O  O
+	//  ---->
+	//     ->
 	map<Index, int> viaToPin;
 	int pos; // current absolute position, computed from off, pin alignment, via constraints
 	int lo;
