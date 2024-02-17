@@ -62,6 +62,8 @@ struct Index {
 };
 
 bool operator<(const Index &i0, const Index &i1);
+bool operator==(const Index &i0, const Index &i1);
+bool operator!=(const Index &i0, const Index &i1);
 
 // Represents Transistors and Contacts
 struct Pin {
@@ -98,7 +100,11 @@ struct Pin {
 	map<Index, int> pinToVia;
 	map<Index, int> viaToPin;
 	int pos; // current absolute position, computed from off, pin alignment, via constraints
-	int viaPos;
+	int lo;
+	int hi;
+
+	int viaMin;
+	int viaMax;
 
 	enum {
 		PINTOPIN = 0,
@@ -134,6 +140,7 @@ struct Wire {
 	// us pick pins to dogleg when breaking cycles.
 	vector<Index> pins;
 	vector<int> level;
+	vector<vec2i> bounds;
 
 	// Used to choose how to break a route to fix a cycle
 	int left;
@@ -155,6 +162,7 @@ struct Wire {
 	void resortPins(const Circuit *s);
 	int getLevel(int i) const;
 	bool hasPrev(int r) const;
+	bool hasGate(const Circuit *s) const;
 	vector<bool> pinTypes() const;
 };
 
@@ -199,8 +207,6 @@ struct Circuit {
 
 	int pinWidth(const Tech &tech, Index i) const;
 	int pinHeight(Index i) const;
-	void buildPins(const Tech &tech);
-	void updatePinPos(int p = 0, int n = 0);
 
 	void draw(const Tech &tech, Layout &dst);
 };

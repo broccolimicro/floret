@@ -88,7 +88,7 @@ void Router::delRoute(int route) {
 	routes.erase(routes.begin()+route);
 }
 
-void Router::buildPinConstraints(const Tech &tech) {
+void Router::buildPinConstraints(const Tech &tech, int level) {
 	pinConstraints.clear();
 	// Compute the pin constraints
 	// TODO(edward.bingham) this could be more efficiently done as a 1d rectangle overlap problem
@@ -97,9 +97,22 @@ void Router::buildPinConstraints(const Tech &tech) {
 			int off = 0;
 			Pin &pmos = base->stack[Model::PMOS].pins[p];
 			Pin &nmos = base->stack[Model::NMOS].pins[n];
-			if (pmos.outNet != nmos.outNet and
+			if (level == 0 and pmos.outNet != nmos.outNet and
 				minOffset(&off, tech, 1, pmos.pinLayout.layers, pmos.pos,
 				                         nmos.pinLayout.layers, nmos.pos,
+				          Layout::IGNORE, Layout::MERGENET)) {
+				pinConstraints.push_back(PinConstraint(p, n));
+			} else if (level == 1 and pmos.outNet != nmos.outNet and
+				(minOffset(&off, tech, 1, pmos.conLayout.layers, pmos.pos,
+				                         nmos.pinLayout.layers, nmos.pos,
+				          Layout::IGNORE, Layout::MERGENET) or
+				minOffset(&off, tech, 1, pmos.pinLayout.layers, pmos.pos,
+				                         nmos.conLayout.layers, nmos.pos,
+				          Layout::IGNORE, Layout::MERGENET))) {
+				pinConstraints.push_back(PinConstraint(p, n));
+			} else if (pmos.outNet != nmos.outNet and
+				minOffset(&off, tech, 1, pmos.conLayout.layers, pmos.pos,
+				                         nmos.conLayout.layers, nmos.pos,
 				          Layout::IGNORE, Layout::MERGENET)) {
 				pinConstraints.push_back(PinConstraint(p, n));
 			}
@@ -167,6 +180,27 @@ void Router::buildRoutes() {
 		routes.push_back(Wire(flip(type)));
 		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
 			routes.back().addPin(base, Index(type, i));
+		}
+	}
+}
+
+void Router::buildPinBounds() {
+	for (int type = 0; type < (int)base->stack.size(); type++) {
+		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
+			base->stack[type].pins[i].lo = numeric_limits<int>::max();
+			base->stack[type].pins[i].hi = numeric_limits<int>::min();
+		}
+	}
+
+	for (int i = 0; i < (int)routes.size(); i++) {
+		for (int j = 0; j < (int)routes[i].pins.size(); j++) {
+			Pin &pin = base->pin(routes[i].pins[j]);
+			if (routes[i].pOffset < pin.lo) {
+				pin.lo = routes[i].pOffset;
+			}
+			if (routes[i].pOffset > pin.hi) {
+				pin.hi = routes[i].pOffset;
+			}
 		}
 	}
 }
@@ -714,32 +748,6 @@ void Router::findAndBreakViaCycles() {
 		}
 	}
 	
-	// After we have resolved all of the pin constraint cycles, we
-	// check for cycles introduced by via constraints. These can't be
-	// broken by breaking up the routes because all you'll do is add a
-	// new via without actually satisfying the via constraint.
-	//
-	// =|=|=|=|
-	// -|-O | | <-- breaking the route won't remove this via
-	//  O | O | <-- it just creates more violations
-	//    O---O
-	//
-	// So instead, when we encounter a cycle created by via
-	// constraints, we need to add spacing between the pins.
-	//
-	// =|==|==|=|
-	// -|--O--|-O
-	//  O     O 
-	//
-	// TODO(edward.bingham) One caveat, if breaking the route allows
-	// us to route over the cell, and doesn't create more violations,
-	// then it can fix the cycle.
-	//
-	// ---O
-	// =|=|=|
-	//  O | O
-	//    O--
-
 	// <index into Circuit::stack[via->type], index into Router::viaConstraints>
 	vector<vector<ViaConstraint>::iterator> active;
 	for (auto via = viaConstraints.begin(); via != viaConstraints.end(); via++) {
@@ -843,6 +851,111 @@ bool operator>(const Alignment &a0, const Alignment &a1) {
 	return a0.dist() > a1.dist();
 }
 
+void Router::buildPins(const Tech &tech) {
+	// Draw the pin contact and via
+	for (int type = 0; type < 2; type++) {
+		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
+			Pin &curr = base->stack[type].pins[i];
+
+			curr.width = base->pinWidth(tech, Index(type, i));
+			curr.height = base->pinHeight(Index(type, i));
+
+			curr.pinLayout.clear();
+			drawPin(tech, curr.pinLayout, base, base->stack[type], i);
+			curr.conLayout.clear();
+			drawViaStack(tech, curr.conLayout, curr.outNet, curr.layer, 2, vec2i(0,0), vec2i(0,0));
+			//curr.conLayout.push(tech.wires[curr.layer], Rect(curr.outNet, vec2i(0, 0), vec2i(curr.width, 0)));
+			
+			int off = 0;
+			if (i > 0) {
+				Pin &prev = base->stack[type].pins[i-1];
+				int substrateMode = prev.device >= 0 or curr.device >= 0 ? Layout::MERGENET : Layout::DEFAULT;
+				if (minOffset(&off, tech, 0, prev.pinLayout.layers, 0, curr.pinLayout.layers, 0, substrateMode, Layout::DEFAULT)) {
+					curr.addOffset(Pin::PINTOPIN, Index(type, i-1), off);
+				} else {
+					printf("error: no offset found at pin (%d,%d)\n", type, i);
+				}
+
+				for (int j = i-1; j >= 0; j--) {
+					Pin &prev = base->stack[type].pins[j];
+
+					// TODO(edward.bingham) can I create these constraints with pins on other stacks?
+					if (minOffset(&off, tech, 0, prev.pinLayout.layers, 0, curr.conLayout.layers, 0, Layout::IGNORE, Layout::MERGENET)) {
+						curr.addOffset(Pin::PINTOVIA, Index(type, j), off);
+					}
+
+					if (minOffset(&off, tech, 0, prev.conLayout.layers, 0, curr.pinLayout.layers, 0, Layout::IGNORE, Layout::MERGENET)) {
+						curr.addOffset(Pin::VIATOPIN, Index(type, j), off);
+					}
+				}
+			}
+		}
+	}
+
+	updatePinPos();
+}
+
+void Router::updatePinPos(int p, int n) {
+	bool done = false;
+	do {
+		done = true;
+		for (int type = 0; type < 2; type++) {
+			for (int i = (type == Model::PMOS ? p : n); i < (int)base->stack[type].pins.size(); i++) {
+				Pin &curr = base->stack[type].pins[i];
+
+				int pos = 0;
+				if (curr.align >= 0) {
+					pos = base->stack[1-type].pins[curr.align].pos;
+				}
+				for (auto o = curr.pinToPin.begin(); o != curr.pinToPin.end(); o++) {
+					pos = max(pos, base->stack[o->first.type].pins[o->first.pin].pos + o->second);
+				}
+				for (auto o = curr.viaToPin.begin(); o != curr.viaToPin.end(); o++) {
+					Pin &other = base->pin(o->first);
+					if (not other.pinToVia.empty()) {
+						pos = max(pos, other.viaMin + o->second);
+					}
+				}
+				
+				if (pos != curr.pos) {
+					done = false;
+					curr.pos = pos;
+				}
+
+				pos = numeric_limits<int>::min();
+				for (auto o = curr.pinToVia.begin(); o != curr.pinToVia.end(); o++) {
+					pos = max(pos, base->pin(o->first).pos + o->second);
+				}
+
+				if (pos != curr.viaMin) {
+					done = false;
+					curr.viaMin = pos;
+				}
+			}
+		}
+	} while (not done);
+
+	for (int type = 0; type < 2; type++) {
+		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
+			base->stack[type].pins[i].viaMax = numeric_limits<int>::max();
+		}
+	}
+
+	for (int type = 0; type < 2; type++) {
+		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
+			Pin &curr = base->stack[type].pins[i];
+			for (auto o = curr.viaToPin.begin(); o != curr.viaToPin.end(); o++) {
+				Pin &other = base->pin(o->first);
+				other.viaMax = min(other.viaMax, curr.pos - o->second);
+			}
+		}
+	}
+
+	for (int i = 0; i < (int)routes.size(); i++) {
+		routes[i].resortPins(base);
+	}
+}
+
 int Router::alignPins(int maxDist) {
 	for (int type = 0; type < (int)base->stack.size(); type++) {
 		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
@@ -924,10 +1037,7 @@ int Router::alignPins(int maxDist) {
 		}
 		matches++;
 
-		base->updatePinPos(curr.pin[Model::PMOS], curr.pin[Model::NMOS]);
-		for (int i = 0; i < (int)routes.size(); i++) {
-			routes[i].resortPins(base);
-		}
+		updatePinPos(curr.pin[Model::PMOS], curr.pin[Model::NMOS]);
 
 		for (int i = (int)align.size()-1; i >= 0; i--) {
 			if (align[i].conflictsWith(curr)) {
@@ -1373,7 +1483,7 @@ void Router::findAndBreakPinCycles() {
 	breakCycles(cycles);
 }
 
-void Router::lowerRoutes() {
+void Router::lowerRoutes(const Tech &tech, int window) {
 	// TODO(edward.bingham) There's still an interaction between route lowering
 	// and via merging where it ends up creating a double route for two close
 	// pins, causing DRC violations
@@ -1385,42 +1495,76 @@ void Router::lowerRoutes() {
 	// Manual layouts seem to prefer the second option.
 	
 	// int pinLevel = 1;
+
+	// indexed by [route][pin]
+	vector<vector<set<int> > > blockedLevels(routes.size(), vector<set<int> >());
 	for (int i = 0; i < (int)routes.size(); i++) {
-		routes[i].level.clear();
-		for (int j = 0; j < (int)routes[i].pins.size()-1; j++) {
-			const Pin &prev = base->pin(routes[i].pins[j]);
-			const Pin &next = base->pin(routes[i].pins[j+1]);
-			int prevLevel = prev.layer;
-			if (routes[i].level.size() > 0) {
-				prevLevel = routes[i].level.back();
-			}
-			int maxLevel = min(prevLevel, next.layer);
-			// Pins must at least be on local interconnect
-			// TODO(edward.bingham) No need to set the whole route to this, we just need to place a via in the right spot
-			//if (base->nets[routes[i].net].isIO and maxLevel < pinLevel) {
-			//	maxLevel = pinLevel;
-			//}
-			set<int> pinLevels;
-			for (int k = 0; k < (int)routes.size(); k++) {
-				if (i != k) {
-					for (int l = 0; l < (int)routes[k].pins.size(); l++) {
-						const Pin &other = base->pin(routes[k].pins[l]);
-						if (((routes[k].pOffset >= routes[i].pOffset and routes[k].pins[l].type == Model::PMOS) or 
-								 (routes[k].pOffset <= routes[i].pOffset and routes[k].pins[l].type == Model::NMOS)) and 
-								other.pos >= prev.pos and other.pos <= next.pos) {
-							pinLevels.insert(other.layer);
+		for (int j = i+1; j < (int)routes.size(); j++) {
+			for (int k = j+1; k < (int)routes.size(); k++) {
+				int lo = i, mid = j, hi = k;
+				if (routes[mid].pOffset < routes[lo].pOffset or (routes[mid].pOffset == routes[lo].pOffset and flip(routes[mid].net) == Model::PMOS)) { swap(lo, mid); }
+				if (routes[hi].pOffset < routes[mid].pOffset or (routes[hi].pOffset == routes[mid].pOffset and (flip(routes[mid].net) == Model::NMOS or flip(routes[hi].net) == Model::PMOS))) { swap(mid, hi); }
+				if (routes[mid].pOffset < routes[lo].pOffset or (routes[mid].pOffset == routes[lo].pOffset and flip(routes[mid].net) == Model::PMOS)) { swap(lo, mid); }
+
+				int i0 = 0, i1 = 0, i2 = 0;
+				while (i0 < (int)routes[lo].pins.size() and i1 < (int)routes[mid].pins.size() and i2 < (int)routes[hi].pins.size()) {
+					const Pin &p0 = base->pin(routes[lo].pins[i0]);
+					const Pin &p1 = base->pin(routes[mid].pins[i1]);
+					const Pin &p2 = base->pin(routes[hi].pins[i2]);
+					
+					if (i1 > 0 and routes[lo].pins[i0] == routes[hi].pins[i2] and (p0.pos < p1.pos or (p0.pos == p1.pos and routes[lo].pins[i0] != routes[mid].pins[i1]))) {
+						if (i1 > (int)blockedLevels[mid].size()) {
+							blockedLevels[mid].resize(i1, set<int>());
 						}
+						printf("lo=%d mid=%d hi=%d i0=%d i1=%d i2=%d\n", lo, mid, hi, i0, i1, i2);
+						blockedLevels[mid][i1-1].insert(p0.layer);
+					}
+
+					if (p0.pos <= p1.pos and p0.pos <= p2.pos) {
+						i0++;
+					} else if (p2.pos <= p0.pos and p2.pos <= p1.pos) {
+						i2++;
+					} else {
+						i1++;
 					}
 				}
 			}
+		}
+	}
 
-			for (int k = maxLevel; k < 3; k++) {
-				if (pinLevels.find(k) == pinLevels.end()) {
-					maxLevel = k;
+	for (int i = 0; i < (int)blockedLevels.size(); i++) {
+		printf("blocked[%d] {", i);
+		for (int j = 0; j < (int)blockedLevels[i].size(); j++) {
+			printf("(");
+			for (auto l = blockedLevels[i][j].begin(); l != blockedLevels[i][j].end(); l++) {
+				printf("%d ", *l);
+			}
+			printf(") ");
+		}
+		printf("}\n");
+	}
+
+	for (int i = 0; i < (int)routes.size(); i++) {
+		routes[i].level.clear();
+		vector<bool> types = routes[i].pinTypes();
+		if ((not types[Model::PMOS] or not types[Model::NMOS]) and not routes[i].hasGate(base)) {
+			continue;
+		}
+		for (int j = 0; j < (int)routes[i].pins.size()-1; j++) {
+			int level = min(base->pin(routes[i].pins[j]).layer, base->pin(routes[i].pins[j+1]).layer);
+			for (; level < (int)tech.wires.size(); level++) {
+				bool found = false;
+				for (int k = max(0, j-window); k < min(j+window+1, (int)blockedLevels[i].size()); k++) {
+					if (blockedLevels[i][k].find(level) != blockedLevels[i][k].end()) {
+						found = true;
+						break;
+					}
+				}
+				if (not found) {
 					break;
 				}
 			}
-			routes[i].level.push_back(maxLevel);
+			routes[i].level.push_back(level);
 		}
 	}
 }
@@ -1460,30 +1604,35 @@ int Router::computeCost() {
 }
 
 int Router::solve(const Tech &tech) {
+	buildPins(tech);
 	alignPins(200);
-	print();
 	buildPinConstraints(tech);
 	buildViaConstraints(tech);
 	buildRoutes();
 	findAndBreakPinCycles();
-	findAndBreakViaCycles();
+	//findAndBreakViaCycles();
 	drawRoutes(tech);
 	buildRouteConstraints(tech);
 	resetGraph(tech);
 	assignRouteConstraints(tech);
-	
-	findAndBreakViaCycles();	
-	alignPins(200);
-	buildPinConstraints(tech);
-	buildViaConstraints(tech);
-	drawRoutes(tech);	
-	lowerRoutes();
-	drawRoutes(tech);
-	buildRouteConstraints(tech);
-	resetGraph(tech);
-	assignRouteConstraints(tech);
+	buildPinBounds();
 
-	findAndBreakViaCycles();
+	//for (int i = 0; i < 1; i++) {	
+		//findAndBreakViaCycles();	
+		alignPins(200);
+		print();
+		buildPinConstraints(tech);
+		buildViaConstraints(tech);
+		drawRoutes(tech);	
+		lowerRoutes(tech);
+		drawRoutes(tech);
+		//updateRouteConstraints(tech);
+		buildRouteConstraints(tech);
+		resetGraph(tech);
+		assignRouteConstraints(tech);
+	//}
+
+	//findAndBreakViaCycles();
 	drawRoutes(tech);
 	// TODO(edward.bingham) The route placement should start at the center and
 	// work it's way toward the bottom and top of the cell instead of starting at
@@ -1532,12 +1681,14 @@ int Router::solve(const Tech &tech) {
 void Router::print() {
 	printf("NMOS\n");
 	for (int i = 0; i < (int)base->stack[0].pins.size(); i++) {
-		printf("pin[%d] dev=%d nets=%d->%d->%d size=%dx%d pos=%d align=%d\n", i, base->stack[0].pins[i].device, base->stack[0].pins[i].leftNet, base->stack[0].pins[i].outNet, base->stack[0].pins[i].rightNet, base->stack[0].pins[i].width, base->stack[0].pins[i].height, base->stack[0].pins[i].pos, base->stack[0].pins[i].align);
+		const Pin &pin = base->stack[0].pins[i];
+		printf("pin[%d] dev=%d nets=%d->%d->%d size=%dx%d pos=%d via=(%d %d) align=%d\n", i, pin.device, pin.leftNet, pin.outNet, pin.rightNet, pin.width, pin.height, pin.pos, pin.viaMin, pin.viaMax, pin.align);
 	}
 
 	printf("\nPMOS\n");
 	for (int i = 0; i < (int)base->stack[1].pins.size(); i++) {
-		printf("pin[%d] dev=%d nets=%d->%d->%d size=%dx%d pos=%d align=%d\n", i, base->stack[1].pins[i].device, base->stack[1].pins[i].leftNet, base->stack[1].pins[i].outNet, base->stack[1].pins[i].rightNet, base->stack[1].pins[i].width, base->stack[1].pins[i].height, base->stack[1].pins[i].pos, base->stack[1].pins[i].align);
+		const Pin &pin = base->stack[1].pins[i];
+		printf("pin[%d] dev=%d nets=%d->%d->%d size=%dx%d pos=%d via=(%d %d) align=%d\n", i, pin.device, pin.leftNet, pin.outNet, pin.rightNet, pin.width, pin.height, pin.pos, pin.viaMin, pin.viaMax, pin.align);
 	}
 
 	printf("\nRoutes\n");

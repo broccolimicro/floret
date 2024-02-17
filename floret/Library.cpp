@@ -53,10 +53,6 @@ void Library::build(const Tech &tech, set<string> cellNames) {
 		if (cellNames.empty() or cellNames.find(cells[i].name) != cellNames.end()) {
 			printf("\rPlacing %s\n", cells[i].name.c_str());
 			Placement::solve(tech, &cells[i]);
-			cells[i].buildPins(tech);
-			/*for (int type = 0; type < 2; type++) {
-				cells[i].stack[type].draw(tech);
-			}*/
 			printf("\rRouting %s\n", cells[i].name.c_str());
 			Router router(&cells[i]);
 			router.solve(tech);

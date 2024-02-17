@@ -56,6 +56,14 @@ bool operator<(const Index &i0, const Index &i1) {
 	return i0.type < i1.type or (i0.type == i1.type and i0.pin < i1.pin);
 }
 
+bool operator==(const Index &i0, const Index &i1) {
+	return i0.type == i1.type and i0.pin == i1.pin;
+}
+
+bool operator!=(const Index &i0, const Index &i1) {
+	return i0.type != i1.type or i0.pin != i1.pin;
+}
+
 Pin::Pin() {
 	device = -1;
 	outNet = -1;
@@ -68,7 +76,10 @@ Pin::Pin() {
 	width = 0;
 	height = 0;
 	pos = 0;
-	viaPos = 0;
+	lo = numeric_limits<int>::max();
+	hi = numeric_limits<int>::min();
+	viaMin = numeric_limits<int>::min();
+	viaMax = numeric_limits<int>::max();
 }
 
 Pin::Pin(int outNet) {
@@ -83,7 +94,10 @@ Pin::Pin(int outNet) {
 	width = 0;
 	height = 0;
 	pos = 0;
-	viaPos = 0;
+	lo = numeric_limits<int>::max();
+	hi = numeric_limits<int>::min();
+	viaMin = numeric_limits<int>::min();
+	viaMax = numeric_limits<int>::max();
 }
 
 Pin::Pin(int device, int outNet, int leftNet, int rightNet) {
@@ -98,7 +112,10 @@ Pin::Pin(int device, int outNet, int leftNet, int rightNet) {
 	width = 0;
 	height = 0;
 	pos = 0;
-	viaPos = 0;
+	lo = numeric_limits<int>::max();
+	hi = numeric_limits<int>::min();
+	viaMin = numeric_limits<int>::min();
+	viaMax = numeric_limits<int>::max();
 }
 
 Pin::~Pin() {
@@ -190,6 +207,15 @@ int Wire::getLevel(int i) const {
 
 bool Wire::hasPrev(int r) const {
 	return prevNodes.find(r) != prevNodes.end();
+}
+
+bool Wire::hasGate(const Circuit *s) const {
+	for (int i = 0; i < (int)pins.size(); i++) {
+		if (s->pin(pins[i]).device >= 0) {
+			return true;
+		}
+	}
+	return false;
 }
 
 vector<bool> Wire::pinTypes() const {
@@ -377,80 +403,6 @@ void Circuit::loadSubckt(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &le
 				printf("unrecognized device\n");
 			}
 		}
-	}
-}
-
-void Circuit::buildPins(const Tech &tech) {
-	// Draw the pin contact and via
-	for (int type = 0; type < 2; type++) {
-		for (int i = 0; i < (int)stack[type].pins.size(); i++) {
-			stack[type].pins[i].width = pinWidth(tech, Index(type, i));
-			stack[type].pins[i].height = pinHeight(Index(type, i));
-
-			stack[type].pins[i].pinLayout.clear();
-			drawPin(tech, stack[type].pins[i].pinLayout, this, stack[type], i);
-			stack[type].pins[i].conLayout.clear();
-			drawViaStack(tech, stack[type].pins[i].conLayout, stack[type].pins[i].outNet, stack[type].pins[i].layer, 2, vec2i(0,0), vec2i(0,0));
-			//stack[type].pins[i].conLayout.push(tech.wires[stack[type].pins[i].layer], Rect(stack[type].pins[i].outNet, vec2i(0, 0), vec2i(stack[type].pins[i].width, 0)));
-			
-			int off = 0;
-			if (i > 0) {
-				int substrateMode = stack[type].pins[i-1].device >= 0 or stack[type].pins[i].device >= 0 ? Layout::MERGENET : Layout::DEFAULT;
-				if (minOffset(&off, tech, 0, stack[type].pins[i-1].pinLayout.layers, 0, stack[type].pins[i].pinLayout.layers, 0, substrateMode, Layout::DEFAULT)) {
-					stack[type].pins[i].addOffset(Pin::PINTOPIN, Index(type, i-1), off);
-				} else {
-					printf("error: no offset found at pin (%d,%d)\n", type, i);
-				}
-			}
-		}
-	}
-
-	updatePinPos();
-}
-
-void Circuit::updatePinPos(int p, int n) {
-	bool done = false;
-	do {
-		done = true;
-		for (int type = 0; type < 2; type++) {
-			for (int i = (type == Model::PMOS ? p : n); i < (int)stack[type].pins.size(); i++) {
-				Pin &curr = stack[type].pins[i];
-
-				int pos = 0;
-				if (curr.align >= 0) {
-					pos = stack[1-type].pins[curr.align].pos;
-				}
-				for (auto o = curr.pinToPin.begin(); o != curr.pinToPin.end(); o++) {
-					pos = max(pos, stack[o->first.type].pins[o->first.pin].pos + o->second);
-				}
-				for (auto o = curr.viaToPin.begin(); o != curr.viaToPin.end(); o++) {
-					if (not stack[o->first.type].pins[o->first.pin].pinToVia.empty()) {
-						pos = max(pos, stack[o->first.type].pins[o->first.pin].viaPos + o->second);
-					}
-				}
-				
-				if (pos != curr.pos) {
-					done = false;
-					curr.pos = pos;
-				}
-
-				if (not curr.pinToVia.empty()) {
-					int pos = 0;
-					for (auto o = curr.pinToVia.begin(); o != curr.pinToVia.end(); o++) {
-						pos = max(pos, stack[o->first.type].pins[o->first.pin].pos + o->second);
-					}
-
-					if (pos != curr.viaPos) {
-						done = false;
-						curr.viaPos = pos;
-					}
-				}
-			}
-		}
-	} while (not done);
-
-	for (int i = 0; i < (int)routes.size(); i++) {
-		routes[i].resortPins(this);
 	}
 }
 

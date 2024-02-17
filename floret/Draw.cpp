@@ -121,6 +121,13 @@ void drawVia(const Tech &tech, Layout &dst, int net, int viaLevel, vec2i axis, v
 }
 
 void drawViaStack(const Tech &tech, Layout &dst, int net, int downLevel, int upLevel, vec2i size, vec2i pos, vec2i dir) {
+	if (downLevel == upLevel) {
+		int layer = tech.wires[downLevel].draw;
+		int width = tech.paint[layer].minWidth;
+		dst.push(tech.wires[downLevel], Rect(net, pos, pos+max(size, width)*dir));
+		return;
+	}
+
 	vector<int> vias = tech.findVias(downLevel, upLevel);
 	for (int i = 0; i < (int)vias.size(); i++) {
 		drawVia(tech, dst, net, vias[i], vec2i(1,1), size, pos, dir);
@@ -146,9 +153,21 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 			int wireLow = min(nextLevel, prevLevel);
 			int wireHigh = max(nextLevel, prevLevel);
 
+			int viaPos = pin.pos;
+			// TODO(edward.bingham) push the via down the route as
+			// needed to satisfy via constraints, then route the
+			// associated pin down the route as well.
+			if (viaPos < pin.viaMin) {
+				viaPos = pin.viaMin;
+			}
+			if (viaPos > pin.viaMax) {
+				viaPos = pin.viaMax;
+			}
+			printf("pinPos=%d viaMin=%d viaMax=%d viaPos=%d\n", pin.pos, pin.viaMin, pin.viaMax, viaPos);
+
+
 			int wireLayer = tech.wires[nextLevel].draw;
 			height = tech.paint[wireLayer].minWidth;
-			// TODO(edward.bingham) push the via down the route as needed to satisfy via constraints, then route the associated pin down the route as well.
 			if ((pinLevel <= tech.vias[i].downLevel and wireHigh >= tech.vias[i].upLevel) or
 			    (wireLow <= tech.vias[i].downLevel and pinLevel >= tech.vias[i].upLevel)) {
 				int pinLayer = tech.wires[pinLevel].draw;
@@ -165,7 +184,7 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 				if (j != 0) {
 					//printf("mid pin.pos=%d from=%d to=%d nextToDraw=%d\n", pin.pos, from, to, nextToDraw);
 					int off = 0;
-					if (not minOffset(&off, tech, 0, prevLayout.layers, 0, nextLayout.layers, 0, false) or pin.pos-prevPos >= off) {
+					if (not minOffset(&off, tech, 0, prevLayout.layers, 0, nextLayout.layers, 0, false) or viaPos-prevPos >= off) {
 						//printf("\tconflict pinOff=%d off=%d nextToDraw=%d\n", pin.pos-prevPos, off, nextToDraw);
 						if (nextToDraw) {
 							//printf("drawing %d -> %d\n", from, to);
@@ -179,14 +198,14 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 					//printf("first pin.pos=%d from=%d to=%d nextToDraw=%d\n", pin.pos, from, to, nextToDraw);
 				}
 				prevLayout = nextLayout;
-				prevPos = pin.pos;
+				prevPos = viaPos;
 				nextLayout.clear();
 
 				if (not nextToDraw) {
 					nextToDraw = true;
-					from = pin.pos;
+					from = viaPos;
 				}
-				to = pin.pos + width;
+				to = viaPos + width;
 			}
 		}
 

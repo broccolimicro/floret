@@ -78,6 +78,32 @@ struct ViaConstraint {
 	ViaConstraint(Index idx);
 	~ViaConstraint();
 
+	// After we have resolved all of the pin constraint cycles, we
+	// check for cycles introduced by via constraints. These can't be
+	// broken by breaking up the routes because all you'll do is add a
+	// new via without actually satisfying the via constraint.
+	//
+	// =|=|=|=|
+	// -|-O | | <-- breaking the route won't remove this via
+	//  O | O | <-- it just creates more violations
+	//    O---O
+	//
+	// So instead, when we encounter a cycle created by via
+	// constraints, we need to add spacing between the pins.
+	//
+	// =|==|==|=|
+	// -|--O--|-O
+	//  O     O 
+	//
+	// TODO(edward.bingham) One caveat, if breaking the route allows
+	// us to route over the cell, and doesn't create more violations,
+	// then it can fix the cycle.
+	//
+	// ---O
+	// =|=|=|
+	//  O | O
+	//    O--
+
 	struct Pin {
 		// index to the pin in this constraint
 		Index idx;
@@ -149,14 +175,17 @@ struct Router {
 	
 	// Finish building the constraint graph, filling out vcon and hcon.
 	void delRoute(int route);
-	void buildPinConstraints(const Tech &tech);
+	void buildPinConstraints(const Tech &tech, int level=1);
 	void buildViaConstraints(const Tech &tech);
 	void buildRoutes();
+	void buildPinBounds();
 	void findCycles(vector<vector<int> > &cycles);
 	void breakRoute(int route, set<int> cycleRoutes);
 	void breakCycles(vector<vector<int> > cycles);
 	void findAndBreakPinCycles();
 	void findAndBreakViaCycles();
+	void buildPins(const Tech &tech);
+	void updatePinPos(int p = 0, int n = 0);
 	int alignPins(int maxDist = -1);
 	void drawRoutes(const Tech &tech);
 	void buildRouteConstraints(const Tech &tech, bool allowOverCell=true);
@@ -169,7 +198,7 @@ struct Router {
 	void buildPOffsets(const Tech &tech, vector<int> start=vector<int>());
 	void buildNOffsets(const Tech &tech, vector<int> start=vector<int>());
 	void assignRouteConstraints(const Tech &tech);
-	void lowerRoutes();
+	void lowerRoutes(const Tech &tech, int window=0);
 	void updateRouteConstraints(const Tech &tech);
 	int computeCost();
 
