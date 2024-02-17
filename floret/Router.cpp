@@ -856,11 +856,12 @@ void Router::buildPins(const Tech &tech) {
 		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
 			Pin &curr = base->stack[type].pins[i];
 
-			curr.width = base->pinWidth(tech, Index(type, i));
-			curr.height = base->pinHeight(Index(type, i));
-
+			curr.pinToPin.clear();
 			curr.pinLayout.clear();
 			curr.conLayout.clear();
+
+			curr.width = base->pinWidth(tech, Index(type, i));
+			curr.height = base->pinHeight(Index(type, i));
 
 			drawPin(tech, curr.pinLayout, base, base->stack[type], i);
 			drawViaStack(tech, curr.conLayout, curr.outNet, curr.layer, 2, vec2i(0, 0), vec2i(0,0), vec2i(0,0));
@@ -875,6 +876,15 @@ void Router::buildPins(const Tech &tech) {
 					printf("error: no offset found at pin (%d,%d)\n", type, i);
 				}
 			}
+		}
+	}
+}
+
+void Router::buildHorizConstraints(const Tech &tech) {
+	for (int type = 0; type < 2; type++) {
+		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
+			base->stack[type].pins[i].pinToVia.clear();
+			base->stack[type].pins[i].viaToPin.clear();
 		}
 	}
 
@@ -912,8 +922,6 @@ void Router::buildPins(const Tech &tech) {
 			}
 		}
 	}
-
-	updatePinPos();
 }
 
 void Router::updatePinPos(int p, int n) {
@@ -1080,7 +1088,7 @@ int Router::alignPins(int maxDist) {
 		}
 		matches++;
 
-		updatePinPos(curr.pin[Model::PMOS], curr.pin[Model::NMOS]);
+		updatePinPos();//curr.pin[Model::PMOS], curr.pin[Model::NMOS]);
 
 		for (int i = (int)align.size()-1; i >= 0; i--) {
 			if (align[i].conflictsWith(curr)) {
@@ -1647,7 +1655,10 @@ int Router::computeCost() {
 
 int Router::solve(const Tech &tech) {
 	buildPins(tech);
+	buildHorizConstraints(tech);
+	updatePinPos();
 	alignPins(200);
+	updatePinPos();
 	buildPinConstraints(tech, 0);
 	buildViaConstraints(tech);
 	buildRoutes();
@@ -1657,21 +1668,22 @@ int Router::solve(const Tech &tech) {
 	resetGraph(tech);
 	assignRouteConstraints(tech);
 	buildPinBounds();
-	alignPins(200);
+	//alignPins(200);
 	updatePinPos();
 	
-	/*for (int i = 0; i < 10; i++) {	
-		buildPinConstraints(tech);
+	//for (int i = 0; i < 10; i++) {	
+	/*	buildPinConstraints(tech);
 		buildViaConstraints(tech);
-		//drawRoutes(tech);	
-		//lowerRoutes(tech);
+		drawRoutes(tech);	
+		lowerRoutes(tech);
 		drawRoutes(tech);
 		buildRouteConstraints(tech);
 		resetGraph(tech);
 		assignRouteConstraints(tech);
 		buildPinBounds();
 		alignPins(200);
-	}*/
+		updatePinPos();*/
+	//}
 
 	drawRoutes(tech);
 	// TODO(edward.bingham) The route placement should start at the center and
