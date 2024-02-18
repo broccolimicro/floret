@@ -1670,7 +1670,15 @@ int Router::solve(const Tech &tech) {
 	buildPinBounds();
 	//alignPins(200);
 	updatePinPos();
-	
+
+	/*lowerRoutes(tech);
+	drawRoutes(tech);
+	buildRouteConstraints(tech);
+	resetGraph(tech);
+	assignRouteConstraints(tech);
+	buildPinBounds();
+	updatePinPos();*/
+
 	//for (int i = 0; i < 10; i++) {	
 	/*	buildPinConstraints(tech);
 		buildViaConstraints(tech);

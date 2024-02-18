@@ -135,14 +135,9 @@ void drawViaStack(const Tech &tech, Layout &dst, int net, int downLevel, int upL
 }
 
 void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wire, vec2i pos, vec2i dir) {
-	int prevPos = 0;
-	Layout prevLayout;
-	Layout nextLayout;
-	Layout levelLayout;
 	for (int i = 0; i < (int)tech.vias.size(); i++) {
-		bool nextToDraw = false;
-		int from = 0;
-		int to = 0;
+		vector<Layout> vias;
+		vias.reserve(wire.pins.size());
 
 		int height = 0;
 		for (int j = 0; j < (int)wire.pins.size(); j++) {
@@ -153,16 +148,7 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 			int wireLow = min(nextLevel, prevLevel);
 			int wireHigh = max(nextLevel, prevLevel);
 
-			int viaPos = pin.pos;
-			// TODO(edward.bingham) push the via down the route as
-			// needed to satisfy via constraints, then route the
-			// associated pin down the route as well.
-			if (viaPos > wire.pins[j].right) {
-				viaPos = wire.pins[j].right;
-			}
-			if (viaPos < wire.pins[j].left) {
-				viaPos = wire.pins[j].left;
-			}
+			int viaPos = clamp(pin.pos, wire.pins[j].left, wire.pins[j].right);
 			if (wire.pins[j].left > wire.pins[j].right) {
 				printf("error: pin violation on pin %d\n", j);
 				printf("pinPos=%d left=%d right=%d viaPos=%d\n", pin.pos, wire.pins[j].left, wire.pins[j].right, viaPos);
@@ -174,6 +160,8 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 			    (wireLow <= tech.vias[i].downLevel and pinLevel >= tech.vias[i].upLevel)) {
 				int pinLayer = tech.wires[pinLevel].draw;
 				int width = tech.paint[pinLayer].minWidth;
+				dst.push(tech.wires[pinLevel], Rect(wire.net, vec2i(pin.pos, 0), vec2i(viaPos, width)));
+
 				vec2i axis(0,0);
 				/*if (wireLow <= tech.vias[i].downLevel and wireHigh >= tech.vias[i].downLevel and j > 0 and j < (int)wire.pins.size()-1) {
 					axis[0] = 0;
@@ -182,61 +170,51 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 					axis[1] = 0;
 				}*/
 
-				drawVia(tech, nextLayout, wire.net, i, axis, vec2i(width, height));
-				if (j != 0) {
-					//printf("mid pin.pos=%d from=%d to=%d nextToDraw=%d\n", pin.pos, from, to, nextToDraw);
-					int off = 0;
-					if (not minOffset(&off, tech, 0, prevLayout.layers, 0, nextLayout.layers, 0, false) or viaPos-prevPos >= off) {
-						//printf("\tconflict pinOff=%d off=%d nextToDraw=%d\n", pin.pos-prevPos, off, nextToDraw);
-						if (nextToDraw) {
-							//printf("drawing %d -> %d\n", from, to);
-							drawVia(tech, levelLayout, wire.net, i, axis, vec2i(to-from, height), vec2i(from, 0));
-						}
-						nextToDraw = false;
-					} else {
-						//printf("\tmerge pinOff=%d off=%d nextToDraw=%d\n", pin.pos-prevPos, off, nextToDraw);
-					}
+				Layout next;
+				drawVia(tech, next, wire.net, i, axis, vec2i(width, height), vec2i(viaPos, 0));
+				int off = numeric_limits<int>::min();
+				if (not vias.empty() and minOffset(&off, tech, 0, vias.back().layers, 0, next.layers, 0, Layout::IGNORE, Layout::DEFAULT) and off > 0) {
+					Rect box = vias.back().box.bound(next.box);
+					vias.back().clear();
+					drawVia(tech, vias.back(), wire.net, i, axis, vec2i(box.ur[0]-box.ll[0], height), vec2i(box.ll[0], 0));
 				} else {
-					//printf("first pin.pos=%d from=%d to=%d nextToDraw=%d\n", pin.pos, from, to, nextToDraw);
-				}
-				prevLayout = nextLayout;
-				prevPos = viaPos;
-				nextLayout.clear();
+					if (j > 0) {
+						const Pin &prev = ckt->pin(wire.pins[j-1].idx);
 
-				if (not nextToDraw) {
-					nextToDraw = true;
-					from = viaPos;
+						int prevLayer = tech.wires[prevLevel].draw;
+						int height = tech.paint[prevLayer].minWidth;
+						vec2i ll = pos+vec2i(prev.pos, 0)*dir;
+						if (vias.empty()) {
+							vias.push_back(Layout());
+						} else {
+							ll = pos+vec2i(vias.back().box.ur[0],0)*dir;
+						}
+						vec2i ur = pos+vec2i(next.box.ll[0],height)*dir;
+						vias.back().box.bound(ll, ur);
+						vias.back().push(tech.wires[prevLevel], Rect(wire.net, ll, ur));
+					}
+
+					vias.push_back(next);
 				}
-				to = viaPos + width;
+			} else if (j > 0) {
+				const Pin &prev = ckt->pin(wire.pins[j-1].idx);
+				int prevLayer = tech.wires[prevLevel].draw;
+				int height = tech.paint[prevLayer].minWidth;
+				vec2i ll = pos+vec2i(prev.pos, 0)*dir;
+				if (vias.empty()) {
+					vias.push_back(Layout());
+				} else {
+					ll = pos+vec2i(vias.back().box.ur[0],0)*dir;
+				}
+				vec2i ur = pos+vec2i(pin.pos,height)*dir;
+				vias.back().box.bound(ll, ur);
+				vias.back().push(tech.wires[prevLevel], Rect(wire.net, ll, ur));
 			}
 		}
 
-		vec2i axis(0,0);
-		//printf("last from=%d to=%d nextToDraw=%d\n", from, to, nextToDraw);
-		if (nextToDraw) {
-			//printf("drawing %d -> %d\n", from, to);
-			drawVia(tech, levelLayout, wire.net, i, axis, vec2i(to-from, height), vec2i(from, 0));
+		for (int i = 0; i < (int)vias.size(); i++) {
+			drawLayout(dst, vias[i], pos, dir);
 		}
-
-		drawLayout(dst, levelLayout, pos, dir);
-		levelLayout.clear();
-	}
-
-	for (int i = 0; i < (int)wire.pins.size()-1; i++) {
-		const Pin &pin = ckt->pin(wire.pins[i].idx);
-		const Pin &next = ckt->pin(wire.pins[i+1].idx);
-		int pinLevel = next.layer;
-		int pinLayer = tech.wires[pinLevel].draw;
-		int width = tech.paint[pinLayer].minWidth;
-
-		int wireLevel = wire.getLevel(i);
-		int wireLayer = tech.wires[wireLevel].draw;
-		int height = tech.paint[wireLayer].minWidth;
-
-		vec2i ll = pos+vec2i(pin.pos,0)*dir;
-		vec2i ur = pos+vec2i(next.pos+width,height)*dir;
-		dst.box.bound(ll, ur);
-		dst.push(tech.wires[wireLevel], Rect(wire.net, ll, ur));
 	}
 
 	// This would draw the vias without merging them
