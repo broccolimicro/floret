@@ -115,14 +115,8 @@ Pin::Pin(int device, int outNet, int leftNet, int rightNet) {
 Pin::~Pin() {
 }
 
-void Pin::addOffset(int type, Index pin, int value) {
-	pair<Index, int> n(pin, value);
-	auto result = (
-		type == Pin::PINTOPIN ? pinToPin.insert(n) : (
-			type == Pin::PINTOVIA ? pinToVia.insert(n) :
-			viaToPin.insert(n)
-		)
-	);
+void Pin::offsetToPin(Index pin, int value) {
+	auto result = toPin.insert(pair<Index, int>(pin, value));
 	if (not result.second) {
 		result.first->second = max(result.first->second, value);
 	}
@@ -142,6 +136,20 @@ Contact::Contact(Index idx) {
 }
 
 Contact::~Contact() {
+}
+
+void Contact::offsetFromPin(Index pin, int value) {
+	auto result = fromPin.insert(pair<Index, int>(pin, value));
+	if (not result.second) {
+		result.first->second = max(result.first->second, value);
+	}
+}
+
+void Contact::offsetToPin(Index pin, int value) {
+	auto result = toPin.insert(pair<Index, int>(pin, value));
+	if (not result.second) {
+		result.first->second = max(result.first->second, value);
+	}
 }
 
 bool operator<(const Contact &c0, const Contact &c1) {
@@ -314,7 +322,7 @@ void Stack::draw(const Tech &tech, Layout &dst) {
 	dst.clear();
 	// Draw the stacks
 	for (int i = 0; i < (int)pins.size(); i++) {
-		drawLayout(dst, pins[i].pinLayout, vec2i(pins[i].pos, 0), vec2i(1, type == Model::NMOS ? -1 : 1));
+		drawLayout(dst, pins[i].layout, vec2i(pins[i].pos, 0), vec2i(1, type == Model::NMOS ? -1 : 1));
 	}
 }
 

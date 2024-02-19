@@ -87,8 +87,7 @@ struct Pin {
 	//-------------------------------
 	// Layout Information
 	//-------------------------------
-	Layout pinLayout;
-	Layout conLayout;
+	Layout layout;
 	int layer;
 	int width;
 	int height;
@@ -99,33 +98,13 @@ struct Pin {
 	// <from, offset>
 	// |==|==|
 	//  ---->
-	//     ->
-	map<Index, int> pinToPin;
-	
-	// <from, offset>
-	// |==|==|
-	//       O
-	//  ---->
-	//     ->
-	map<Index, int> pinToVia;
-
-	// <from, offset>
-	// |==|==|
-	// O  O
-	//  ---->
-	//     ->
-	map<Index, int> viaToPin;
+	//  ->
+	map<Index, int> toPin;
 	int pos; // current absolute position, computed from off, pin alignment, via constraints
 	int lo;
 	int hi;
 
-	enum {
-		PINTOPIN = 0,
-		PINTOVIA = 1,
-		VIATOPIN = 2
-	};
-
-	void addOffset(int type, Index pin, int value);
+	void offsetToPin(Index pin, int value);
 };
 
 struct Contact {
@@ -137,6 +116,25 @@ struct Contact {
 	int level;
 	int left;
 	int right;
+
+	Layout layout;
+
+	// <from, offset>
+	// |==|==|
+	//       O
+	//  ---->
+	//     ->
+	map<Index, int> fromPin;
+
+	// <to, offset>
+	// |==|==|
+	// O
+	//  ---->
+	//  ->
+	map<Index, int> toPin;
+
+	void offsetFromPin(Index Pin, int value);
+	void offsetToPin(Index Pin, int value);
 };
 
 bool operator<(const Contact &c0, const Contact &c1);

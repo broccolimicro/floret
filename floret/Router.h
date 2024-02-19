@@ -185,8 +185,9 @@ struct Router {
 	void findAndBreakPinCycles();
 	void findAndBreakViaCycles();
 	void buildPins(const Tech &tech);
+	void buildContacts(const Tech &tech);
 	void buildHorizConstraints(const Tech &tech);
-	void updatePinPos(int p = 0, int n = 0);
+	void updatePinPos();
 	int alignPins(int maxDist = -1);
 	void drawRoutes(const Tech &tech);
 	void buildRouteConstraints(const Tech &tech, bool allowOverCell=true);

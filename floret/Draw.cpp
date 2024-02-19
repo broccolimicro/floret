@@ -171,6 +171,7 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 				}*/
 
 				Layout next;
+				//drawLayout(next, wire.pins[j].layout, vec2i(viaPos, 0));
 				drawVia(tech, next, wire.net, i, axis, vec2i(width, height), vec2i(viaPos, 0));
 				int off = numeric_limits<int>::min();
 				if (not vias.empty() and minOffset(&off, tech, 0, vias.back().layers, 0, next.layers, 0, Layout::IGNORE, Layout::DEFAULT) and off > 0) {
