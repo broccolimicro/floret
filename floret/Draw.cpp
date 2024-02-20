@@ -1,5 +1,18 @@
 #include "Draw.h"
 
+void drawDiffusion(const Tech &tech, Layout &dst, int model, int net, vec2i ll, vec2i ur, vec2i dir) {
+	for (int i = 0; i < (int)tech.models[model].paint.size(); i++) {
+		if (i != 0) {
+			ll -= tech.models[model].paint[i].overhang*dir;
+			ur += tech.models[model].paint[i].overhang*dir;
+		}
+		if (i == 0) {
+			dst.box.bound(ll, ur);
+		}
+		dst.push(tech.models[model].paint[i], Rect(-1, ll, ur));
+	}
+}
+
 void drawTransistor(const Tech &tech, Layout &dst, const Mos &mos, bool flip, vec2i pos, vec2i dir) {
 	vec2i ll = pos;
 	vec2i ur = pos + mos.size*dir;

@@ -155,6 +155,15 @@ struct RouteConstraint {
 	int off[2];
 };
 
+struct RouteGroupConstraint {
+	RouteGroupConstraint();
+	RouteGroupConstraint(int wire, Index pin);
+	~RouteGroupConstraint();
+
+	int wire;
+	Index pin;
+};
+
 struct Router {
 	Router();
 	Router(Circuit *base);

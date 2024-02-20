@@ -318,11 +318,23 @@ void Stack::push(const Circuit *ckt, int device, bool flip) {
 	}
 }
 
-void Stack::draw(const Tech &tech, Layout &dst) {
+void Stack::draw(const Tech &tech, const Circuit *base, Layout &dst) {
 	dst.clear();
 	// Draw the stacks
 	for (int i = 0; i < (int)pins.size(); i++) {
-		drawLayout(dst, pins[i].layout, vec2i(pins[i].pos, 0), vec2i(1, type == Model::NMOS ? -1 : 1));
+		vec2i dir = vec2i(1, type == Model::NMOS ? -1 : 1);
+		drawLayout(dst, pins[i].layout, vec2i(pins[i].pos, 0), dir);
+		if (i > 0 and (pins[i].device >= 0 or pins[i-1].device >= 0)) {
+			int height = min(pins[i].height, pins[i-1].height);
+			int model = -1;
+			if (pins[i].device >= 0) {
+				model = base->mos[pins[i].device].model;
+			} else {
+				model = base->mos[pins[i-1].device].model;
+			}
+
+			drawDiffusion(tech, dst, model, -1, vec2i(pins[i-1].pos, 0), vec2i(pins[i].pos, height)*dir, dir);
+		}
 	}
 }
 

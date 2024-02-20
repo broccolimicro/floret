@@ -1173,7 +1173,7 @@ void Router::drawRoutes(const Tech &tech) {
 		if (routes[i].net >= 0) {
 			drawWire(tech, routes[i].layout, base, routes[i]);
 		} else {
-			base->stack[flip(routes[i].net)].draw(tech, routes[i].layout);
+			base->stack[flip(routes[i].net)].draw(tech, base, routes[i].layout);
 		}
 	}
 }
@@ -1738,7 +1738,7 @@ int Router::solve(const Tech &tech) {
 	updatePinPos();
 	drawRoutes(tech);
 
-	for (int i = 0; i < 5; i++) {
+	/*for (int i = 0; i < 5; i++) {
 		lowerRoutes(tech);
 		buildContacts(tech);
 		buildHorizConstraints(tech);
@@ -1752,7 +1752,7 @@ int Router::solve(const Tech &tech) {
 		buildPinBounds();
 		updatePinPos();
 		drawRoutes(tech);
-	}
+	}*/
 
 	// TODO(edward.bingham) The route placement should start at the center and
 	// work it's way toward the bottom and top of the cell instead of starting at

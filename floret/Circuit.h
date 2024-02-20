@@ -202,7 +202,7 @@ struct Stack {
 	int route;
 	
 	void push(const Circuit *ckt, int device, bool flip);
-	void draw(const Tech &tech, Layout &dst);
+	void draw(const Tech &tech, const Circuit *base, Layout &dst);
 };
 
 struct Circuit {
