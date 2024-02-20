@@ -957,7 +957,7 @@ void Router::updatePinPos() {
 		}
 	} else if (base->stack[0].pins.size() > 0) {
 		stack.push_back(Index(0, 0));
-	} else {
+	} else if (base->stack[1].pins.size() > 0) {
 		stack.push_back(Index(1, 0));
 	}
 
