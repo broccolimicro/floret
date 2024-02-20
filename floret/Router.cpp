@@ -1571,7 +1571,9 @@ void Router::assignRouteConstraints(const Tech &tech) {
 			int label0 = routes[routeConstraints[index].wires[0]].pOffset + routes[routeConstraints[index].wires[1]].nOffset + routeConstraints[index].off[0];
 			int label1 = routes[routeConstraints[index].wires[1]].pOffset + routes[routeConstraints[index].wires[0]].nOffset + routeConstraints[index].off[1];
 
-			if (label0 < label1) {
+			// DESIGN(edward.bingham) this randomization implements gradient descent
+			// for the route lowering algorithm
+			if (label0 < label1 or (label0 == label1 and (rand()&1))) {
 				routeConstraints[index].select = 0;
 				inTokens.push_back(routeConstraints[index].wires[0]);
 				outTokens.push_back(routeConstraints[index].wires[1]);
