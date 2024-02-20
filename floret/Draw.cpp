@@ -124,7 +124,9 @@ void drawViaStack(const Tech &tech, Layout &dst, int net, int downLevel, int upL
 	if (downLevel == upLevel) {
 		int layer = tech.wires[downLevel].draw;
 		int width = tech.paint[layer].minWidth;
-		dst.push(tech.wires[downLevel], Rect(net, pos, pos+max(size, width)*dir));
+		size[0] = max(size[0], width);
+		size[1] = max(size[1], width);
+		dst.push(tech.wires[downLevel], Rect(net, pos, pos+size*dir));
 		return;
 	}
 
@@ -154,6 +156,7 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 				printf("pinPos=%d left=%d right=%d viaPos=%d\n", pin.pos, wire.pins[j].left, wire.pins[j].right, viaPos);
 			}
 
+			//drawLayout(dst, wire.pins[j].layout, pos+vec2i(viaPos, 0)*dir, dir);
 			int wireLayer = tech.wires[nextLevel].draw;
 			height = tech.paint[wireLayer].minWidth;
 			if ((pinLevel <= tech.vias[i].downLevel and wireHigh >= tech.vias[i].upLevel) or
@@ -163,15 +166,14 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 				dst.push(tech.wires[pinLevel], Rect(wire.net, vec2i(pin.pos, 0), vec2i(viaPos, width)));
 
 				vec2i axis(0,0);
-				/*if (wireLow <= tech.vias[i].downLevel and wireHigh >= tech.vias[i].downLevel and j > 0 and j < (int)wire.pins.size()-1) {
-					axis[0] = 0;
-				}
-				if (wireLow <= tech.vias[i].upLevel and wireHigh >= tech.vias[i].upLevel and j > 0 and j < (int)wire.pins.size()-1) {
-					axis[1] = 0;
-				}*/
+				//if (wireLow <= tech.vias[i].downLevel and wireHigh >= tech.vias[i].downLevel and j > 0 and j < (int)wire.pins.size()-1) {
+				//	axis[0] = 0;
+				//}
+				//if (wireLow <= tech.vias[i].upLevel and wireHigh >= tech.vias[i].upLevel and j > 0 and j < (int)wire.pins.size()-1) {
+				//	axis[1] = 0;
+				//}
 
 				Layout next;
-				//drawLayout(next, wire.pins[j].layout, vec2i(viaPos, 0));
 				drawVia(tech, next, wire.net, i, axis, vec2i(width, height), vec2i(viaPos, 0));
 				int off = numeric_limits<int>::min();
 				if (not vias.empty() and minOffset(&off, tech, 0, vias.back().layers, 0, next.layers, 0, Layout::IGNORE, Layout::DEFAULT) and off > 0) {
@@ -217,11 +219,6 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 			drawLayout(dst, vias[i], pos, dir);
 		}
 	}
-
-	// This would draw the vias without merging them
-	//for (auto pin = wire.pins.begin(); pin != wire.pins.end(); pin++) {
-	//	drawLayout(dst, ckt->pin(*pin).conLayout, vec2i(ckt->pin(*pin).pos, ll[1]), dir);
-	//}
 }
 
 /*void drawRoutes(const Tech &tech, Layout &dst, const Circuit *ckt, vec2i pos, vec2i dir) {

@@ -871,10 +871,7 @@ void Router::buildContacts(const Tech &tech) {
 
 		for (int j = 0; j < (int)routes[i].pins.size(); j++) {
 			Pin &pin = base->pin(routes[i].pins[j].idx);
-			int level = routes[i].pins[j].level;
-			if (j > 0 and routes[i].pins[j-1].level > level) {
-				level = routes[i].pins[j-1].level;
-			}
+			int level = max(routes[i].getLevel(j), routes[i].getLevel(j-1));
 
 			routes[i].pins[j].layout.clear();
 			drawViaStack(tech, routes[i].pins[j].layout, routes[i].net, pin.layer, level, vec2i(0, 0), vec2i(0,0), vec2i(0,0));
@@ -883,7 +880,7 @@ void Router::buildContacts(const Tech &tech) {
 }
 
 void Router::buildHorizConstraints(const Tech &tech) {
-	for (int type = 0; type < 3; type++) {
+	for (int type = 0; type < (int)base->stack[type].pins.size(); type++) {
 		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
 			base->stack[type].pins[i].toPin.clear();
 		}
@@ -974,6 +971,7 @@ void Router::updatePinPos() {
 			Pin &next = base->pin(off->first);
 			int pos = pin.pos+off->second;
 			if (next.pos < pos) {
+				printf("pinToPin (%d,%d)->%d->(%d,%d) %d->%d\n", curr.type, curr.pin, off->second, off->first.type, off->first.pin, next.pos, pos);
 				next.pos = pos;
 				stack.push_back(off->first);
 			}
@@ -991,9 +989,11 @@ void Router::updatePinPos() {
 				if (pin.align >= 0) {
 					Pin &align = base->stack[1-type].pins[pin.align];
 					if (pin.pos < align.pos) {
+						printf("pinAlign (%d,%d)--(%d,%d) %d->%d\n", type, i, 1-type, pin.align, pin.pos, align.pos);
 						pin.pos = align.pos;
 						stack.push_back(Index(type, i));
 					} else if (align.pos < pin.pos) {
+						printf("pinAlign (%d,%d)--(%d,%d) %d->%d\n", 1-type, pin.align, type, i, align.pos, pin.pos);
 						align.pos = pin.pos;
 						stack.push_back(Index(1-type, pin.align));
 					}
@@ -1020,6 +1020,7 @@ void Router::updatePinPos() {
 					if (prev.pos < pin.pos and routes[i].pOffset >= prev.lo and routes[i].pOffset <= prev.hi) {
 						int pos = prev.pos+off->second;
 						if (routes[i].pins[j].left < pos) {
+							printf("pinToVia (%d,%d)->%d->(%d,%d) %d->%d\n", off->first.type, off->first.pin, off->second, i, j, routes[i].pins[j].left, pos);
 							routes[i].pins[j].left = pos;
 						}
 					}
@@ -1030,6 +1031,7 @@ void Router::updatePinPos() {
 					if (pin.pos < next.pos and routes[i].pOffset >= next.lo and routes[i].pOffset <= next.hi) {
 						int pos = routes[i].pins[j].left+off->second;
 						if (next.pos < pos) {
+							printf("viaToPin (%d,%d)->%d->(%d,%d) %d->%d\n", i, j, off->second, off->first.type, off->first.pin, next.pos, pos);
 							next.pos = pos;
 							stack.push_back(off->first);
 						}
@@ -1168,12 +1170,10 @@ void Router::drawRoutes(const Tech &tech) {
 
 	// Draw the routes
 	for (int i = 0; i < (int)routes.size(); i++) {
-		if (routes[i].layout.layers.empty()) {
-			if (routes[i].net >= 0) {
-				drawWire(tech, routes[i].layout, base, routes[i]);
-			} else {
-				base->stack[flip(routes[i].net)].draw(tech, routes[i].layout);
-			}
+		if (routes[i].net >= 0) {
+			drawWire(tech, routes[i].layout, base, routes[i]);
+		} else {
+			base->stack[flip(routes[i].net)].draw(tech, routes[i].layout);
 		}
 	}
 }
@@ -1718,7 +1718,7 @@ int Router::solve(const Tech &tech) {
 	buildPins(tech);
 	buildHorizConstraints(tech);
 	updatePinPos();
-	//alignPins(-1);
+	alignPins(200);
 	buildPinConstraints(tech, 0);
 	//buildViaConstraints(tech);
 	buildRoutes();
@@ -1736,34 +1736,22 @@ int Router::solve(const Tech &tech) {
 	updatePinPos();
 	drawRoutes(tech);
 
-	lowerRoutes(tech);
-	buildContacts(tech);
-	//buildHorizConstraints(tech);
-	/*updatePinPos();
-	drawRoutes(tech);*/
-
-	/*buildRouteConstraints(tech);
-	resetGraph(tech);
-	assignRouteConstraints(tech);
-	buildPinBounds();
-	updatePinPos();
-	drawRoutes(tech);*/
-
-	//for (int i = 0; i < 10; i++) {	
-	/*	buildPinConstraints(tech);
-		buildViaConstraints(tech);
-		drawRoutes(tech);	
+	for (int i = 0; i < 5; i++) {
 		lowerRoutes(tech);
+		buildContacts(tech);
+		buildHorizConstraints(tech);
+		updatePinPos();
+		print();
 		drawRoutes(tech);
+
 		buildRouteConstraints(tech);
 		resetGraph(tech);
 		assignRouteConstraints(tech);
 		buildPinBounds();
-		alignPins(200);
-		updatePinPos();*/
-	//}
+		updatePinPos();
+		drawRoutes(tech);
+	}
 
-	drawRoutes(tech);
 	// TODO(edward.bingham) The route placement should start at the center and
 	// work it's way toward the bottom and top of the cell instead of starting at
 	// the bottom and working it's way to the top. This would make the cell more
@@ -1840,16 +1828,16 @@ void Router::print() {
 	}
 
 	for (int i = 0; i < (int)routes.size(); i++) {
-		printf("route %d ", i);
+		printf("route %d\n", i);
 		for (int j = 0; j < (int)routes[i].pins.size(); j++) {
-			printf("%d{", j);
+			printf("\t(%d,%d) {", routes[i].pins[j].idx.type, routes[i].pins[j].idx.pin);
 			for (auto k = routes[i].pins[j].fromPin.begin(); k != routes[i].pins[j].fromPin.end(); k++) {
-				printf("(%d %d)->%d ", k->first.type, k->first.pin, k->second);
+				printf("(%d,%d)->%d ", k->first.type, k->first.pin, k->second);
 			}
 			for (auto k = routes[i].pins[j].toPin.begin(); k != routes[i].pins[j].toPin.end(); k++) {
-				printf("%d->(%d %d) ", k->second, k->first.type, k->first.pin);
+				printf("%d->(%d,%d) ", k->second, k->first.type, k->first.pin);
 			}
-			printf("} ");
+			printf("}\n");
 		}
 		printf("\n");
 	}
