@@ -53,6 +53,18 @@ ViaConstraint::ViaConstraint(Index idx) {
 ViaConstraint::~ViaConstraint() {
 }
 
+RouteGroupConstraint::RouteGroupConstraint() {
+	wire = -1;
+}
+
+RouteGroupConstraint::RouteGroupConstraint(int wire, Index pin) {
+	this->wire = wire;
+	this->pin = pin;
+}
+
+RouteGroupConstraint::~RouteGroupConstraint() {
+}
+
 Router::Router() {
 	base = nullptr;
 	cycleCount = 0;
@@ -1211,6 +1223,71 @@ void Router::buildRouteConstraints(const Tech &tech, bool allowOverCell) {
 	}
 }
 
+void Router::buildGroupConstraints(const Tech &tech) {
+	groupConstraints.clear();
+
+	for (int i = 0; i < (int)routes.size(); i++) {
+		for (int type = 0; type < (int)base->stack.size(); type++) {
+			for (int j = 0; j < (int)base->stack[type].pins.size(); j++) {
+				auto pos = lower_bound(routes[i].pins.begin(), routes[i].pins.end(), Index(type, j), CompareIndex(base));
+				if (pos != routes[i].pins.end() and pos != routes[i].pins.begin()) {
+					pos--;
+					if (pos->idx != Index(type, j) and pos->level == base->stack[type].pins[j].layer) {
+						groupConstraints.push_back(RouteGroupConstraint(i, Index(type, j)));
+					}
+				}
+			}
+		}
+	}
+}
+
+set<int> Router::propagateRouteConstraint(int idx) {
+	set<int> result;
+	if (routeConstraints[idx].select < 0) {
+		return result;
+	}
+
+	// DESIGN(edward.bingham) If a route constraint implies some ordering that
+	// involves a route that participates in a group constraint, then it also
+	// implies the same ordering with all other routes that participate in that
+	// group constraint.
+	//
+	//  ----- ^ ^
+	//        | |
+	//  --O-- | v route constraint
+	//    |  <-   group constraint
+	//  --O--
+	for (int i = 0; i < (int)groupConstraints.size(); i++) {
+		int from[2] = {-1,-1};
+		if (groupConstraints[i].wire == routeConstraints[idx].wires[0]) {
+			from[0] = 0;
+		} else if (groupConstraints[i].wire == routeConstraints[idx].wires[1]) {
+			from[0] = 1;
+		}
+
+		if (from[0] >= 0 and routes[routeConstraints[idx].wires[1-from[0]]].hasPin(base, groupConstraints[i].pin)) {
+			for (int j = 0; j < (int)routeConstraints.size(); j++) {
+				if (j == idx or routeConstraints[j].select >= 0) {
+					continue;
+				}
+
+				from[1] = -1;
+				if (routeConstraints[j].wires[0] == groupConstraints[i].wire) {
+					from[1] = 0;
+				} else if (routeConstraints[j].wires[1] == groupConstraints[i].wire) {
+					from[1] = 1;
+				}
+
+				if (from[1] >= 0 and routes[routeConstraints[j].wires[1-from[1]]].hasPin(base, groupConstraints[i].pin)) {
+					routeConstraints[j].select = (from[0] == from[1] ? routeConstraints[idx].select : 1-routeConstraints[idx].select);
+					result.insert(j);
+				}
+			}
+		}
+	}
+	return result;
+}
+
 // make sure the graph is acyclic before running this
 vector<int> Router::findTop() {
 	for (int i = 0; i < (int)routeConstraints.size(); i++) {
@@ -1368,6 +1445,8 @@ void Router::buildPOffsets(const Tech &tech, vector<int> start) {
 	}
 
 	vector<vector<int> > tokens;
+	sort(start.begin(), start.end());
+	start.erase(unique(start.begin(), start.end()), start.end());
 	for (int i = 0; i < (int)start.size(); i++) {
 		tokens.push_back(vector<int>(1, start[i]));
 	}
@@ -1456,6 +1535,8 @@ void Router::buildNOffsets(const Tech &tech, vector<int> start) {
 	}
 
 	vector<vector<int> > tokens;
+	sort(start.begin(), start.end());
+	start.erase(unique(start.begin(), start.end()), start.end());
 	for (int i = 0; i < (int)start.size(); i++) {
 		tokens.push_back(vector<int>(1, start[i]));
 	}
@@ -1513,6 +1594,10 @@ void Router::assignRouteConstraints(const Tech &tech) {
 		// handle critical constraints, that would create cycles if assigned the wrong direction.
 		vector<int> inTokens, outTokens;
 		for (int u = (int)unassigned.size()-1; u >= 0; u--) {
+			if (routeConstraints[unassigned[u]].select >= 0) {
+				unassigned.erase(unassigned.begin()+u);
+				continue;
+			}
 			// TODO(edward.bingham) check via constraints. If this is a critical
 			// constraint that participates in a via constraint, and as a results
 			// both directions create a cycle, then we need to expand the via
@@ -1537,6 +1622,17 @@ void Router::assignRouteConstraints(const Tech &tech) {
 				inTokens.push_back(a);
 				outTokens.push_back(b);
 				unassigned.erase(unassigned.begin()+u);
+			}
+
+			// Propagate order decision through the group constraints
+			if (routeConstraints[i].select >= 0) {
+				set<int> prop = propagateRouteConstraint(i);
+				for (auto j = prop.begin(); j != prop.end(); j++) {
+					int from = routeConstraints[*j].select;
+					inTokens.push_back(routeConstraints[*j].wires[from]);
+					outTokens.push_back(routeConstraints[*j].wires[1-from]);
+					//unassigned.erase(remove(unassigned.begin(), unassigned.end(), *j), unassigned.end());
+				}
 			}
 
 			// TODO(edward.bingham) Did doing this create a cycle when we include violated via constraints? If so, we resolve that cycle by pushing the associated pins out as much as needed.
@@ -1582,8 +1678,19 @@ void Router::assignRouteConstraints(const Tech &tech) {
 				inTokens.push_back(routeConstraints[index].wires[1]);
 				outTokens.push_back(routeConstraints[index].wires[0]);
 			}
-
 			unassigned.erase(unassigned.begin()+uindex);
+	
+			// Propagate order decision through the group constraints
+			if (routeConstraints[index].select >= 0) {
+				set<int> prop = propagateRouteConstraint(index);
+				for (auto j = prop.begin(); j != prop.end(); j++) {
+					int from = routeConstraints[*j].select;
+					inTokens.push_back(routeConstraints[*j].wires[from]);
+					outTokens.push_back(routeConstraints[*j].wires[1-from]);
+					//unassigned.erase(remove(unassigned.begin(), unassigned.end(), *j), unassigned.end());
+				}
+			}
+
 			buildPOffsets(tech, inTokens);
 			buildNOffsets(tech, outTokens);
 			continue;
@@ -1738,7 +1845,7 @@ int Router::solve(const Tech &tech) {
 	updatePinPos();
 	drawRoutes(tech);
 
-	/*for (int i = 0; i < 5; i++) {
+	for (int i = 0; i < 3; i++) {
 		lowerRoutes(tech);
 		buildContacts(tech);
 		buildHorizConstraints(tech);
@@ -1746,13 +1853,14 @@ int Router::solve(const Tech &tech) {
 		print();
 		drawRoutes(tech);
 
+		buildGroupConstraints(tech);
 		buildRouteConstraints(tech);
 		resetGraph(tech);
 		assignRouteConstraints(tech);
 		buildPinBounds();
 		updatePinPos();
 		drawRoutes(tech);
-	}*/
+	}
 
 	// TODO(edward.bingham) The route placement should start at the center and
 	// work it's way toward the bottom and top of the cell instead of starting at

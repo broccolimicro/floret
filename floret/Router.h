@@ -175,6 +175,7 @@ struct Router {
 	vector<PinConstraint> pinConstraints;
 	vector<RouteConstraint> routeConstraints;
 	vector<ViaConstraint> viaConstraints;
+	vector<RouteGroupConstraint> groupConstraints;
 
 	vector<Wire> routes;
 
@@ -200,6 +201,8 @@ struct Router {
 	int alignPins(int maxDist = -1);
 	void drawRoutes(const Tech &tech);
 	void buildRouteConstraints(const Tech &tech, bool allowOverCell=true);
+	void buildGroupConstraints(const Tech &tech);
+	set<int> propagateRouteConstraint(int idx);
 	vector<int> findTop();
 	vector<int> findBottom();
 	void zeroWeights();

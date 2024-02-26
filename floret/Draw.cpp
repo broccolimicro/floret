@@ -234,39 +234,6 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 	}
 }
 
-/*void drawRoutes(const Tech &tech, Layout &dst, const Circuit *ckt, vec2i pos, vec2i dir) {
-	//printf("drawing route %d\n", wire.pOffset);
-	drawLayout(dst, wire.layout, vec2i(0, wire.pOffset)*dir, dir);
-
-	for (int type = 0; type < ckt->stack.size(); type++) {
-		for (int i = 0; i < (int)ckt->routes.size(); i++) {
-		}
-	}
-	for (int i = 0; i < (int)wire.pins.size(); i++) {
-		const Pin &pin = ckt->pin(wire.pins[i]);
-		int wireLevel = wire.getLevel(i);
-		int wireLayer = tech.wires[wireLevel].draw;
-		int height = tech.paint[wireLayer].minWidth;
-
-		int pinLevel = pin.layer;
-		int pinLayer = tech.wires[pinLevel].draw;
-		int width = tech.paint[pinLayer].minWidth;
-
-		int pinMid = 0;
-		if (wire.pins[i].type == Model::NMOS) {
-			pinMid = ckt->cellHeight;
-		} else if (wire.pins[i].type == 2) {
-			pinMid = ckt->cellHeight/2;
-		}
-
-		int top = max(pinMid, wire.pOffset+height);
-		int bottom = min(pinMid, wire.pOffset);
-
-		//printf("rect %d %d %d %d,%d %d,%d\n", pin->type, layer, wire.net, left, bottom, right, top);
-		dst.push(tech.wires[pinLevel], Rect(wire.net, vec2i(pin.pos, bottom), vec2i(pin.pos+width, top)));
-	}
-}*/
-
 void drawPin(const Tech &tech, Layout &dst, const Circuit *ckt, const Stack &stack, int pinID, vec2i pos, vec2i dir) {
 	pos[0] += stack.pins[pinID].pos;
 	if (stack.pins[pinID].device < 0) {
