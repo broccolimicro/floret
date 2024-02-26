@@ -1230,9 +1230,9 @@ void Router::buildGroupConstraints(const Tech &tech) {
 		for (int type = 0; type < (int)base->stack.size(); type++) {
 			for (int j = 0; j < (int)base->stack[type].pins.size(); j++) {
 				auto pos = lower_bound(routes[i].pins.begin(), routes[i].pins.end(), Index(type, j), CompareIndex(base));
-				if (pos != routes[i].pins.end() and pos != routes[i].pins.begin()) {
+				if (pos != routes[i].pins.end() and pos != routes[i].pins.begin() and pos->idx != Index(type, j)) {
 					pos--;
-					if (pos->idx != Index(type, j) and pos->level == base->stack[type].pins[j].layer) {
+					if (pos->level == base->stack[type].pins[j].layer) {
 						groupConstraints.push_back(RouteGroupConstraint(i, Index(type, j)));
 					}
 				}
@@ -1845,7 +1845,7 @@ int Router::solve(const Tech &tech) {
 	updatePinPos();
 	drawRoutes(tech);
 
-	for (int i = 0; i < 3; i++) {
+	for (int i = 0; i < 0; i++) {
 		lowerRoutes(tech);
 		buildContacts(tech);
 		buildHorizConstraints(tech);
@@ -1853,8 +1853,8 @@ int Router::solve(const Tech &tech) {
 		print();
 		drawRoutes(tech);
 
-		buildGroupConstraints(tech);
 		buildRouteConstraints(tech);
+		buildGroupConstraints(tech);
 		resetGraph(tech);
 		assignRouteConstraints(tech);
 		buildPinBounds();
