@@ -35,7 +35,7 @@ void drawTransistor(const Tech &tech, Layout &dst, const Mos &mos, bool flip, ve
 	}
 }
 
-void drawVia(const Tech &tech, Layout &dst, int net, int viaLevel, vec2i axis, vec2i size, vec2i pos, vec2i dir) {
+void drawVia(const Tech &tech, Layout &dst, int net, int viaLevel, vec2i axis, vec2i size, bool expand, vec2i pos, vec2i dir) {
 	int viaLayer = tech.vias[viaLevel].draw;
 	int downLevel = tech.vias[viaLevel].downLevel;
 	int upLevel = tech.vias[viaLevel].upLevel;
@@ -72,11 +72,13 @@ void drawVia(const Tech &tech, Layout &dst, int net, int viaLevel, vec2i axis, v
 		up.swap(0,1);
 	}
 
-	if (downLevel >= 0) {
-		dn = max(dn, off);
-	}
-	if (upLevel >= 0) {
-		up = max(up, off);
+	if (expand) {
+		if (downLevel >= 0) {
+			dn = max(dn, off);
+		}
+		if (upLevel >= 0) {
+			up = max(up, off);
+		}
 	}
 
 	// draw down
@@ -145,7 +147,7 @@ void drawViaStack(const Tech &tech, Layout &dst, int net, int downLevel, int upL
 
 	vector<int> vias = tech.findVias(downLevel, upLevel);
 	for (int i = 0; i < (int)vias.size(); i++) {
-		drawVia(tech, dst, net, vias[i], axis, size, pos, dir);
+		drawVia(tech, dst, net, vias[i], axis, size, true, pos, dir);
 	}
 }
 
@@ -187,19 +189,18 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 				//}
 
 				Layout next;
-				drawVia(tech, next, wire.net, i, axis, vec2i(width, height), vec2i(viaPos, 0));
+				drawVia(tech, next, wire.net, i, axis, vec2i(width, height), false, vec2i(viaPos, 0));
 				int off = numeric_limits<int>::min();
 				if (not vias.empty() and minOffset(&off, tech, 0, vias.back().layers, 0, next.layers, 0, Layout::IGNORE, Layout::DEFAULT) and off > 0) {
 					Rect box = vias.back().box.bound(next.box);
 					vias.back().clear();
-					drawVia(tech, vias.back(), wire.net, i, axis, vec2i(box.ur[0]-box.ll[0], height), vec2i(box.ll[0], 0));
+					drawVia(tech, vias.back(), wire.net, i, axis, vec2i(box.ur[0]-box.ll[0], height), false, vec2i(box.ll[0], 0));
 				} else {
-					if (j > 0) {
+					if (j > 0 and max(pinLevel, wireHigh) == tech.vias[i].upLevel) {
 						const Pin &prev = ckt->pin(wire.pins[j-1].idx);
 
-						int prevLayer = tech.wires[prevLevel].draw;
-						int height = tech.paint[prevLayer].minWidth;
-						vec2i ll = pos+vec2i(prev.pos, 0)*dir;
+						int height = tech.paint[tech.wires[prevLevel].draw].minWidth;
+						vec2i ll = pos+vec2i(max(prev.pos, wire.pins[j-1].left), 0)*dir;
 						if (vias.empty()) {
 							vias.push_back(Layout());
 						} else {
@@ -212,11 +213,11 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 
 					vias.push_back(next);
 				}
-			} else if (j > 0) {
+			} else if (j > 0 and prevLevel == nextLevel and nextLevel == pinLevel) {
 				const Pin &prev = ckt->pin(wire.pins[j-1].idx);
-				int prevLayer = tech.wires[prevLevel].draw;
-				int height = tech.paint[prevLayer].minWidth;
-				vec2i ll = pos+vec2i(prev.pos, 0)*dir;
+
+				int height = tech.paint[tech.wires[prevLevel].draw].minWidth;
+				vec2i ll = pos+vec2i(max(prev.pos, wire.pins[j-1].left), 0)*dir;
 				if (vias.empty()) {
 					vias.push_back(Layout());
 				} else {
