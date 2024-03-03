@@ -162,7 +162,14 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 		for (int j = 0; j < (int)wire.pins.size(); j++) {
 			const Pin &pin = ckt->pin(wire.pins[j].idx);
 
-			int viaPos = clamp(pin.pos, wire.pins[j].left, wire.pins[j].right);
+			int pinLevel = pin.layer;
+			int prevLevel = wire.getLevel(j-1);
+			int nextLevel = wire.getLevel(j);
+
+			int viaPos = pin.pos;
+			if (pinLevel != prevLevel or pinLevel != nextLevel) {
+				viaPos = clamp(viaPos, wire.pins[j].left, wire.pins[j].right);
+			}
 			if (wire.pins[j].left > wire.pins[j].right) {
 				printf("error: pin violation on pin %d\n", j);
 				printf("pinPos=%d left=%d right=%d viaPos=%d\n", pin.pos, wire.pins[j].left, wire.pins[j].right, viaPos);
