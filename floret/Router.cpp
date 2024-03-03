@@ -1720,33 +1720,19 @@ void Router::lowerRoutes(const Tech &tech, int window) {
 	// indexed by [route][pin]
 	vector<vector<set<int> > > blockedLevels(routes.size(), vector<set<int> >());
 	for (int i = 0; i < (int)routes.size(); i++) {
-		for (int j = i+1; j < (int)routes.size(); j++) {
-			for (int k = j+1; k < (int)routes.size(); k++) {
-				int lo = i, mid = j, hi = k;
-				if (routes[mid].pOffset < routes[lo].pOffset or (routes[mid].pOffset == routes[lo].pOffset and flip(routes[mid].net) == Model::PMOS)) { swap(lo, mid); }
-				if (routes[hi].pOffset < routes[mid].pOffset or (routes[hi].pOffset == routes[mid].pOffset and (flip(routes[mid].net) == Model::NMOS or flip(routes[hi].net) == Model::PMOS))) { swap(mid, hi); }
-				if (routes[mid].pOffset < routes[lo].pOffset or (routes[mid].pOffset == routes[lo].pOffset and flip(routes[mid].net) == Model::PMOS)) { swap(lo, mid); }
-
-				int i0 = 0, i1 = 0, i2 = 0;
-				while (i0 < (int)routes[lo].pins.size() and i1 < (int)routes[mid].pins.size() and i2 < (int)routes[hi].pins.size()) {
-					const Pin &p0 = base->pin(routes[lo].pins[i0].idx);
-					const Pin &p1 = base->pin(routes[mid].pins[i1].idx);
-					const Pin &p2 = base->pin(routes[hi].pins[i2].idx);
-					
-					if (i1 > 0 and routes[lo].pins[i0] == routes[hi].pins[i2] and (p0.pos < p1.pos or (p0.pos == p1.pos and routes[lo].pins[i0] != routes[mid].pins[i1]))) {
-						if (i1 > (int)blockedLevels[mid].size()) {
-							blockedLevels[mid].resize(i1, set<int>());
+		for (int type = 0; type < (int)base->stack.size(); type++) {
+			for (int j = 0; j < (int)base->stack[type].pins.size(); j++) {
+				if (routes[i].pOffset >= base->stack[type].pins[j].lo and routes[i].pOffset <= base->stack[type].pins[j].hi and not routes[i].pins.empty()) {
+					auto pos = lower_bound(routes[i].pins.begin(), routes[i].pins.end(), Index(type, j), CompareIndex(base));
+					if (pos != routes[i].pins.begin() and pos->idx != Index(type, j)) {
+						if (i >= (int)blockedLevels.size()) {
+							blockedLevels.resize(i+1);
 						}
-						printf("lo=%d mid=%d hi=%d i0=%d i1=%d i2=%d\n", lo, mid, hi, i0, i1, i2);
-						blockedLevels[mid][i1-1].insert(p0.layer);
-					}
-
-					if (p0.pos <= p1.pos and p0.pos <= p2.pos) {
-						i0++;
-					} else if (p2.pos <= p0.pos and p2.pos <= p1.pos) {
-						i2++;
-					} else {
-						i1++;
+						int index = (pos-routes[i].pins.begin())-1;
+						if (index >= (int)blockedLevels[i].size()) {
+							blockedLevels[i].resize(index+1);
+						}
+						blockedLevels[i][index].insert(base->stack[type].pins[j].layer);
 					}
 				}
 			}
@@ -1845,7 +1831,7 @@ int Router::solve(const Tech &tech) {
 	updatePinPos();
 	drawRoutes(tech);
 
-	for (int i = 0; i < 0; i++) {
+	for (int i = 0; i < 1; i++) {
 		lowerRoutes(tech);
 		buildContacts(tech);
 		buildHorizConstraints(tech);
