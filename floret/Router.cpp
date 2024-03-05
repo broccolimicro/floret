@@ -1232,7 +1232,8 @@ void Router::buildGroupConstraints(const Tech &tech) {
 				auto pos = lower_bound(routes[i].pins.begin(), routes[i].pins.end(), Index(type, j), CompareIndex(base));
 				if (pos != routes[i].pins.end() and pos != routes[i].pins.begin() and pos->idx != Index(type, j)) {
 					pos--;
-					if (pos->level == base->stack[type].pins[j].layer) {
+					int level = routes[i].getLevel(pos-routes[i].pins.begin());
+					if (level == base->stack[type].pins[j].layer) {
 						groupConstraints.push_back(RouteGroupConstraint(i, Index(type, j)));
 					}
 				}
@@ -1724,7 +1725,7 @@ void Router::lowerRoutes(const Tech &tech, int window) {
 			for (int j = 0; j < (int)base->stack[type].pins.size(); j++) {
 				if (routes[i].pOffset >= base->stack[type].pins[j].lo and routes[i].pOffset <= base->stack[type].pins[j].hi and not routes[i].pins.empty()) {
 					auto pos = lower_bound(routes[i].pins.begin(), routes[i].pins.end(), Index(type, j), CompareIndex(base));
-					if (pos != routes[i].pins.begin() and pos->idx != Index(type, j)) {
+					if (pos != routes[i].pins.begin() and pos != routes[i].pins.end() and pos->idx != Index(type, j)) {
 						if (i >= (int)blockedLevels.size()) {
 							blockedLevels.resize(i+1);
 						}
@@ -1760,17 +1761,17 @@ void Router::lowerRoutes(const Tech &tech, int window) {
 			int level = min(base->pin(routes[i].pins[j].idx).layer, base->pin(routes[i].pins[j+1].idx).layer);
 			for (; level < (int)tech.wires.size(); level++) {
 				bool found = false;
-				for (int k = max(0, j-window); k < min(j+window+1, (int)blockedLevels[i].size()); k++) {
-					if (blockedLevels[i][k].find(level) != blockedLevels[i][k].end()) {
-						found = true;
-						break;
-					}
+				for (int k = max(0, j-window); not found and k < min(j+window+1, (int)blockedLevels[i].size()); k++) {
+					found = found or (blockedLevels[i][k].find(level) != blockedLevels[i][k].end());
 				}
 				if (not found) {
 					break;
 				}
 			}
-			routes[i].pins[j].level = level;
+			if ((int)routes[i].level.size() < j+1) {
+				routes[i].level.resize(j+1, 2);
+			}
+			routes[i].level[j] = level;
 		}
 	}
 }
@@ -1831,7 +1832,7 @@ int Router::solve(const Tech &tech) {
 	updatePinPos();
 	drawRoutes(tech);
 
-	for (int i = 0; i < 1; i++) {
+	for (int i = 0; i < 5; i++) {
 		lowerRoutes(tech);
 		buildContacts(tech);
 		buildHorizConstraints(tech);

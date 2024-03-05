@@ -113,7 +113,6 @@ struct Contact {
 	~Contact();
 	
 	Index idx;
-	int level;
 	int left;
 	int right;
 
@@ -167,6 +166,7 @@ struct Wire {
 	// horizontal location of the pin in the cell from left to right. This helps
 	// us pick pins to dogleg when breaking cycles.
 	vector<Contact> pins;
+	vector<int> level;
 
 	// Used to choose how to break a route to fix a cycle
 	int left;

@@ -123,14 +123,12 @@ void Pin::offsetToPin(Index pin, int value) {
 }
 
 Contact::Contact() {
-	level = 2;
 	left = numeric_limits<int>::min();
 	right = numeric_limits<int>::max();
 }
 
 Contact::Contact(Index idx) {
 	this->idx = idx;
-	this->level = 2;
 	this->left = numeric_limits<int>::min();
 	this->right = numeric_limits<int>::max();
 }
@@ -232,19 +230,19 @@ void Wire::resortPins(const Circuit *s) {
 }
 
 int Wire::getLevel(int i) const {
-	if ((int)pins.size() <= 1) {
+	if ((int)level.size() == 0) {
 		return 2;
 	}
 
 	if (i < 0) {
-		return pins[0].level;
+		return level[0];
 	}
 
-	if (i >= (int)pins.size()-1) {
-		return pins[pins.size()-2].level;
+	if (i >= (int)level.size()) {
+		return level[level.size()-1];
 	}
 
-	return pins[i].level;
+	return level[i];
 }
 
 bool Wire::hasPrev(int r) const {
