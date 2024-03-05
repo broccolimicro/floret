@@ -883,10 +883,13 @@ void Router::buildContacts(const Tech &tech) {
 
 		for (int j = 0; j < (int)routes[i].pins.size(); j++) {
 			Pin &pin = base->pin(routes[i].pins[j].idx);
-			int level = max(routes[i].getLevel(j), routes[i].getLevel(j-1));
+			int prevLevel = routes[i].getLevel(j-1);
+			int nextLevel = routes[i].getLevel(j);
+			int maxLevel = max(pin.layer, max(nextLevel, prevLevel));
+			int minLevel = min(pin.layer, min(nextLevel, prevLevel));
 
 			routes[i].pins[j].layout.clear();
-			drawViaStack(tech, routes[i].pins[j].layout, routes[i].net, pin.layer, level, vec2i(0, 0), vec2i(0,0), vec2i(0,0));
+			drawViaStack(tech, routes[i].pins[j].layout, routes[i].net, minLevel, maxLevel, vec2i(0, 0), vec2i(0,0), vec2i(0,0));
 		}
 	}
 }
