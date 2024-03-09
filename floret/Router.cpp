@@ -1205,6 +1205,13 @@ void Router::buildRouteConstraints(const Tech &tech, bool allowOverCell) {
 	// Compute route constraints
 	for (int i = 0; i < (int)routes.size(); i++) {
 		for (int j = i+1; j < (int)routes.size(); j++) {
+			// TODO(edward.bingham) I need to check pin overlap of routes. If any of
+			// the pins of either route has a minOffset conflict with the other
+			// route, then their order is determined by which stack the pin is
+			// associated with. This is routing only on the pin side vs routing and
+			// non routing on the route side. That comparison mode is not yet
+			// supported by the DRC engine.
+
 			int routingMode = (routes[i].net < 0 and routes[j].net >= 0) or (routes[i].net >= 0 and routes[j].net < 0) ? Layout::MERGENET : Layout::DEFAULT;
 			int off[2] = {0,0};
 			bool fromto = minOffset(off+0, tech, 1, routes[i].layout.layers, 0, routes[j].layout.layers, 0, Layout::DEFAULT, routingMode);
@@ -1819,6 +1826,7 @@ int Router::solve(const Tech &tech) {
 	updatePinPos();
 	alignPins(200);
 	buildPinConstraints(tech, 0);
+	print();
 	//buildViaConstraints(tech);
 	buildRoutes();
 	buildContacts(tech);
