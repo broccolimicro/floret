@@ -1225,7 +1225,7 @@ void Router::buildRouteConstraints(const Tech &tech, bool allowOverCell) {
 				array<vector<bool>, 2> hasType = {routes[i].pinTypes(), routes[j].pinTypes()};
 				if ((routes[i].net < 0 and routes[j].net < 0) or
 				    (routes[i].net < 0 and hasType[1][1-flip(routes[i].net)]) or
-				    (routes[j].net < 0 and hasType[0][1-flip(routes[i].net)]))  {
+				    (routes[j].net < 0 and hasType[0][1-flip(routes[j].net)]))  {
 					routeConstraints.back().select = (flip(routes[j].net) == Model::PMOS or flip(routes[i].net) == Model::NMOS);
 				}
 			}
