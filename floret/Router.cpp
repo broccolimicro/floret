@@ -1593,6 +1593,22 @@ void Router::resetGraph(const Tech &tech) {
 }
 
 void Router::assignRouteConstraints(const Tech &tech) {
+	vector<int> inTokens, outTokens;
+	for (int i = 0; i < (int)routeConstraints.size(); i++) {
+		if (routeConstraints[i].select >= 0) {
+			set<int> prop = propagateRouteConstraint(i);
+			for (auto j = prop.begin(); j != prop.end(); j++) {
+				int from = routeConstraints[*j].select;
+				inTokens.push_back(routeConstraints[*j].wires[from]);
+				outTokens.push_back(routeConstraints[*j].wires[1-from]);
+			}
+		}
+	}
+	if (inTokens.size() + outTokens.size() > 0) {
+		buildPOffsets(tech, inTokens);
+		buildNOffsets(tech, outTokens);
+	}
+
 	vector<int> unassigned;
 	unassigned.reserve(routeConstraints.size());
 	for (int i = 0; i < (int)routeConstraints.size(); i++) {
@@ -1603,7 +1619,8 @@ void Router::assignRouteConstraints(const Tech &tech) {
 
 	while (unassigned.size() > 0) {
 		// handle critical constraints, that would create cycles if assigned the wrong direction.
-		vector<int> inTokens, outTokens;
+		inTokens.clear();
+		outTokens.clear();
 		for (int u = (int)unassigned.size()-1; u >= 0; u--) {
 			if (routeConstraints[unassigned[u]].select >= 0) {
 				unassigned.erase(unassigned.begin()+u);
