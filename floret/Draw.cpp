@@ -42,7 +42,11 @@ void drawVia(const Tech &tech, Layout &dst, int net, int viaLevel, vec2i axis, v
 
 	// spacing and width of a via
 	int viaWidth = tech.paint[viaLayer].minWidth;
-	int viaSpacing = tech.findSpacing(viaLayer, viaLayer);
+	int rule = tech.getSpacing(viaLayer, viaLayer);
+	int viaSpacing = 0;
+	if (rule < 0) {
+		viaSpacing = tech.rules[flip(rule)].params[0];
+	}
 
 	// enclosure rules and default orientation
 	vec2i dn = tech.vias[viaLevel].dn;
@@ -210,7 +214,7 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 				Layout next;
 				drawVia(tech, next, wire.net, i, axis, vec2i(width, height), true, vec2i(posArr[i][j], 0));
 				int off = numeric_limits<int>::min();
-				if (not vias.empty() and minOffset(&off, tech, 0, vias.back().layers, 0, next.layers, 0, Layout::IGNORE, Layout::DEFAULT) and off > 0) {
+				if (not vias.empty() and minOffset(&off, tech, 0, vias.back(), 0, next, 0, Layout::IGNORE, Layout::DEFAULT) and off > 0) {
 					Rect box = vias.back().box.bound(next.box);
 					vias.back().clear();
 					drawVia(tech, vias.back(), wire.net, i, axis, vec2i(box.ur[0]-box.ll[0], height), true, vec2i(box.ll[0], 0));

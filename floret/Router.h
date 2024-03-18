@@ -12,8 +12,6 @@ using namespace std;
 
 struct Router;
 
-int flip(int idx);
-
 // DESIGN(edward.bingham) Two opposing pins on the two stacks will
 // create an ordering constraint on their associated routes.
 //

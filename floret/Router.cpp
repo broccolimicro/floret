@@ -7,10 +7,6 @@
 #include "Timer.h"
 #include "Draw.h"
 
-int flip(int idx) {
-	return -idx-1;
-}
-
 PinConstraint::PinConstraint() {
 	from = -1;
 	to = -1;
@@ -110,21 +106,21 @@ void Router::buildPinConstraints(const Tech &tech, int level) {
 			Pin &pmos = base->stack[Model::PMOS].pins[p];
 			Pin &nmos = base->stack[Model::NMOS].pins[n];
 			if (level == 0 and pmos.outNet != nmos.outNet and
-				minOffset(&off, tech, 1, pmos.layout.layers, pmos.pos,
-				                         nmos.layout.layers, nmos.pos,
+				minOffset(&off, tech, 1, pmos.layout, pmos.pos,
+				                         nmos.layout, nmos.pos,
 				          Layout::IGNORE, Layout::MERGENET)) {
 				pinConstraints.push_back(PinConstraint(p, n));
 			} /*else if (level == 1 and pmos.outNet != nmos.outNet and
-				(minOffset(&off, tech, 1, pmos.conLayout.layers, pmos.pos,
-				                         nmos.layout.layers, nmos.pos,
+				(minOffset(&off, tech, 1, pmos.conLayout, pmos.pos,
+				                         nmos.layout, nmos.pos,
 				          Layout::IGNORE, Layout::MERGENET) or
-				minOffset(&off, tech, 1, pmos.layout.layers, pmos.pos,
-				                         nmos.conLayout.layers, nmos.pos,
+				minOffset(&off, tech, 1, pmos.layout, pmos.pos,
+				                         nmos.conLayout, nmos.pos,
 				          Layout::IGNORE, Layout::MERGENET))) {
 				pinConstraints.push_back(PinConstraint(p, n));
 			} else if (level == 2 and pmos.outNet != nmos.outNet and
-				minOffset(&off, tech, 1, pmos.conLayout.layers, pmos.pos,
-				                         nmos.conLayout.layers, nmos.pos,
+				minOffset(&off, tech, 1, pmos.conLayout, pmos.pos,
+				                         nmos.conLayout, nmos.pos,
 				          Layout::IGNORE, Layout::MERGENET)) {
 				pinConstraints.push_back(PinConstraint(p, n));
 			}*/
@@ -145,14 +141,14 @@ void Router::buildViaConstraints(const Tech &tech) {
 	
 			for (int j = i-1; j >= 0; j--) {
 				int off = 0;
-				if (minOffset(&off, tech, 0, base->stack[type].pins[j].layout.layers, 0, base->stack[type].pins[i].conLayout.layers, base->stack[type].pins[j].height/2, Layout::IGNORE, Layout::MERGENET)) {
+				if (minOffset(&off, tech, 0, base->stack[type].pins[j].layout, 0, base->stack[type].pins[i].conLayout, base->stack[type].pins[j].height/2, Layout::IGNORE, Layout::MERGENET)) {
 					viaConstraints.back().side[0].push_back(ViaConstraint::Pin{Index(type, j), off});
 				}
 			}
 
 			for (int j = i+1; j < (int)base->stack[type].pins.size(); j++) {
 				int off = 0;
-				if (minOffset(&off, tech, 0, base->stack[type].pins[i].conLayout.layers, base->stack[type].pins[j].height/2, base->stack[type].pins[j].layout.layers, 0, Layout::IGNORE, Layout::MERGENET)) {
+				if (minOffset(&off, tech, 0, base->stack[type].pins[i].conLayout, base->stack[type].pins[j].height/2, base->stack[type].pins[j].layout, 0, Layout::IGNORE, Layout::MERGENET)) {
 					viaConstraints.back().side[1].push_back(ViaConstraint::Pin{Index(type, j), off});
 				}
 			}
@@ -916,7 +912,7 @@ void Router::buildHorizConstraints(const Tech &tech) {
 			if (i+1 < (int)base->stack[type].pins.size()) {
 				Pin &next = base->stack[type].pins[i+1];
 				int substrateMode = pin.device >= 0 or next.device >= 0 ? Layout::MERGENET : Layout::DEFAULT;
-				if (minOffset(&off, tech, 0, pin.layout.layers, 0, next.layout.layers, 0, substrateMode, Layout::DEFAULT)) {
+				if (minOffset(&off, tech, 0, pin.layout, 0, next.layout, 0, substrateMode, Layout::DEFAULT)) {
 					pin.offsetToPin(Index(type, i+1), off);
 				} else {
 					printf("error: no offset found at pin (%d,%d)\n", type, i+1);
@@ -931,13 +927,13 @@ void Router::buildHorizConstraints(const Tech &tech) {
 				for (int k = 0; k < (int)routes[j].pins.size(); k++) {
 					int off = 0;
 					if ((routes[j].pins[k].idx.type != type or i < routes[j].pins[k].idx.pin) and
-					    minOffset(&off, tech, 0, pin.layout.layers, 0, routes[j].pins[k].layout.layers, 0, Layout::IGNORE, Layout::MERGENET)) {
+					    minOffset(&off, tech, 0, pin.layout, 0, routes[j].pins[k].layout, 0, Layout::IGNORE, Layout::MERGENET)) {
 						routes[j].pins[k].offsetFromPin(Index(type, i), off);
 					}
 
 					off = 0;
 					if ((routes[j].pins[k].idx.type != type or routes[j].pins[k].idx.pin < i) and
-					    minOffset(&off, tech, 0, routes[j].pins[k].layout.layers, 0, pin.layout.layers, 0, Layout::IGNORE, Layout::MERGENET)) {
+					    minOffset(&off, tech, 0, routes[j].pins[k].layout, 0, pin.layout, 0, Layout::IGNORE, Layout::MERGENET)) {
 						routes[j].pins[k].offsetToPin(Index(type, i), off);
 					}
 				}
@@ -1214,8 +1210,8 @@ void Router::buildRouteConstraints(const Tech &tech, bool allowOverCell) {
 
 			int routingMode = (routes[i].net < 0 and routes[j].net >= 0) or (routes[i].net >= 0 and routes[j].net < 0) ? Layout::MERGENET : Layout::DEFAULT;
 			int off[2] = {0,0};
-			bool fromto = minOffset(off+0, tech, 1, routes[i].layout.layers, 0, routes[j].layout.layers, 0, Layout::DEFAULT, routingMode);
-			bool tofrom = minOffset(off+1, tech, 1, routes[j].layout.layers, 0, routes[i].layout.layers, 0, Layout::DEFAULT, routingMode);
+			bool fromto = minOffset(off+0, tech, 1, routes[i].layout, 0, routes[j].layout, 0, Layout::DEFAULT, routingMode);
+			bool tofrom = minOffset(off+1, tech, 1, routes[j].layout, 0, routes[i].layout, 0, Layout::DEFAULT, routingMode);
 			if (not allowOverCell and (routes[i].net < 0 or routes[j].net < 0)) {
 				routeConstraints.push_back(RouteConstraint(i, j, off[0], off[1]));
 				routeConstraints.back().select = (flip(routes[j].net) == Model::PMOS or flip(routes[i].net) == Model::NMOS);
@@ -1809,8 +1805,8 @@ void Router::updateRouteConstraints(const Tech &tech) {
 		if (con->wires[0] >= 0 and con->wires[1] >= 0) {
 			con->off[0] = 0;
 			con->off[1] = 0;
-			minOffset(con->off+0, tech, 1, routes[con->wires[0]].layout.layers, 0, routes[con->wires[1]].layout.layers, 0, Layout::DEFAULT, Layout::MERGENET);
-			minOffset(con->off+1, tech, 1, routes[con->wires[1]].layout.layers, 0, routes[con->wires[0]].layout.layers, 0, Layout::DEFAULT, Layout::MERGENET);
+			minOffset(con->off+0, tech, 1, routes[con->wires[0]].layout, 0, routes[con->wires[1]].layout, 0, Layout::DEFAULT, Layout::MERGENET);
+			minOffset(con->off+1, tech, 1, routes[con->wires[1]].layout, 0, routes[con->wires[0]].layout, 0, Layout::DEFAULT, Layout::MERGENET);
 		}
 	}
 }
