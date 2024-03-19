@@ -904,12 +904,14 @@ void Router::buildHorizConstraints(const Tech &tech) {
 		}
 	}
 
+	printf("buildHorizConstraints\n");
 	for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
 			Pin &pin = base->stack[type].pins[i];
 
 			int off = 0;
 			if (i+1 < (int)base->stack[type].pins.size()) {
+				printf("pin to pin %d,%d\n", type, i);
 				Pin &next = base->stack[type].pins[i+1];
 				int substrateMode = pin.device >= 0 or next.device >= 0 ? Layout::MERGENET : Layout::DEFAULT;
 				if (minOffset(&off, tech, 0, pin.layout, 0, next.layout, 0, substrateMode, Layout::DEFAULT)) {
@@ -924,6 +926,7 @@ void Router::buildHorizConstraints(const Tech &tech) {
 					continue;
 				}
 
+				printf("pin to route %d,%d->%d\n", type, i, j);
 				for (int k = 0; k < (int)routes[j].pins.size(); k++) {
 					int off = 0;
 					if ((routes[j].pins[k].idx.type != type or i < routes[j].pins[k].idx.pin) and
@@ -938,8 +941,10 @@ void Router::buildHorizConstraints(const Tech &tech) {
 					}
 				}
 			}
+			printf("\n");
 		}
 	}
+	printf("done buildHorizConstraints\n\n");
 }
 
 void Router::updatePinPos() {
@@ -1190,6 +1195,7 @@ void Router::drawRoutes(const Tech &tech) {
 }
 
 void Router::buildRouteConstraints(const Tech &tech, bool allowOverCell) {
+	printf("\nbuildRouteConstraints\n");
 	routeConstraints.clear();
 	// TODO(edward.bingham) There's a bug here where poly routes are placed too
 	// close to the diffusion. This is because the DRC rule involved is more than
@@ -1201,6 +1207,7 @@ void Router::buildRouteConstraints(const Tech &tech, bool allowOverCell) {
 	// Compute route constraints
 	for (int i = 0; i < (int)routes.size(); i++) {
 		for (int j = i+1; j < (int)routes.size(); j++) {
+			printf("checkout route %d:%d and %d:%d\n", i, routes[i].net, j, routes[j].net);
 			// TODO(edward.bingham) I need to check pin overlap of routes. If any of
 			// the pins of either route has a minOffset conflict with the other
 			// route, then their order is determined by which stack the pin is
@@ -1208,7 +1215,7 @@ void Router::buildRouteConstraints(const Tech &tech, bool allowOverCell) {
 			// non routing on the route side. That comparison mode is not yet
 			// supported by the DRC engine.
 
-			int routingMode = (routes[i].net < 0 and routes[j].net >= 0) or (routes[i].net >= 0 and routes[j].net < 0) ? Layout::MERGENET : Layout::DEFAULT;
+			int routingMode = ((routes[i].net < 0 and routes[j].net >= 0) or (routes[i].net >= 0 and routes[j].net < 0)) ? Layout::MERGENET : Layout::DEFAULT;
 			int off[2] = {0,0};
 			bool fromto = minOffset(off+0, tech, 1, routes[i].layout, 0, routes[j].layout, 0, Layout::DEFAULT, routingMode);
 			bool tofrom = minOffset(off+1, tech, 1, routes[j].layout, 0, routes[i].layout, 0, Layout::DEFAULT, routingMode);
@@ -1225,8 +1232,10 @@ void Router::buildRouteConstraints(const Tech &tech, bool allowOverCell) {
 					routeConstraints.back().select = (flip(routes[j].net) == Model::PMOS or flip(routes[i].net) == Model::NMOS);
 				}
 			}
+			printf("done\n\n");
 		}
 	}
+	printf("done buildRouteConstraints\n\n");
 }
 
 void Router::buildGroupConstraints(const Tech &tech) {
@@ -1856,7 +1865,7 @@ int Router::solve(const Tech &tech) {
 	updatePinPos();
 	drawRoutes(tech);
 
-	for (int i = 0; i < 5; i++) {
+	for (int i = 0; i < 0; i++) {
 		lowerRoutes(tech);
 		buildContacts(tech);
 		buildHorizConstraints(tech);
