@@ -60,6 +60,6 @@ clean:
 	$(MAKE) -s $(MAKE_FLAGS) -C deps/gdstk clean
 	$(MAKE) -s $(MAKE_FLAGS) -C deps/pgen clean
 	$(MAKE) -s $(MAKE_FLAGS) -C deps/ruler clean
-	rm -f src/*.o floret/*.o
+	rm -f src/*.o floret/*.o floret/spice.h floret/spice.cpp
 	rm -f src/*.d floret/*.d
 	rm -f $(LTARGET) $(BTARGET)
