@@ -13,8 +13,8 @@ using namespace std;
 void Library::loadSpice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &spice) {
 	for (auto tok = spice.tokens.begin(); tok != spice.tokens.end(); tok++) {
 		if (tok->type == lang.SUBCKT) {
-			cells.push_back(Circuit());
-			cells.back().loadSubckt(tech, lang, lexer, *tok);
+			cells.push_back(Circuit(tech));
+			cells.back().loadSubckt(lang, lexer, *tok);
 		}
 	}
 }
@@ -58,9 +58,9 @@ void Library::build(const Tech &tech, set<string> cellNames) {
 			router.solve(tech);
 			//router.print();
 			printf("\rDrawing %s\n", cells[i].name.c_str());
-			Layout layout;
-			cells[i].draw(tech, layout);
-			layout.emit(tech, lib);
+			Layout layout(tech);
+			cells[i].draw(layout);
+			layout.emit(lib);
 			printf("\rDone %s\n", cells[i].name.c_str());
 		}
 	}

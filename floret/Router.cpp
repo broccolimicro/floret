@@ -166,7 +166,7 @@ void Router::buildRoutes() {
 	// Create initial routes
 	routes.reserve(base->nets.size()+2);
 	for (int i = 0; i < (int)base->nets.size(); i++) {
-		routes.push_back(Wire(i));
+		routes.push_back(Wire(*(base->tech), i));
 	}
 	for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
@@ -185,7 +185,7 @@ void Router::buildRoutes() {
 
 	for (int type = 0; type < 2; type++) {
 		base->stack[type].route = (int)routes.size();
-		routes.push_back(Wire(flip(type)));
+		routes.push_back(Wire(*(base->tech), flip(type)));
 		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
 			routes.back().addPin(base, Index(type, i));
 		}
@@ -295,6 +295,11 @@ void Router::findCycles(vector<vector<int> > &cycles) {
 					staged.insert(A[i][j]);
 				}
 			}
+
+			if ((int)cycles.size() > 20000) {
+				printf("%s:%d: error: degenerative layout has created an exponential number of cycles. Terminating cycle finding algorithm early.\n", __FILE__, __LINE__);
+				return;
+			}
 		}
 
 		seen.insert(staged.begin(), staged.end());
@@ -329,8 +334,8 @@ void Router::breakRoute(int route, set<int> cycleRoutes) {
 	int right = max(base->stack[0].pins.back().pos, base->stack[1].pins.back().pos);
 	int center = (left + right)/2;
 
-	Wire wp(routes[route].net);
-	Wire wn(routes[route].net);
+	Wire wp(*(base->tech), routes[route].net);
+	Wire wn(*(base->tech), routes[route].net);
 	vector<int> count(routes[route].pins.size(), 0);
 	bool wpHasGate = false;
 	bool wnHasGate = false;
@@ -392,12 +397,12 @@ void Router::breakRoute(int route, set<int> cycleRoutes) {
 		// Move the pin to wp or wn depending on hasFrom and hasTo
 		if (hasFrom) {
 			wp.addPin(base, from->idx);
-			wpHasGate = wpHasGate or base->pin(from->idx).device >= 0;
+			wpHasGate = wpHasGate or base->pin(from->idx).isGate();
 			count.erase(count.begin()+fromIdx);
 			routes[route].pins.erase(from);
 		} else if (hasTo) {
 			wn.addPin(base, to->idx);
-			wnHasGate = wnHasGate or base->pin(to->idx).device >= 0;
+			wnHasGate = wnHasGate or base->pin(to->idx).isGate();
 			count.erase(count.begin()+toIdx);
 			routes[route].pins.erase(to);
 		}
@@ -432,14 +437,14 @@ void Router::breakRoute(int route, set<int> cycleRoutes) {
 		int distanceFromCenter = abs(pin.pos-center);
 
 		if ((sharedCount < 0 or count[i] < sharedCount) or
-		    (count[i] == sharedCount and ((sharedIsGate and pin.device < 0) or
+		    (count[i] == sharedCount and ((sharedIsGate and pin.isContact()) or
 		    distanceFromCenter > sharedDistanceFromCenter))) {
 		//if (sharedCount < 0 or (count[i] < sharedCount or
-		//    (count[i] == sharedCount and ((sharedIsGate and pin.device < 0) or
-		//    (sharedIsGate == (pin.device >= 0) and distanceFromCenter > sharedDistanceFromCenter))))) {
+		//    (count[i] == sharedCount and ((sharedIsGate and pin.isContact()) or
+		//    (sharedIsGate == (pin.isGate()) and distanceFromCenter > sharedDistanceFromCenter))))) {
 			sharedPin = i;
 			sharedCount = count[i];
-			sharedIsGate = pin.device >= 0;
+			sharedIsGate = pin.isGate();
 			sharedDistanceFromCenter = distanceFromCenter;
 		}
 	}
@@ -462,7 +467,7 @@ void Router::breakRoute(int route, set<int> cycleRoutes) {
 		// saving the vertical position of the pin so the drawing functionality
 		// knows where to draw the vertical path.
 		Index virtPin(2, (int)base->stack[2].pins.size());
-		base->stack[2].pins.push_back(Pin(routes[route].net));
+		base->stack[2].pins.push_back(Pin(*(base->tech), routes[route].net));
 		base->stack[2].pins.back().pos = -50;
 		wp.addPin(base, virtPin);
 		wn.addPin(base, virtPin);
@@ -493,7 +498,7 @@ void Router::breakRoute(int route, set<int> cycleRoutes) {
 		// Put all non-gate PMOS pins into wp and all remaining pins into wn
 		for (int i = (int)routes[route].pins.size()-1; i >= 0; i--) {
 			Index pin = routes[route].pins[i].idx;
-			bool isGate = base->stack[pin.type].pins[pin.pin].device < 0;
+			bool isGate = base->stack[pin.type].pins[pin.pin].isContact();
 			if (pin.type == Model::PMOS and not isGate) {
 				wp.addPin(base, pin);
 			} else {
@@ -507,7 +512,7 @@ void Router::breakRoute(int route, set<int> cycleRoutes) {
 		// Put all non-gate NMOS pins into wn and all remaining pins into wp
 		for (int i = (int)routes[route].pins.size()-1; i >= 0; i--) {
 			Index pin = routes[route].pins[i].idx;
-			bool isGate = base->stack[pin.type].pins[pin.pin].device < 0;
+			bool isGate = base->stack[pin.type].pins[pin.pin].isContact();
 			if (pin.type == Model::NMOS and not isGate) {
 				wn.addPin(base, pin);
 			} else {
@@ -523,7 +528,7 @@ void Router::breakRoute(int route, set<int> cycleRoutes) {
 			// Determine horizontal location of wp and wn relative to sharedPin, then
 			// place all pins on same side of sharedPin as wp or wn into that wp or wn
 			// respectively.
-			bool isGate = base->stack[pin.type].pins[pin.pin].device < 0;
+			bool isGate = base->stack[pin.type].pins[pin.pin].isContact();
 			int pinPos = base->stack[pin.type].pins[pin.pin].pos;
 			if (pinPos >= wn.left and pinPos >= wp.left and pinPos <= wn.right and pinPos <= wp.right) {
 				if (pin.type == Model::PMOS) {
@@ -824,8 +829,8 @@ struct Alignment {
 
 	int dist() const {
 		array<bool, 2> startOfStack = {
-			(pin[0] == 0 or base->stack[0].pins[1-pin[0]].device < 0) and base->stack[0].pins[pin[0]].device < 0,
-			(pin[1] == 0 or base->stack[1].pins[1-pin[1]].device < 0) and base->stack[1].pins[pin[1]].device < 0
+			(pin[0] == 0 or base->stack[0].pins[1-pin[0]].isContact()) and base->stack[0].pins[pin[0]].isContact(),
+			(pin[1] == 0 or base->stack[1].pins[1-pin[1]].isContact()) and base->stack[1].pins[pin[1]].isContact()
 		};
 
 		int result = base->stack[1].pins[pin[1]].pos - base->stack[0].pins[pin[0]].pos;
@@ -862,7 +867,7 @@ void Router::buildPins(const Tech &tech) {
 	for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
 			Pin &pin = base->stack[type].pins[i];
-			pin.width = base->pinWidth(tech, Index(type, i));
+			pin.width = base->pinWidth(Index(type, i));
 			pin.height = base->pinHeight(Index(type, i));
 
 			pin.layout.clear();
@@ -913,7 +918,7 @@ void Router::buildHorizConstraints(const Tech &tech) {
 			if (i+1 < (int)base->stack[type].pins.size()) {
 				printf("pin to pin %d,%d\n", type, i);
 				Pin &next = base->stack[type].pins[i+1];
-				int substrateMode = pin.device >= 0 or next.device >= 0 ? Layout::MERGENET : Layout::DEFAULT;
+				int substrateMode = (pin.isGate() or next.isGate()) ? Layout::IGNORE : Layout::DEFAULT;
 				if (minOffset(&off, tech, 0, pin.layout, 0, next.layout, 0, substrateMode, Layout::DEFAULT)) {
 					pin.offsetToPin(Index(type, i+1), off);
 				} else {
@@ -948,6 +953,7 @@ void Router::buildHorizConstraints(const Tech &tech) {
 }
 
 void Router::updatePinPos() {
+	printf("updatePinPos\n");
 	for (int type = 0; type < (int)base->stack.size(); type++) {
 		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
 			base->stack[type].pins[i].pos = 0;
@@ -978,6 +984,7 @@ void Router::updatePinPos() {
 	}
 
 	while (not stack.empty()) {
+		printf("stack: %d\n", (int)stack.size());
 		// handle pin to pin constraints and alignment constraints
 		Index curr = stack.back();
 		stack.pop_back();
@@ -992,6 +999,10 @@ void Router::updatePinPos() {
 				stack.push_back(off->first);
 			}
 		}
+		if (stack.empty() and curr.pin+1 < (int)base->stack[curr.type].pins.size() and base->stack[curr.type].pins[curr.pin+1].pos == 0) {
+			stack.push_back(Index(curr.type, curr.pin+1));
+		}
+
 		if (not stack.empty()) {
 			sort(stack.rbegin(), stack.rend());
 			stack.erase(unique(stack.begin(), stack.end()), stack.end());
@@ -1098,7 +1109,7 @@ int Router::alignPins(int maxDist) {
 			if (base->nets[i].gates[0] == 1 and base->nets[i].gates[1] == 1) {
 				array<int, 2> ports;
 				for (int type = 0; type < 2; type++) {
-					for (ports[type] = 0; ports[type] < (int)base->stack[type].pins.size() and (base->stack[type].pins[ports[type]].device < 0 or base->stack[type].pins[ports[type]].outNet != i); ports[type]++);
+					for (ports[type] = 0; ports[type] < (int)base->stack[type].pins.size() and (base->stack[type].pins[ports[type]].isContact() or base->stack[type].pins[ports[type]].outNet != i); ports[type]++);
 				}
 
 				if (ports[0] < (int)base->stack[0].pins.size() and ports[1] < (int)base->stack[1].pins.size()) {
@@ -1108,7 +1119,7 @@ int Router::alignPins(int maxDist) {
 			if (base->nets[i].ports[0] == 1 and base->nets[i].ports[1] == 1) {
 				array<int, 2> ports;
 				for (int type = 0; type < 2; type++) {
-					for (ports[type] = 0; ports[type] < (int)base->stack[type].pins.size() and (base->stack[type].pins[ports[type]].device >= 0 or base->stack[type].pins[ports[type]].outNet != i); ports[type]++);
+					for (ports[type] = 0; ports[type] < (int)base->stack[type].pins.size() and (base->stack[type].pins[ports[type]].isGate() or base->stack[type].pins[ports[type]].outNet != i); ports[type]++);
 				}
 
 				if (ports[0] < (int)base->stack[0].pins.size() and ports[1] < (int)base->stack[1].pins.size()) {
@@ -1865,7 +1876,7 @@ int Router::solve(const Tech &tech) {
 	updatePinPos();
 	drawRoutes(tech);
 
-	for (int i = 0; i < 0; i++) {
+	for (int i = 0; i < 1; i++) {
 		lowerRoutes(tech);
 		buildContacts(tech);
 		buildHorizConstraints(tech);

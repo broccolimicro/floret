@@ -67,11 +67,11 @@ bool operator!=(const Index &i0, const Index &i1);
 
 // Represents Transistors and Contacts
 struct Pin {
-	Pin();
+	Pin(const Tech &tech);
 	// This pin is a contact
-	Pin(int outNet);
+	Pin(const Tech &tech, int outNet);
 	// This pin is a transistor
-	Pin(int device, int outNet, int leftNet, int rightNet);
+	Pin(const Tech &tech, int device, int outNet, int leftNet, int rightNet);
 	~Pin();
 
 	// inNet == outNet == gateNet for Contacts
@@ -105,11 +105,14 @@ struct Pin {
 	int hi;
 
 	void offsetToPin(Index pin, int value);
+
+	bool isGate() const;
+	bool isContact() const;
 };
 
 struct Contact {
-	Contact();
-	Contact(Index idx);
+	Contact(const Tech &tech);
+	Contact(const Tech &tech, Index idx);
 	~Contact();
 	
 	Index idx;
@@ -154,8 +157,8 @@ struct CompareIndex {
 
 // Represents a wire between two Devices
 struct Wire {
-	Wire();
-	Wire(int net);
+	Wire(const Tech &tech);
+	Wire(const Tech &tech, int net);
 	~Wire();
 
 	// flip(stack ID) for a given stack (Model::NMOS, Model::PMOS, etc), index into Circuit::nets otherwise
@@ -206,8 +209,10 @@ struct Stack {
 };
 
 struct Circuit {
-	Circuit();
+	Circuit(const Tech &tech);
 	~Circuit();
+
+	const Tech *tech;
 
 	string name;
 
@@ -228,12 +233,12 @@ struct Circuit {
 	const Pin &pin(Index i) const;
 	Pin &pin(Index i);
 
-	bool loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &dev);
-	void loadSubckt(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &subckt);
+	bool loadDevice(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &dev);
+	void loadSubckt(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &subckt);
 
-	int pinWidth(const Tech &tech, Index i) const;
+	int pinWidth(Index i) const;
 	int pinHeight(Index i) const;
 
-	void draw(const Tech &tech, Layout &dst);
+	void draw(Layout &dst);
 };
 

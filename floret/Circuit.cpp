@@ -64,7 +64,7 @@ bool operator!=(const Index &i0, const Index &i1) {
 	return i0.type != i1.type or i0.pin != i1.pin;
 }
 
-Pin::Pin() {
+Pin::Pin(const Tech &tech) : layout(tech) {
 	device = -1;
 	outNet = -1;
 	leftNet = -1;
@@ -80,7 +80,7 @@ Pin::Pin() {
 	hi = numeric_limits<int>::min();
 }
 
-Pin::Pin(int outNet) {
+Pin::Pin(const Tech &tech, int outNet) : layout(tech) {
 	this->device = -1;
 	this->outNet = outNet;
 	this->leftNet = outNet;
@@ -96,7 +96,7 @@ Pin::Pin(int outNet) {
 	hi = numeric_limits<int>::min();
 }
 
-Pin::Pin(int device, int outNet, int leftNet, int rightNet) {
+Pin::Pin(const Tech &tech, int device, int outNet, int leftNet, int rightNet) : layout(tech) {
 	this->device = device;
 	this->outNet = outNet;
 	this->leftNet = leftNet;
@@ -116,18 +116,28 @@ Pin::~Pin() {
 }
 
 void Pin::offsetToPin(Index pin, int value) {
+	printf("offsetToPin %d\n", value);
 	auto result = toPin.insert(pair<Index, int>(pin, value));
 	if (not result.second) {
 		result.first->second = max(result.first->second, value);
 	}
+	printf("Done inserting %d\n", result.first->second);
 }
 
-Contact::Contact() {
+bool Pin::isGate() const {
+	return device >= 0;
+}
+
+bool Pin::isContact() const {
+	return device < 0;
+}
+
+Contact::Contact(const Tech &tech) : layout(tech) {
 	left = numeric_limits<int>::min();
 	right = numeric_limits<int>::max();
 }
 
-Contact::Contact(Index idx) {
+Contact::Contact(const Tech &tech, Index idx) : layout(tech) {
 	this->idx = idx;
 	this->left = numeric_limits<int>::min();
 	this->right = numeric_limits<int>::max();
@@ -187,7 +197,7 @@ bool CompareIndex::operator()(const Contact &c0, const Contact &c1) {
 	return p0.pos < p1.pos or (p0.pos == p1.pos and c0.idx < c1.idx);
 }
 
-Wire::Wire() {
+Wire::Wire(const Tech &tech) : layout(tech) {
 	net = -1;
 	left = -1;
 	right = -1;
@@ -195,7 +205,7 @@ Wire::Wire() {
 	nOffset = 0;
 }
 
-Wire::Wire(int net) {
+Wire::Wire(const Tech &tech, int net) : layout(tech) {
 	this->net = net;
 	this->left = -1;
 	this->right = -1;
@@ -208,7 +218,7 @@ Wire::~Wire() {
 
 void Wire::addPin(const Circuit *s, Index pin) {
 	auto pos = lower_bound(pins.begin(), pins.end(), pin, CompareIndex(s));
-	pins.insert(pos, pin);
+	pins.insert(pos, Contact(*(s->tech), pin));
 	if (left < 0 or s->stack[pin.type].pins[pin.pin].pos < left) {
 		left = s->stack[pin.type].pins[pin.pin].pos;
 	}
@@ -300,19 +310,19 @@ void Stack::push(const Circuit *ckt, int device, bool flip) {
 	// unflipped orderings.
 
 	if (not link and not pins.empty() and pins.back().device >= 0) {
-		pins.push_back(Pin(pins.back().rightNet));
+		pins.push_back(Pin(*(ckt->tech), pins.back().rightNet));
 	}
 
 	if (fromNet >= 0) {
 		bool hasContact = (ckt->nets[fromNet].ports[type] > 2 or ckt->nets[fromNet].ports[1-type] > 0 or ckt->nets[fromNet].gates[0] > 0 or ckt->nets[fromNet].gates[1] > 0);
 		if (fromNet >= 0 and (not link or pins.empty() or hasContact or ckt->nets[fromNet].isIO)) {
 			// Add a contact for the first net or between two transistors.
-			pins.push_back(Pin(fromNet));
+			pins.push_back(Pin(*(ckt->tech), fromNet));
 		}
 	}
 
 	if (device >= 0) {
-		pins.push_back(Pin(device, gateNet, fromNet, toNet));
+		pins.push_back(Pin(*(ckt->tech), device, gateNet, fromNet, toNet));
 	}
 }
 
@@ -336,7 +346,8 @@ void Stack::draw(const Tech &tech, const Circuit *base, Layout &dst) {
 	}
 }
 
-Circuit::Circuit() {
+Circuit::Circuit(const Tech &tech) {
+	this->tech = &tech;
 	cellHeight = 0;
 	for (int type = 0; type < 3; type++) {
 		stack[type].type = type;
@@ -368,7 +379,7 @@ const Pin &Circuit::pin(Index i) const {
 	return stack[i.type].pins[i.pin];
 }
 
-bool Circuit::loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &dev) {
+bool Circuit::loadDevice(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &dev) {
 	// deviceType deviceName paramList
 	if (dev.tokens.size() < 3) {
 		printf("not a device\n");
@@ -399,7 +410,7 @@ bool Circuit::loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &le
 	}
 
 	string modelName = lexer.read(args->tokens[4].begin, args->tokens[4].end);
-	int modelIdx = tech.findModel(modelName);
+	int modelIdx = tech->findModel(modelName);
 	// if the modelName isn't in the model list, then this is a non-transistor subckt
 	if (modelIdx < 0) {
 		printf("model not found %s\n", modelName.c_str());
@@ -407,7 +418,7 @@ bool Circuit::loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &le
 	}
 
 	int port = 0;
-	int type = tech.models[modelIdx].type;
+	int type = tech->models[modelIdx].type;
 	this->mos.push_back(Mos(modelIdx, type));
 	for (auto arg = args->tokens.begin(); arg != args->tokens.end(); arg++) {
 		if (arg->type == lang.PARAM) {
@@ -417,9 +428,9 @@ bool Circuit::loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &le
 				values.push_back(loadValue(lang, lexer, *value));
 			}
 			if (paramName == "w") {
-				this->mos.back().size[1] = int(values[0]/tech.dbunit);
+				this->mos.back().size[1] = int(values[0]/tech->dbunit);
 			} else if (paramName == "l") {
-				this->mos.back().size[0] = int(values[0]/tech.dbunit);
+				this->mos.back().size[0] = int(values[0]/tech->dbunit);
 			} else {
 				this->mos.back().params.insert(pair<string, vector<double> >(paramName, values));
 			}
@@ -442,7 +453,7 @@ bool Circuit::loadDevice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &le
 	return true;
 }
 
-void Circuit::loadSubckt(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &subckt) {
+void Circuit::loadSubckt(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &subckt) {
 	for (auto tok = subckt.tokens.begin(); tok != subckt.tokens.end(); tok++) {
 		if (tok->type == lang.NAME) {
 			this->name = lexer.read(tok->begin, tok->end);
@@ -451,7 +462,7 @@ void Circuit::loadSubckt(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &le
 				this->nets.push_back(Net(lexer.read(port->begin, port->end), true));
 			}
 		} else if (tok->type == lang.DEVICE) {
-			if (not loadDevice(tech, lang, lexer, *tok)) {
+			if (not loadDevice(lang, lexer, *tok)) {
 				printf("unrecognized device\n");
 			}
 		}
@@ -459,15 +470,15 @@ void Circuit::loadSubckt(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &le
 }
 
 // horizontal size of pin
-int Circuit::pinWidth(const Tech &tech, Index p) const {
+int Circuit::pinWidth(Index p) const {
 	int device = pin(p).device;
 	if (device >= 0) {
 		// this pin is a transistor, use length of transistor
-		return tech.paint[tech.wires[0].draw].minWidth;
+		return tech->paint[tech->wires[0].draw].minWidth;
 		//return base->mos[device].size[0];
 	}
 	// this pin is a contact
-	return tech.paint[tech.wires[1].draw].minWidth;
+	return tech->paint[tech->wires[1].draw].minWidth;
 }
 
 // vertical size of pin
@@ -508,7 +519,7 @@ int Circuit::pinHeight(Index p) const {
 	return result;
 }
 
-void Circuit::draw(const Tech &tech, Layout &dst) {
+void Circuit::draw(Layout &dst) {
 	vec2i dir(1,1);
 	dst.name = name;
 
@@ -529,8 +540,8 @@ void Circuit::draw(const Tech &tech, Layout &dst) {
 			int top = 0;
 			
 			int pinLevel = pin.layer;
-			int pinLayer = tech.wires[pinLevel].draw;
-			int width = tech.paint[pinLayer].minWidth;
+			int pinLayer = tech->wires[pinLevel].draw;
+			int width = tech->paint[pinLayer].minWidth;
 
 			for (int j = 0; j < (int)routes.size(); j++) {
 				if (routes[j].hasPin(this, Index(type, i))) {
@@ -545,12 +556,12 @@ void Circuit::draw(const Tech &tech, Layout &dst) {
 				}
 			}
 
- 			dst.push(tech.wires[pinLevel], Rect(pin.outNet, vec2i(pin.pos, bottom), vec2i(pin.pos+width, top)));
+ 			dst.push(tech->wires[pinLevel], Rect(pin.outNet, vec2i(pin.pos, bottom), vec2i(pin.pos+width, top)));
 		}
 	}
 
 	for (int i = 0; i < (int)dst.layers.size(); i++) {
-		if (tech.paint[dst.layers[i].draw].fill) {
+		if (tech->paint[dst.layers[i].draw].fill) {
 			Rect box = dst.layers[i].bbox();
 			dst.layers[i].clear();
 			dst.layers[i].push(box, true);

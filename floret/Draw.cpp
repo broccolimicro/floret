@@ -211,7 +211,7 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 				//	axis[1] = 0;
 				//}
 
-				Layout next;
+				Layout next(tech);
 				drawVia(tech, next, wire.net, i, axis, vec2i(width, height), true, vec2i(posArr[i][j], 0));
 				int off = numeric_limits<int>::min();
 				if (not vias.empty() and minOffset(&off, tech, 0, vias.back(), 0, next, 0, Layout::IGNORE, Layout::DEFAULT) and off > 0) {
@@ -253,16 +253,16 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 
 void drawPin(const Tech &tech, Layout &dst, const Circuit *ckt, const Stack &stack, int pinID, vec2i pos, vec2i dir) {
 	pos[0] += stack.pins[pinID].pos;
-	if (stack.pins[pinID].device < 0) {
+	if (stack.pins[pinID].isContact()) {
 		int model = -1;
 		for (int i = pinID-1; i >= 0 and model < 0; i--) {
-			if (stack.pins[i].device >= 0) {
+			if (stack.pins[i].isGate()) {
 				model = ckt->mos[stack.pins[i].device].model;
 			}
 		}
 
 		for (int i = pinID+1; i < (int)stack.pins.size() and model < 0; i++) {
-			if (stack.pins[i].device >= 0) {
+			if (stack.pins[i].isGate()) {
 				model = ckt->mos[stack.pins[i].device].model;
 			}
 		}
