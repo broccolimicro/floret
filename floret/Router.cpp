@@ -166,7 +166,7 @@ void Router::buildRoutes() {
 	// Create initial routes
 	routes.reserve(base->nets.size()+2);
 	for (int i = 0; i < (int)base->nets.size(); i++) {
-		routes.push_back(Wire(*(base->tech), i));
+		routes.push_back(Wire(base->tech, i));
 	}
 	for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
@@ -185,7 +185,7 @@ void Router::buildRoutes() {
 
 	for (int type = 0; type < 2; type++) {
 		base->stack[type].route = (int)routes.size();
-		routes.push_back(Wire(*(base->tech), flip(type)));
+		routes.push_back(Wire(base->tech, flip(type)));
 		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
 			routes.back().addPin(base, Index(type, i));
 		}
@@ -334,8 +334,8 @@ void Router::breakRoute(int route, set<int> cycleRoutes) {
 	int right = max(base->stack[0].pins.back().pos, base->stack[1].pins.back().pos);
 	int center = (left + right)/2;
 
-	Wire wp(*(base->tech), routes[route].net);
-	Wire wn(*(base->tech), routes[route].net);
+	Wire wp(base->tech, routes[route].net);
+	Wire wn(base->tech, routes[route].net);
 	vector<int> count(routes[route].pins.size(), 0);
 	bool wpHasGate = false;
 	bool wnHasGate = false;
@@ -467,7 +467,7 @@ void Router::breakRoute(int route, set<int> cycleRoutes) {
 		// saving the vertical position of the pin so the drawing functionality
 		// knows where to draw the vertical path.
 		Index virtPin(2, (int)base->stack[2].pins.size());
-		base->stack[2].pins.push_back(Pin(*(base->tech), routes[route].net));
+		base->stack[2].pins.push_back(Pin(base->tech, routes[route].net));
 		base->stack[2].pins.back().pos = -50;
 		wp.addPin(base, virtPin);
 		wn.addPin(base, virtPin);

@@ -218,7 +218,7 @@ Wire::~Wire() {
 
 void Wire::addPin(const Circuit *s, Index pin) {
 	auto pos = lower_bound(pins.begin(), pins.end(), pin, CompareIndex(s));
-	pins.insert(pos, Contact(*(s->tech), pin));
+	pins.insert(pos, Contact(s->tech, pin));
 	if (left < 0 or s->stack[pin.type].pins[pin.pin].pos < left) {
 		left = s->stack[pin.type].pins[pin.pin].pos;
 	}
@@ -310,19 +310,19 @@ void Stack::push(const Circuit *ckt, int device, bool flip) {
 	// unflipped orderings.
 
 	if (not link and not pins.empty() and pins.back().device >= 0) {
-		pins.push_back(Pin(*(ckt->tech), pins.back().rightNet));
+		pins.push_back(Pin(ckt->tech, pins.back().rightNet));
 	}
 
 	if (fromNet >= 0) {
 		bool hasContact = (ckt->nets[fromNet].ports[type] > 2 or ckt->nets[fromNet].ports[1-type] > 0 or ckt->nets[fromNet].gates[0] > 0 or ckt->nets[fromNet].gates[1] > 0);
 		if (fromNet >= 0 and (not link or pins.empty() or hasContact or ckt->nets[fromNet].isIO)) {
 			// Add a contact for the first net or between two transistors.
-			pins.push_back(Pin(*(ckt->tech), fromNet));
+			pins.push_back(Pin(ckt->tech, fromNet));
 		}
 	}
 
 	if (device >= 0) {
-		pins.push_back(Pin(*(ckt->tech), device, gateNet, fromNet, toNet));
+		pins.push_back(Pin(ckt->tech, device, gateNet, fromNet, toNet));
 	}
 }
 
@@ -346,8 +346,7 @@ void Stack::draw(const Tech &tech, const Circuit *base, Layout &dst) {
 	}
 }
 
-Circuit::Circuit(const Tech &tech) {
-	this->tech = &tech;
+Circuit::Circuit(const Tech &tech) : tech(tech) {
 	cellHeight = 0;
 	for (int type = 0; type < 3; type++) {
 		stack[type].type = type;
@@ -410,7 +409,7 @@ bool Circuit::loadDevice(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t
 	}
 
 	string modelName = lexer.read(args->tokens[4].begin, args->tokens[4].end);
-	int modelIdx = tech->findModel(modelName);
+	int modelIdx = tech.findModel(modelName);
 	// if the modelName isn't in the model list, then this is a non-transistor subckt
 	if (modelIdx < 0) {
 		printf("model not found %s\n", modelName.c_str());
@@ -418,7 +417,7 @@ bool Circuit::loadDevice(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t
 	}
 
 	int port = 0;
-	int type = tech->models[modelIdx].type;
+	int type = tech.models[modelIdx].type;
 	this->mos.push_back(Mos(modelIdx, type));
 	for (auto arg = args->tokens.begin(); arg != args->tokens.end(); arg++) {
 		if (arg->type == lang.PARAM) {
@@ -428,9 +427,9 @@ bool Circuit::loadDevice(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t
 				values.push_back(loadValue(lang, lexer, *value));
 			}
 			if (paramName == "w") {
-				this->mos.back().size[1] = int(values[0]/tech->dbunit);
+				this->mos.back().size[1] = int(values[0]/tech.dbunit);
 			} else if (paramName == "l") {
-				this->mos.back().size[0] = int(values[0]/tech->dbunit);
+				this->mos.back().size[0] = int(values[0]/tech.dbunit);
 			} else {
 				this->mos.back().params.insert(pair<string, vector<double> >(paramName, values));
 			}
@@ -474,11 +473,11 @@ int Circuit::pinWidth(Index p) const {
 	int device = pin(p).device;
 	if (device >= 0) {
 		// this pin is a transistor, use length of transistor
-		return tech->paint[tech->wires[0].draw].minWidth;
+		return tech.paint[tech.wires[0].draw].minWidth;
 		//return base->mos[device].size[0];
 	}
 	// this pin is a contact
-	return tech->paint[tech->wires[1].draw].minWidth;
+	return tech.paint[tech.wires[1].draw].minWidth;
 }
 
 // vertical size of pin
@@ -540,8 +539,8 @@ void Circuit::draw(Layout &dst) {
 			int top = 0;
 			
 			int pinLevel = pin.layer;
-			int pinLayer = tech->wires[pinLevel].draw;
-			int width = tech->paint[pinLayer].minWidth;
+			int pinLayer = tech.wires[pinLevel].draw;
+			int width = tech.paint[pinLayer].minWidth;
 
 			for (int j = 0; j < (int)routes.size(); j++) {
 				if (routes[j].hasPin(this, Index(type, i))) {
@@ -556,12 +555,12 @@ void Circuit::draw(Layout &dst) {
 				}
 			}
 
- 			dst.push(tech->wires[pinLevel], Rect(pin.outNet, vec2i(pin.pos, bottom), vec2i(pin.pos+width, top)));
+ 			dst.push(tech.wires[pinLevel], Rect(pin.outNet, vec2i(pin.pos, bottom), vec2i(pin.pos+width, top)));
 		}
 	}
 
 	for (int i = 0; i < (int)dst.layers.size(); i++) {
-		if (tech->paint[dst.layers[i].draw].fill) {
+		if (tech.paint[dst.layers[i].draw].fill) {
 			Rect box = dst.layers[i].bbox();
 			dst.layers[i].clear();
 			dst.layers[i].push(box, true);

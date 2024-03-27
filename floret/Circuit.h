@@ -212,7 +212,7 @@ struct Circuit {
 	Circuit(const Tech &tech);
 	~Circuit();
 
-	const Tech *tech;
+	const Tech &tech;
 
 	string name;
 
