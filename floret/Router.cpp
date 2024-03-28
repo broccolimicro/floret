@@ -909,14 +909,14 @@ void Router::buildHorizConstraints(const Tech &tech) {
 		}
 	}
 
-	printf("buildHorizConstraints\n");
+	//printf("buildHorizConstraints\n");
 	for (int type = 0; type < 2; type++) {
 		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
 			Pin &pin = base->stack[type].pins[i];
 
 			int off = 0;
 			if (i+1 < (int)base->stack[type].pins.size()) {
-				printf("pin to pin %d,%d\n", type, i);
+				//printf("pin to pin %d,%d\n", type, i);
 				Pin &next = base->stack[type].pins[i+1];
 				int substrateMode = (pin.isGate() or next.isGate()) ? Layout::MERGENET : Layout::DEFAULT;
 				if (minOffset(&off, tech, 0, pin.layout, 0, next.layout, 0, substrateMode, Layout::DEFAULT, false)) {
@@ -931,7 +931,7 @@ void Router::buildHorizConstraints(const Tech &tech) {
 					continue;
 				}
 
-				printf("pin to route %d,%d->%d\n", type, i, j);
+				//printf("pin to route %d,%d->%d\n", type, i, j);
 				for (int k = 0; k < (int)routes[j].pins.size(); k++) {
 					int off = 0;
 					if ((routes[j].pins[k].idx.type != type or i < routes[j].pins[k].idx.pin) and
@@ -946,14 +946,14 @@ void Router::buildHorizConstraints(const Tech &tech) {
 					}
 				}
 			}
-			printf("\n");
+			//printf("\n");
 		}
 	}
-	printf("done buildHorizConstraints\n\n");
+	//printf("done buildHorizConstraints\n\n");
 }
 
 void Router::updatePinPos() {
-	printf("updatePinPos\n");
+	//printf("updatePinPos\n");
 	for (int type = 0; type < (int)base->stack.size(); type++) {
 		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
 			base->stack[type].pins[i].pos = 0;
@@ -984,7 +984,7 @@ void Router::updatePinPos() {
 	}
 
 	while (not stack.empty()) {
-		printf("stack: %d\n", (int)stack.size());
+		//printf("stack: %d\n", (int)stack.size());
 		// handle pin to pin constraints and alignment constraints
 		Index curr = stack.back();
 		stack.pop_back();
@@ -994,7 +994,7 @@ void Router::updatePinPos() {
 			Pin &next = base->pin(off->first);
 			int pos = pin.pos+off->second;
 			if (next.pos < pos) {
-				printf("pinToPin (%d,%d)->%d->(%d,%d) %d->%d\n", curr.type, curr.pin, off->second, off->first.type, off->first.pin, next.pos, pos);
+				//printf("pinToPin (%d,%d)->%d->(%d,%d) %d->%d\n", curr.type, curr.pin, off->second, off->first.type, off->first.pin, next.pos, pos);
 				next.pos = pos;
 				stack.push_back(off->first);
 			}
@@ -1016,11 +1016,11 @@ void Router::updatePinPos() {
 				if (pin.align >= 0) {
 					Pin &align = base->stack[1-type].pins[pin.align];
 					if (pin.pos < align.pos) {
-						printf("pinAlign (%d,%d)--(%d,%d) %d->%d\n", type, i, 1-type, pin.align, pin.pos, align.pos);
+						//printf("pinAlign (%d,%d)--(%d,%d) %d->%d\n", type, i, 1-type, pin.align, pin.pos, align.pos);
 						pin.pos = align.pos;
 						stack.push_back(Index(type, i));
 					} else if (align.pos < pin.pos) {
-						printf("pinAlign (%d,%d)--(%d,%d) %d->%d\n", 1-type, pin.align, type, i, align.pos, pin.pos);
+						//printf("pinAlign (%d,%d)--(%d,%d) %d->%d\n", 1-type, pin.align, type, i, align.pos, pin.pos);
 						align.pos = pin.pos;
 						stack.push_back(Index(1-type, pin.align));
 					}
@@ -1047,7 +1047,7 @@ void Router::updatePinPos() {
 					if (prev.pos < pin.pos and routes[i].pOffset >= prev.lo and routes[i].pOffset <= prev.hi) {
 						int pos = prev.pos+off->second;
 						if (routes[i].pins[j].left < pos) {
-							printf("pinToVia (%d,%d)->%d->(%d,%d) %d->%d\n", off->first.type, off->first.pin, off->second, i, j, routes[i].pins[j].left, pos);
+							//printf("pinToVia (%d,%d)->%d->(%d,%d) %d->%d\n", off->first.type, off->first.pin, off->second, i, j, routes[i].pins[j].left, pos);
 							routes[i].pins[j].left = pos;
 						}
 					}
@@ -1058,7 +1058,7 @@ void Router::updatePinPos() {
 					if (pin.pos < next.pos and routes[i].pOffset >= next.lo and routes[i].pOffset <= next.hi) {
 						int pos = routes[i].pins[j].left+off->second;
 						if (next.pos < pos) {
-							printf("viaToPin (%d,%d)->%d->(%d,%d) %d->%d\n", i, j, off->second, off->first.type, off->first.pin, next.pos, pos);
+							//printf("viaToPin (%d,%d)->%d->(%d,%d) %d->%d\n", i, j, off->second, off->first.type, off->first.pin, next.pos, pos);
 							next.pos = pos;
 							stack.push_back(off->first);
 						}
@@ -1206,7 +1206,7 @@ void Router::drawRoutes(const Tech &tech) {
 }
 
 void Router::buildRouteConstraints(const Tech &tech, bool allowOverCell) {
-	printf("\nbuildRouteConstraints\n");
+	//printf("\nbuildRouteConstraints\n");
 	routeConstraints.clear();
 	// TODO(edward.bingham) There's a bug here where poly routes are placed too
 	// close to the diffusion. This is because the DRC rule involved is more than
@@ -1218,7 +1218,7 @@ void Router::buildRouteConstraints(const Tech &tech, bool allowOverCell) {
 	// Compute route constraints
 	for (int i = 0; i < (int)routes.size(); i++) {
 		for (int j = i+1; j < (int)routes.size(); j++) {
-			printf("checkout route %d:%d and %d:%d\n", i, routes[i].net, j, routes[j].net);
+			//printf("checkout route %d:%d and %d:%d\n", i, routes[i].net, j, routes[j].net);
 			// TODO(edward.bingham) I need to check pin overlap of routes. If any of
 			// the pins of either route has a minOffset conflict with the other
 			// route, then their order is determined by which stack the pin is
@@ -1243,10 +1243,10 @@ void Router::buildRouteConstraints(const Tech &tech, bool allowOverCell) {
 					routeConstraints.back().select = (flip(routes[j].net) == Model::PMOS or flip(routes[i].net) == Model::NMOS);
 				}
 			}
-			printf("done\n\n");
+			//printf("done\n\n");
 		}
 	}
-	printf("done buildRouteConstraints\n\n");
+	//printf("done buildRouteConstraints\n\n");
 }
 
 void Router::buildGroupConstraints(const Tech &tech) {
@@ -1783,7 +1783,7 @@ void Router::lowerRoutes(const Tech &tech, int window) {
 		}
 	}
 
-	for (int i = 0; i < (int)blockedLevels.size(); i++) {
+	/*for (int i = 0; i < (int)blockedLevels.size(); i++) {
 		printf("blocked[%d] {", i);
 		for (int j = 0; j < (int)blockedLevels[i].size(); j++) {
 			printf("(");
@@ -1793,7 +1793,7 @@ void Router::lowerRoutes(const Tech &tech, int window) {
 			printf(") ");
 		}
 		printf("}\n");
-	}
+	}*/
 
 	for (int i = 0; i < (int)routes.size(); i++) {
 		vector<bool> types = routes[i].pinTypes();
@@ -1859,7 +1859,7 @@ int Router::solve(const Tech &tech) {
 	updatePinPos();
 	alignPins(200);
 	buildPinConstraints(tech, 0);
-	print();
+	//print();
 	//buildViaConstraints(tech);
 	buildRoutes();
 	buildContacts(tech);
@@ -1881,7 +1881,7 @@ int Router::solve(const Tech &tech) {
 		buildContacts(tech);
 		buildHorizConstraints(tech);
 		updatePinPos();
-		print();
+		//print();
 		drawRoutes(tech);
 
 		buildRouteConstraints(tech);

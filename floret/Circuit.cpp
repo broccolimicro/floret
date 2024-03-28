@@ -116,12 +116,12 @@ Pin::~Pin() {
 }
 
 void Pin::offsetToPin(Index pin, int value) {
-	printf("offsetToPin %d\n", value);
+	//printf("offsetToPin %d\n", value);
 	auto result = toPin.insert(pair<Index, int>(pin, value));
 	if (not result.second) {
 		result.first->second = max(result.first->second, value);
 	}
-	printf("Done inserting %d\n", result.first->second);
+	//printf("Done inserting %d\n", result.first->second);
 }
 
 bool Pin::isGate() const {
