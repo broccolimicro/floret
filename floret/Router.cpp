@@ -918,8 +918,8 @@ void Router::buildHorizConstraints(const Tech &tech) {
 			if (i+1 < (int)base->stack[type].pins.size()) {
 				printf("pin to pin %d,%d\n", type, i);
 				Pin &next = base->stack[type].pins[i+1];
-				int substrateMode = (pin.isGate() or next.isGate()) ? Layout::IGNORE : Layout::DEFAULT;
-				if (minOffset(&off, tech, 0, pin.layout, 0, next.layout, 0, substrateMode, Layout::DEFAULT)) {
+				int substrateMode = (pin.isGate() or next.isGate()) ? Layout::MERGENET : Layout::DEFAULT;
+				if (minOffset(&off, tech, 0, pin.layout, 0, next.layout, 0, substrateMode, Layout::DEFAULT, false)) {
 					pin.offsetToPin(Index(type, i+1), off);
 				} else {
 					printf("error: no offset found at pin (%d,%d)\n", type, i+1);

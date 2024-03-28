@@ -309,7 +309,7 @@ void Stack::push(const Circuit *ckt, int device, bool flip) {
 	// contact, then add this transistor. We need to test both the flipped and
 	// unflipped orderings.
 
-	if (not link and not pins.empty() and pins.back().device >= 0) {
+	if (not link and not pins.empty() and pins.back().isGate()) {
 		pins.push_back(Pin(ckt->tech, pins.back().rightNet));
 	}
 
@@ -348,7 +348,7 @@ void Stack::draw(const Tech &tech, const Circuit *base, Layout &dst) {
 
 Circuit::Circuit(const Tech &tech) : tech(tech) {
 	cellHeight = 0;
-	for (int type = 0; type < 3; type++) {
+	for (int type = 0; type < (int)stack.size(); type++) {
 		stack[type].type = type;
 	}
 }
