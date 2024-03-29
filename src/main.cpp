@@ -3,12 +3,13 @@
 #include <vector>
 
 #include <ruler/Tech.h>
+#include <ruler/Script.h>
 #include <floret/Library.h>
 
 using namespace std;
 
 void printHelp() {
-	printf("Usage: floret [options] <file.spi>...\n");
+	printf("Usage: floret [options] <tech.py> <file.spi>...\n");
 	printf("A cell generator designed for advanced nodes.\n");
 	printf("\nOptions:\n");
 	printf(" -h,--help      Display this information\n");
@@ -27,6 +28,7 @@ void printVersion() {
 
 int main(int argc, char **argv) {
 	string cellsDir = "";
+	string techPath = "";
 	string outputDir = "";
 	vector<string> spiceFiles;
 	set<string> cellNames;
@@ -69,6 +71,8 @@ int main(int argc, char **argv) {
 				cout << "expected output directory" << endl;
 				return 1;
 			}
+		} else if (techPath == "") {
+			techPath = argv[i];
 		} else {
 			spiceFiles.push_back(argv[i]);
 		}
@@ -80,6 +84,7 @@ int main(int argc, char **argv) {
 	}
 
 	Tech tech;
+	loadTech(tech, techPath);
 	Library cellLib;
 	for (int i = 0; i < (int)spiceFiles.size(); i++) {
 		if (not cellLib.loadFile(tech, spiceFiles[i])) {
