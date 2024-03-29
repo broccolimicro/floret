@@ -1,9 +1,9 @@
 CXXFLAGS     = -g -O2 -Wall -fmessage-length=0 -I. -L. -Ideps/gdstk/include -Ideps/ruler -Ideps/pgen -Ldeps/gdstk/build/install/lib -Ldeps/gdstk/build/install/lib64  -Ldeps/ruler -Ldeps/pgen
 # -g -fprofile-arcs -ftest-coverage
 BSOURCES     := $(wildcard src/*.cpp)
-LSOURCES     := $(wildcard floret/*.cpp)
 PGRAM        := $(wildcard peg/*.peg)
-PSOURCES     := $(PGRAM:.peg=.cpp)
+PSOURCES     := $(PGRAM:peg/%.peg=floret/%.cpp)
+LSOURCES     := $(wildcard floret/*.cpp) $(PSOURCES)
 LOBJECTS     := $(LSOURCES:.cpp=.o)
 BOBJECTS     := $(BSOURCES:.cpp=.o)
 LDEPS        := $(LSOURCES:.cpp=.d)
@@ -26,7 +26,7 @@ ruler:
 
 grammar: $(PSOURCES)
 
-peg/%.cpp: peg/%.peg
+floret/spice.cpp: peg/spice.peg
 	deps/pgen/pgen-linux $<
 	mv peg/*.cpp peg/*.h floret
 	
@@ -41,7 +41,7 @@ $(LTARGET): $(LOBJECTS)
 	ar rvs $(LTARGET) $(LOBJECTS)
 
 $(BTARGET): $(BOBJECTS) $(LTARGET)
-	$(CXX) $(CXXFLAGS) $(BOBJECTS) -l:$(LTARGET) -l:libruler.a -l:libpgen.a -l:libgdstk.a -l:libclipper.a -l:libqhullstatic_r.a -lz -o $(BTARGET)
+	$(CXX) $(CXXFLAGS) $(BOBJECTS) -l:$(LTARGET) -l:libruler.a -lpython3.10 -l:libpgen.a -l:libgdstk.a -l:libclipper.a -l:libqhullstatic_r.a -lz -o $(BTARGET)
 
 floret/%.o: floret/%.cpp
 	$(CXX) $(CXXFLAGS) -c -MMD -o $@ $<
