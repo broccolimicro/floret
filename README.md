@@ -12,19 +12,19 @@ Floret is a cell generator designed with advanced nodes in mind. The underlying 
 
 Install all dependencies
 ```
-sudo apt install libqhull-dev zlib1g-dev
+sudo apt install libqhull-dev zlib1g-dev python3.10-dev
+git submodule update --init --recursive
 ```
 
-This will build the `floret-linux` binary in the `build-linux` directory:
+There are two build systems supported. Tup is preferred, placing floret-linux into the build-linux directory
 ```
-git submodule update --init --recursive
 tup init
 tup
 ```
 
-This will install it to `/usr/local/bin`:
+However, we also a Makefile set up, placing floret-linux into the root directory
 ```
-cp build-linux/floret /usr/local/bin
+make
 ```
 
 ## Examples
@@ -38,7 +38,4 @@ This will create the `cells` directory and run cell layout for all cells in the 
 
 ## Status
 
-Floret is being tested on Skywater's 130nm process technology node. It is not yet producing DRC clean layouts, but the layouts are often workable with minor manual alterations. There are two more things that need to be done to generate DRC clean layouts.
-
-1. I need to implement constraints for pins and vias that are next to eachother on the same stack to manage the interaction between via enclosure rules and spacing rules between the via and the pin.
-2. I need to implement a more advanced DRC checking engine that can handle more complex DRC rules to check poly against diffusion without causing havok with the transistor placement spacing.
+Floret is being tested on Skywater's 130nm process technology node. It is not yet producing DRC clean layouts, but the layouts are often workable with minor manual alterations.
