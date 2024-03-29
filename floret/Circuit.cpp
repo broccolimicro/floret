@@ -567,5 +567,7 @@ void Circuit::draw(Layout &dst) {
 		}
 	}
 
+	dst.push(tech.boundary, dst.bbox()); 
+
 	dst.merge();
 }

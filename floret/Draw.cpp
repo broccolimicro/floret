@@ -229,6 +229,13 @@ void drawWire(const Tech &tech, Layout &dst, const Circuit *ckt, const Wire &wir
 		}
 	}
 
+	// TODO(edward.bingham) We need to check every pin on this wire to every via
+	// to make sure we haven't created a notch that will violate spacing rules.
+	// If we do end up creating a notch, then we need to fill it in.
+
+	// TODO(edward.bingham) We need to create pin locations on each wire for the
+	// inputs and outputs.
+
 	for (int i = 1; i < (int)wire.pins.size(); i++) {
 		int prevLevel = wire.getLevel(i-1);
 		int nextLevel = wire.getLevel(i);

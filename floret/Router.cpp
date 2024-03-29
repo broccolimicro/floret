@@ -99,7 +99,8 @@ void Router::delRoute(int route) {
 void Router::buildPinConstraints(const Tech &tech, int level) {
 	pinConstraints.clear();
 	// Compute the pin constraints
-	// TODO(edward.bingham) this could be more efficiently done as a 1d rectangle overlap problem
+	// TODO(edward.bingham) this could be more efficiently done as a 1d rectangle
+	// overlap problem
 	for (int p = 0; p < (int)base->stack[Model::PMOS].pins.size(); p++) {
 		for (int n = 0; n < (int)base->stack[Model::NMOS].pins.size(); n++) {
 			int off = 0;
@@ -450,7 +451,8 @@ void Router::breakRoute(int route, set<int> cycleRoutes) {
 	}
 
 	if (sharedPin >= 0) {
-		// TODO(edward.bingham) bug in which a non-cycle is being split resulting in redundant vias on various vertical routes
+		// TODO(edward.bingham) bug in which a non-cycle is being split resulting
+		// in redundant vias on various vertical routes
 		wp.addPin(base, routes[route].pins[sharedPin].idx);
 		wn.addPin(base, routes[route].pins[sharedPin].idx);
 		routes[route].pins.erase(routes[route].pins.begin()+sharedPin);
@@ -1208,24 +1210,11 @@ void Router::drawRoutes(const Tech &tech) {
 void Router::buildRouteConstraints(const Tech &tech, bool allowOverCell) {
 	//printf("\nbuildRouteConstraints\n");
 	routeConstraints.clear();
-	// TODO(edward.bingham) There's a bug here where poly routes are placed too
-	// close to the diffusion. This is because the DRC rule involved is more than
-	// just a spacing rule between two single layers. It requires a larger DRC
-	// engine to be able to check that. Simply adding a spacing rule between poly
-	// and diffusion causes havok with the transistor placement in the nmos and
-	// pmos stacks.
 
 	// Compute route constraints
 	for (int i = 0; i < (int)routes.size(); i++) {
 		for (int j = i+1; j < (int)routes.size(); j++) {
 			//printf("checkout route %d:%d and %d:%d\n", i, routes[i].net, j, routes[j].net);
-			// TODO(edward.bingham) I need to check pin overlap of routes. If any of
-			// the pins of either route has a minOffset conflict with the other
-			// route, then their order is determined by which stack the pin is
-			// associated with. This is routing only on the pin side vs routing and
-			// non routing on the route side. That comparison mode is not yet
-			// supported by the DRC engine.
-
 			int routingMode = ((routes[i].net < 0 and routes[j].net >= 0) or (routes[i].net >= 0 and routes[j].net < 0)) ? Layout::MERGENET : Layout::DEFAULT;
 			int off[2] = {0,0};
 			bool fromto = minOffset(off+0, tech, 1, routes[i].layout, 0, routes[j].layout, 0, Layout::DEFAULT, routingMode);
@@ -1679,8 +1668,18 @@ void Router::assignRouteConstraints(const Tech &tech) {
 				}
 			}
 
-			// TODO(edward.bingham) Did doing this create a cycle when we include violated via constraints? If so, we resolve that cycle by pushing the associated pins out as much as needed.
-			// TODO(edward.bingham) In more advanced nodes, pushing the pin out may not be possible because poly routes are only allowed on a regular grid. So if we pushed the poly at all, we'd have to push it an entire grid unit. We may need to account for this in our placement algorithm. We may also be able to single out this pin from the route and route it separately. In that case, all of our previous understandings about the route direction assignments will change. So, this would have to be identified before running this algorithm.
+			// TODO(edward.bingham) Did doing this create a cycle when we include
+			// violated via constraints? If so, we resolve that cycle by pushing the
+			// associated pins out as much as needed.
+
+			// TODO(edward.bingham) In more advanced nodes, pushing the pin out may
+			// not be possible because poly routes are only allowed on a regular
+			// grid. So if we pushed the poly at all, we'd have to push it an entire
+			// grid unit. We may need to account for this in our placement algorithm.
+			// We may also be able to single out this pin from the route and route it
+			// separately. In that case, all of our previous understandings about the
+			// route direction assignments will change. So, this would have to be
+			// identified before running this algorithm.
 		}
 		if (inTokens.size() + outTokens.size() > 0) {
 			buildPOffsets(tech, inTokens);
@@ -1693,7 +1692,11 @@ void Router::assignRouteConstraints(const Tech &tech) {
 		int index = -1;
 		int uindex = -1;
 		for (int u = (int)unassigned.size()-1; u >= 0; u--) {
-			// TODO(edward.bingham) If there is a direction that violates a via constraint and a direction that doesn't, then we pre-emptively chose the direction that doesn't. If both directions violate the via constraint, then we need to resolve that conflict by pushing the associated pins out to make space for the via.
+			// TODO(edward.bingham) If there is a direction that violates a via
+			// constraint and a direction that doesn't, then we pre-emptively chose
+			// the direction that doesn't. If both directions violate the via
+			// constraint, then we need to resolve that conflict by pushing the
+			// associated pins out to make space for the via.
 			int i = unassigned[u];
 			int label = max(
 				routes[routeConstraints[i].wires[0]].pOffset + routes[routeConstraints[i].wires[1]].nOffset + routeConstraints[i].off[0], 
@@ -1868,6 +1871,7 @@ int Router::solve(const Tech &tech) {
 	updatePinPos();	
 	drawRoutes(tech);
 
+	buildPinConstraints(tech, 0);
 	buildRouteConstraints(tech);
 	resetGraph(tech);
 	assignRouteConstraints(tech);
@@ -1876,6 +1880,8 @@ int Router::solve(const Tech &tech) {
 	updatePinPos();
 	drawRoutes(tech);
 
+	// TODO(edward.bingham) There's a bug in the group constraints functionality
+	// that's exposed by multiple iterations of this.
 	for (int i = 0; i < 1; i++) {
 		lowerRoutes(tech);
 		buildContacts(tech);
@@ -1884,6 +1890,7 @@ int Router::solve(const Tech &tech) {
 		//print();
 		drawRoutes(tech);
 
+		buildPinConstraints(tech, 0);
 		buildRouteConstraints(tech);
 		buildGroupConstraints(tech);
 		resetGraph(tech);
@@ -1892,6 +1899,9 @@ int Router::solve(const Tech &tech) {
 		updatePinPos();
 		drawRoutes(tech);
 	}
+
+	// TODO(edward.bingham) I need to compute cell height from the assignment
+	// results so that it can be used to run more placements.
 
 	// TODO(edward.bingham) The route placement should start at the center and
 	// work it's way toward the bottom and top of the cell instead of starting at
