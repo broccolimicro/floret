@@ -9,14 +9,23 @@
 using namespace std;
 
 struct Library {
+	Library();
+	Library(const Tech &tech);
+	~Library();
+
+	const Tech *tech;
+
 	vector<string> spicePaths;
 	string libPath;
 
 	vector<Circuit> cells;
 
-	void loadSpice(const Tech &tech, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &spice);
-	bool loadFile(const Tech &tech, string path); 
+	void loadSpice(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &spice);
+	bool loadFile(string path); 
 
-	void build(const Tech &tech, set<string> cellNames = set<string>());
+	void build(set<string> cellNames = set<string>());
+
+	void emitGDS(string libname, string filename, set<string> cellNames = set<string>());
+	void emitRect(string path, set<string> cellNames = set<string>());
 };
 

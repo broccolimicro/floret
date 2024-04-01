@@ -14,23 +14,27 @@ void printHelp() {
 	printf("\nOptions:\n");
 	printf(" -h,--help      Display this information\n");
 	printf("    --version   Display version information\n");
-	printf(" -c,--cells <dir> Look for fully or partially completed cell layouts in this directory (default: use current working directory)\n");
-	printf(" -o,--output <dir> Place output files in this directory (default: use cells directory)\n");
+	printf(" --gds <name> <path.gds> emit cell layouts as a .gds library.\n");
+	printf(" --rect <path> emit cell layouts as .rect files.\n");
+	printf("--------------------------------------------------\n");
 	printf(" -s,--select <cell>,<cell>,... do layout for only these cells from the spice file\n");
 }
 
 void printVersion() {
-	printf("floret 0.0.0\n");
+	printf("floret 1.0.0\n");
 	printf("Copyright (C) 2024 Broccoli, LLC.\n");
 	printf("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n");
 	printf("\n");
 }
 
 int main(int argc, char **argv) {
-	string cellsDir = "";
 	string techPath = "";
-	string outputDir = "";
 	vector<string> spiceFiles;
+
+	string gdsName = "";
+	string gdsPath = "";
+	string rectPath = "";
+
 	set<string> cellNames;
 	for (int i = 1; i < argc; i++) {
 		string arg = argv[i];
@@ -40,14 +44,6 @@ int main(int argc, char **argv) {
 		} else if (arg == "--version") {
 			printVersion();
 			return 0;
-		} else if (arg == "-c" or arg == "--cells") {
-			i++;
-			if (i < argc) {
-				cellsDir = argv[i];
-			} else {
-				cout << "expected rect directory" << endl;
-				return 1;
-			}
 		} else if (arg == "-s" or arg == "--select") {
 			i++;
 			if (i < argc) {
@@ -63,12 +59,28 @@ int main(int argc, char **argv) {
 				cout << "expected list of cell names" << endl;
 				return 1;
 			}
-		} else if (arg == "-o" or arg == "--output") {
+		} else if (arg == "--gds") {
 			i++;
 			if (i < argc) {
-				outputDir = argv[i];
+				gdsName = argv[i];
 			} else {
-				cout << "expected output directory" << endl;
+				cout << "expected name of .gds library" << endl;
+				return 1;
+			}
+
+			i++;
+			if (i < argc) {
+				gdsPath = argv[i];
+			} else {
+				cout << "expected output path for .gds library" << endl;
+				return 1;
+			}
+		} else if (arg == "--rect") {
+			i++;
+			if (i < argc) {
+				rectPath = argv[i];
+			} else {
+				cout << "expected output directory for .rect files" << endl;
 				return 1;
 			}
 		} else if (techPath == "") {
@@ -85,17 +97,18 @@ int main(int argc, char **argv) {
 
 	Tech tech;
 	loadTech(tech, techPath);
-	Library cellLib;
+	Library cellLib(tech);
 	for (int i = 0; i < (int)spiceFiles.size(); i++) {
-		if (not cellLib.loadFile(tech, spiceFiles[i])) {
+		if (not cellLib.loadFile(spiceFiles[i])) {
 			printf("file not found: '%s'\n", spiceFiles[i].c_str());
 		}
 	}
-	cellLib.build(tech, cellNames);
-	
-	/*Layout layout;
-	layout.drawCell(tech, vec2i(0,0), cellLib.cells[0]);
-	layout.cleanup();
-	layout.emit(tech, "test");*/
+	cellLib.build(cellNames);
+	if (gdsPath != "") {
+		cellLib.emitGDS(gdsName, gdsPath, cellNames);
+	}
+	if (rectPath != "") {
+		cellLib.emitRect(rectPath, cellNames);
+	}
 }
 
