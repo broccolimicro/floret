@@ -289,9 +289,9 @@ m3 = route(met3, met3_label, met3_pin)
 m4 = route(met4, met4_label, met4_pin)
 m5 = route(met5, met5_label, met5_pin)
 
-via(licon1, no, no, nfet, 1, 8, 12, 0, 16)
-via(licon1, no, no, pfet, 1, 8, 12, 0, 16)
-via(licon1, no, no, pfet_hvt, 1, 8, 12, 0, 16)
+via(licon1, no, no, nfet, m0, 8, 12, 0, 16)
+via(licon1, no, no, pfet, m0, 8, 12, 0, 16)
+via(licon1, no, no, pfet_hvt, m0, 8, 12, 0, 16)
 
 via(licon1, no, no, p, m0, 10, 16, 0, 16)
 via(mcon, no, no, m0, m1, 0, 0, 6, 12)

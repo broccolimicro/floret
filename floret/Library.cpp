@@ -6,6 +6,7 @@
 #include <ruler/Layout.h>
 #include <vector>
 #include <set>
+#include <sys/stat.h>
 
 using namespace std;
 
@@ -86,9 +87,16 @@ void Library::emitGDS(string libname, string filename, set<string> cellNames) {
 }
 
 void Library::emitRect(string path, set<string> cellNames) {
+	mkdir(path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 	for (int i = 0; i < (int)cells.size(); i++) {
 		if (cellNames.empty() or cellNames.find(cells[i].name) != cellNames.end()) {
-			FILE *fptr = fopen((path+"/"+cells[i].name + ".rect").c_str(), "w");
+			string fpath = path;
+			if (path.back() != '/') {
+				fpath += "/";
+			}
+			fpath += cells[i].name + ".rect";
+			printf("creating %s\n", fpath.c_str());
+			FILE *fptr = fopen(fpath.c_str(), "w");
 			Layout layout(*tech);
 			cells[i].draw(layout);
 			layout.emitRect(fptr);
