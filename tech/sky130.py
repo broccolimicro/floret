@@ -1,5 +1,19 @@
 from floret import *
 
+AL = 0  # do not change
+CU = 1  # do not change
+
+# technology configuration
+########################
+
+# choose betwen only one of AL or CU back-end flow here:
+backend_flow = AL
+
+# enable / disable rule groups
+FEOL    = True # front-end-of-line checks
+BEOL    = True # back-end-of-line checks
+OFFGRID = True # manufacturing grid/angle checks
+
 dbunit(5e-3)
 
 no = -1
@@ -321,4 +335,3 @@ spacing(b_and(licon1, poly), b_or(diff, tap), 38)
 spacing(b_and(poly, b_not(diff)), diff, 15)
 
 bound(areaid_sc)
-
