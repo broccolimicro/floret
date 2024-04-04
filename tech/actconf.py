@@ -108,6 +108,22 @@ if "polysilicon" in mtrls:
 			width(layer, mat["width"])
 		if "spacing" in mat:
 			spacing(layer, layer, mat["spacing"][-1])
+		if "via" in mat:
+			polyViaLayer = layers[layout["vias"][f"polysilicon_gds"][-1]]
+
+			models = layout["diff"]
+			if "nspacing" in mat["via"]:
+				for i, ntype in enumerate(models["ntype"]):
+					ndiff = key(mtrls, ntype)
+					ndiffMats = getLayers(layers, ndiff)
+					spacing(b_and(polyViaLayer, b_not(ndiffMats[0][0])), ndiffMats[0][0], mat["via"]["nspacing"][i])
+					
+			if "pspacing" in mat["via"]:
+				for i, ptype in enumerate(models["ptype"]):
+					pdiff = key(mtrls, ptype)
+					pdiffMats = getLayers(layers, pdiff)
+					spacing(b_and(polyViaLayer, b_not(pdiffMats[0][0])), pdiffMats[0][0], mat["via"]["pspacing"][i])
+
 
 ## Metals
 for i in range(1, layout["general"]["metals"]+1):
@@ -224,7 +240,14 @@ for i, variant in enumerate(models["types"]):
 	pdiffMats = getLayers(layers, pdiff)
 	nwellMats = getLayers(layers, nwell)
 	
-	
+	cndiffMat = ndiffMats[0][0]
+	for j in range(1, len(ndiffMats)):
+		cndiffMat = b_and(cndiffMat, ndiffMats[j][0])
+
+	cpdiffMat = pdiffMats[0][0]
+	for j in range(1, len(pdiffMats)):
+		cpdiffMat = b_and(cpdiffMat, pdiffMats[j][0])
+
 
 	if "width" in ndiff:
 		width(ndiffMats[0][0], ndiff["width"])
@@ -252,8 +275,13 @@ for i, variant in enumerate(models["types"]):
 				
 		if pwell:
 			for j, (layer, ovr) in enumerate(pwellMats):
+				if j == 0 and "overhang" in pwell:
+					ovr = pwell["overhang"]
 				subst(model, layer, no, no, ovr, ovr)
 				fill(layer)
+			if "oppspacing" in pwell:
+				spacing(pwellMats[0][0], nwellMats[0][0] if nwell else cpdiffMat, pwell["oppspacing"][-1])
+
 		
 	if "width" in pdiff:
 		width(pdiffMats[0][0], pdiff["width"])
@@ -283,8 +311,12 @@ for i, variant in enumerate(models["types"]):
 				
 		if nwell:
 			for j, (layer, ovr) in enumerate(nwellMats):
+				if j == 0 and "overhang" in nwell:
+					ovr = nwell["overhang"]
 				subst(model, layer, no, no, ovr, ovr)
 				fill(layer)
+			if "oppspacing" in nwell:
+				spacing(nwellMats[0][0], pwellMats[0][0] if pwell else cndiffMat, nwell["oppspacing"][-1])
 
 
 
