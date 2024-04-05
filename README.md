@@ -29,9 +29,14 @@ make
 
 ## Examples
 
-This will create the `cells` directory and run cell layout for all cells in the `test` directory.
+This will generate a GDS library with a nand gate in `test.gds` called `test` using the sky130 tech file provided in the tech directory.
 ```
-./build-linux/floret -c cells test/*.spi
+build-linux/floret-linux --gds test test.gds tech/sky130.py test/nand.spi
+```
+
+This will generate directory called `cells` and create a `.rect` file with a nand gate layout using the ACT layout.conf and prs2net.conf files in the specified directory.
+```
+build-linux/floret-linux --rect cells "tech/actconf.py /opt/cad/conf/sky130" test/nand.spi
 ```
 
 ![cell9](https://github.com/broccolimicro/floret/assets/8902287/7a0c31fb-39dc-45f7-978e-13e30e06b2bb)
