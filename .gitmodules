@@ -3,7 +3,7 @@
 	url = https://github.com/nbingham1/pgen.git
 [submodule "deps/gdstk"]
 	path = deps/gdstk
-	url = https://github.com:heitzmann/gdstk.git
+	url = https://github.com/heitzmann/gdstk.git
 [submodule "deps/ruler"]
 	path = deps/ruler
 	url = https://github.com/broccolimicro/ruler.git
