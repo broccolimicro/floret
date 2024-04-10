@@ -14,8 +14,8 @@ void printHelp() {
 	printf("\nOptions:\n");
 	printf(" -h,--help      Display this information\n");
 	printf("    --version   Display version information\n");
-	printf(" --gds <name> <path.gds> emit cell layouts as a .gds library.\n");
-	printf(" --rect <path> emit cell layouts as .rect files.\n");
+	printf(" --gds <libName> <libPath.gds> emit cell layouts as a .gds library.\n");
+	printf(" --rect <rectDir> <layoutPath.conf> emit cell layouts as .rect files.\n");
 	printf("--------------------------------------------------\n");
 	printf(" -s,--select <cell>,<cell>,... do layout for only these cells from the spice file\n");
 }
@@ -34,6 +34,7 @@ int main(int argc, char **argv) {
 	string gdsName = "";
 	string gdsPath = "";
 	string rectPath = "";
+	string confPath = "";
 
 	set<string> cellNames;
 	for (int i = 1; i < argc; i++) {
@@ -83,6 +84,14 @@ int main(int argc, char **argv) {
 				cout << "expected output directory for .rect files" << endl;
 				return 1;
 			}
+
+			i++;
+			if (i < argc) {
+				confPath = argv[i];
+			} else {
+				cout << "expected path to layout.conf" << endl;
+				return 1;
+			}
 		} else if (techPath == "") {
 			techPath = argv[i];
 		} else {
@@ -108,6 +117,7 @@ int main(int argc, char **argv) {
 		cellLib.emitGDS(gdsName, gdsPath, cellNames);
 	}
 	if (rectPath != "") {
+		cellLib.loadLayoutConf(confPath);
 		cellLib.emitRect(rectPath, cellNames);
 	}
 }

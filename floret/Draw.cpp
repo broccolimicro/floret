@@ -287,7 +287,7 @@ void drawPin(const Tech &tech, Layout &dst, const Circuit *ckt, const Stack &sta
 void drawLayout(Layout &dst, const Layout &src, vec2i pos, vec2i dir) {
 	dst.box.bound(src.box.ll*dir + pos, src.box.ur*dir+pos);
 	for (auto layer = src.layers.begin(); layer != src.layers.end(); layer++) {
-		auto dstLayer = dst.findLayer(layer->draw);
+		auto dstLayer = dst.at(layer->draw);
 		for (int i = 0; i < (int)layer->geo.size(); i++) {
 			dstLayer->push(layer->geo[i].shift(pos, dir));
 		}
