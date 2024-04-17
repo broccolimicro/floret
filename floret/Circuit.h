@@ -145,10 +145,11 @@ bool operator!=(const Contact &c0, const Contact &c1);
 
 // DESIGN(edward.bingham) use this to keep Wire::pins sorted
 struct CompareIndex {
-	CompareIndex(const Circuit *s);
+	CompareIndex(const Circuit *s, bool orderIndex = true);
 	~CompareIndex();
 
 	const Circuit *s;
+	bool orderIndex;
 
 	bool operator()(const Index &i0, const Index &i1);
 	bool operator()(const Contact &c0, const Index &i1);
@@ -230,6 +231,7 @@ struct Circuit {
 	int cellHeight;
 
 	int findNet(string name, bool create=false);
+	string netName(int net) const;
 	const Pin &pin(Index i) const;
 	Pin &pin(Index i);
 

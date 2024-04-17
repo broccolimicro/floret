@@ -38,7 +38,7 @@ build-linux/floret-linux --gds test test.gds tech/sky130.py test/nand.spi
 
 This will generate directory called `cells` and create a `.rect` file with a nand gate layout using the ACT layout.conf and prs2net.conf files in the specified directory.
 ```
-build-linux/floret-linux --rect cells "tech/actconf.py /opt/cad/conf/sky130" test/nand.spi
+build-linux/floret-linux --rect cells /opt/cad/conf/sky130 "tech/actconf.py /opt/cad/conf/sky130" test/nand.spi
 ```
 
 ![cell](https://github.com/broccolimicro/floret/assets/8902287/9085fadf-f1ff-4f82-a233-061a880ca9d2)

@@ -169,7 +169,7 @@ void Router::buildRoutes() {
 	for (int i = 0; i < (int)base->nets.size(); i++) {
 		routes.push_back(Wire(base->tech, i));
 	}
-	for (int type = 0; type < 2; type++) {
+	for (int type = 0; type < (int)base->stack.size(); type++) {
 		for (int i = 0; i < (int)base->stack[type].pins.size(); i++) {
 			if (base->stack[type].pins[i].outNet < (int)base->nets.size()) {
 				routes[base->stack[type].pins[i].outNet].addPin(base, Index(type, i));
@@ -863,6 +863,38 @@ struct Alignment {
 
 bool operator>(const Alignment &a0, const Alignment &a1) {
 	return a0.dist() > a1.dist();
+}
+
+void Router::alignVirtualPins() {
+	// TODO(edward.bingham) Find a list of potential ranges for each pin. This is
+	// determined by the other pins and their hi and lo values. I also need to
+	// think about routes.  Ranges should be defined in terms of pins... but
+	// there are two layers of pins where the pin alignments between the two
+	// change and so pin ranges don't continue to mean the same thing. So, what
+	// if I just define the ranges as an absolute measure? Then if the pin
+	// placements change... There is a cyclic dependency
+	for (int i = 0; i < (int)base->stack[2].pins.size(); i++) {
+		
+	}
+}
+
+void Router::addIOPins() {
+	for (int i = 0; i < (int)base->nets.size(); i++) {
+		if (base->nets[i].isIO) {
+			/*bool found = false;
+			for (int j = 0; not found and j < (int)base->stack.size(); j++) {
+				for (int k = 0; not found and k < (int)base->stack[j].pins.size(); k++) {
+					found = base->stack[j].pins[k].outNet == i and base->stack[j].pins[k].layer >= 1;
+				}
+			}
+			if (not found) {*/
+				Index ioPin(2, (int)base->stack[2].pins.size());
+				base->stack[2].pins.push_back(Pin(base->tech, i));
+				base->stack[2].pins.back().pos = -50;
+				base->stack[2].pins.back().layer = 2;
+			//}
+		}
+	}
 }
 
 void Router::buildPins(const Tech &tech) {
@@ -1751,6 +1783,7 @@ void Router::findAndBreakPinCycles() {
 	breakCycles(cycles);
 }
 
+// The `window` attempts to prevent too many vias across a route by smoothing the transition
 void Router::lowerRoutes(const Tech &tech, int window) {
 	// TODO(edward.bingham) There's still an interaction between route lowering
 	// and via merging where it ends up creating a double route for two close
@@ -1769,13 +1802,15 @@ void Router::lowerRoutes(const Tech &tech, int window) {
 	for (int i = 0; i < (int)routes.size(); i++) {
 		for (int type = 0; type < (int)base->stack.size(); type++) {
 			for (int j = 0; j < (int)base->stack[type].pins.size(); j++) {
+				const Pin &p0 = base->pin(Index(type, j));
 				if (routes[i].pOffset >= base->stack[type].pins[j].lo and routes[i].pOffset <= base->stack[type].pins[j].hi and not routes[i].pins.empty()) {
-					auto pos = lower_bound(routes[i].pins.begin(), routes[i].pins.end(), Index(type, j), CompareIndex(base));
-					if (pos != routes[i].pins.begin() and pos != routes[i].pins.end() and pos->idx != Index(type, j)) {
+					auto pos = lower_bound(routes[i].pins.begin(), routes[i].pins.end(), Index(type, j), CompareIndex(base, false));
+					if (((pos == routes[i].pins.begin() and base->pin(routes[i].pins[0].idx).pos - p0.pos <= p0.width) or
+					    (pos != routes[i].pins.begin() and pos != routes[i].pins.end())) and pos->idx != Index(type, j)) {
 						if (i >= (int)blockedLevels.size()) {
 							blockedLevels.resize(i+1);
 						}
-						int index = (pos-routes[i].pins.begin())-1;
+						int index = max(0, (int)(pos-routes[i].pins.begin())-1);
 						if (index >= (int)blockedLevels[i].size()) {
 							blockedLevels[i].resize(index+1);
 						}
@@ -1857,6 +1892,7 @@ int Router::computeCost() {
 }
 
 int Router::solve(const Tech &tech) {
+	//addIOPins();
 	buildPins(tech);
 	buildHorizConstraints(tech);
 	updatePinPos();
@@ -1867,6 +1903,7 @@ int Router::solve(const Tech &tech) {
 	buildRoutes();
 	buildContacts(tech);
 	findAndBreakPinCycles();
+	buildContacts(tech);
 	buildHorizConstraints(tech);
 	updatePinPos();	
 	drawRoutes(tech);
@@ -1878,11 +1915,12 @@ int Router::solve(const Tech &tech) {
 	buildPinBounds();
 	//alignPins(200);
 	updatePinPos();
+	//print();
 	drawRoutes(tech);
 
 	// TODO(edward.bingham) There's a bug in the group constraints functionality
 	// that's exposed by multiple iterations of this.
-	for (int i = 0; i < 1; i++) {
+	for (int i = 0; i < 5; i++) {
 		lowerRoutes(tech);
 		buildContacts(tech);
 		buildHorizConstraints(tech);
@@ -1951,13 +1989,13 @@ void Router::print() {
 	printf("NMOS\n");
 	for (int i = 0; i < (int)base->stack[0].pins.size(); i++) {
 		const Pin &pin = base->stack[0].pins[i];
-		printf("pin[%d] dev=%d nets=%d->%d->%d size=%dx%d pos=%d align=%d\n", i, pin.device, pin.leftNet, pin.outNet, pin.rightNet, pin.width, pin.height, pin.pos, pin.align);
+		printf("pin[%d] dev=%d nets=%s(%d) -> %s(%d) -> %s(%d) size=%dx%d pos=%d align=%d lo=%d hi=%d\n", i, pin.device, base->netName(pin.leftNet).c_str(), pin.leftNet, base->netName(pin.outNet).c_str(), pin.outNet, base->netName(pin.rightNet).c_str(), pin.rightNet, pin.width, pin.height, pin.pos, pin.align, pin.lo, pin.hi);
 	}
 
 	printf("\nPMOS\n");
 	for (int i = 0; i < (int)base->stack[1].pins.size(); i++) {
 		const Pin &pin = base->stack[1].pins[i];
-		printf("pin[%d] dev=%d nets=%d->%d->%d size=%dx%d pos=%d align=%d\n", i, pin.device, pin.leftNet, pin.outNet, pin.rightNet, pin.width, pin.height, pin.pos, pin.align);
+		printf("pin[%d] dev=%d nets=%s(%d) -> %s(%d) -> %s(%d) size=%dx%d pos=%d align=%d lo=%d hi=%d\n", i, pin.device, base->netName(pin.leftNet).c_str(), pin.leftNet, base->netName(pin.outNet).c_str(), pin.outNet, base->netName(pin.rightNet).c_str(), pin.rightNet, pin.width, pin.height, pin.pos, pin.align, pin.lo, pin.hi);
 	}
 
 	printf("\nRoutes\n");

@@ -2,6 +2,7 @@
 #include <utility>
 #include <math.h>
 #include <string>
+#include <stdlib.h>
 
 using namespace std;
 
@@ -38,3 +39,4 @@ double loadValue(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &val) {
 
 	return value;
 }
+

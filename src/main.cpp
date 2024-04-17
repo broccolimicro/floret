@@ -4,6 +4,7 @@
 
 #include <ruler/Tech.h>
 #include <ruler/Script.h>
+#include <ruler/ActConfig.h>
 #include <floret/Library.h>
 
 using namespace std;
@@ -117,8 +118,14 @@ int main(int argc, char **argv) {
 		cellLib.emitGDS(gdsName, gdsPath, cellNames);
 	}
 	if (rectPath != "") {
-		cellLib.loadLayoutConf(confPath);
-		cellLib.emitRect(rectPath, cellNames);
+		ruler::ActConfig act;
+		if (not act.load(tech, confPath+"/global.conf")) {
+			printf("error loading: '%s/global.conf'\n", confPath.c_str());
+		}
+		if (not act.load(tech, confPath+"/layout.conf")) {
+			printf("error loading: '%s/layout.conf'\n", confPath.c_str());
+		}
+		cellLib.emitRect(act, rectPath, cellNames);
 	}
 }
 

@@ -6,7 +6,6 @@
 #include <set>
 #include <unordered_set>
 #include <vector>
-#include <random>
 
 Placement::Placement() {
 	this->base = nullptr;
@@ -15,16 +14,16 @@ Placement::Placement() {
 	w = 0;
 }
 
-Placement::Placement(const Circuit *base, int b, int l, int w, int g) {
+Placement::Placement(const Circuit *base, int b, int l, int w, int g, std::default_random_engine &rand) {
 	this->base = base;
 	this->b = b;
 	this->l = l;
 	this->w = w;
 	this->g = g;
 
-	static std::default_random_engine generator(std::random_device{}());	static std::bernoulli_distribution distribution(0.5);
+	static std::bernoulli_distribution distribution(0.5);
 	for (int i = 0; i < (int)base->mos.size(); i++) {
-		stack[base->mos[i].type].push_back(Device{i, distribution(generator)});
+		stack[base->mos[i].type].push_back(Device{i, distribution(rand)});
 	}
 	this->d[0] = max(0, (int)stack[0].size()-(int)stack[1].size());
 	this->d[1] = max(0, (int)stack[1].size()-(int)stack[0].size());
@@ -43,7 +42,7 @@ Placement::Placement(const Circuit *base, int b, int l, int w, int g) {
 	stack[shorter].resize(stack[not shorter].size(), Device{-1,false});
 
 	for (int type = 0; type < 2; type++) {
-		random_shuffle(stack[type].begin(), stack[type].end());
+		shuffle(stack[type].begin(), stack[type].end(), rand);
 	}
 }
 
@@ -114,6 +113,7 @@ void Placement::solve(const Tech &tech, Circuit *base, int starts, int b, int l,
 	if (base->mos.size() == 0) {
 		return;
 	}
+	std::default_random_engine rand(0/*std::random_device{}()*/);
 
 	// TODO(edward.bingham) It might speed things up to scale the number of
 	// starts based upon the cell complexity. Though, given that it would really
@@ -122,7 +122,7 @@ void Placement::solve(const Tech &tech, Circuit *base, int starts, int b, int l,
 	// would really do that much to help.
 	//starts = 50*(int)base->mos.size();
 
-	Placement best(base, b, l, w, g);
+	Placement best(base, b, l, w, g, rand);
 	float bestScore = (float)best.score();
 
 	vector<vec4i> choices;
@@ -138,7 +138,7 @@ void Placement::solve(const Tech &tech, Circuit *base, int starts, int b, int l,
 	for (int i = 0; i < starts; i++) {
 		printf("start %d/%d\r", i, starts);
 		fflush(stdout);
-		Placement curr(base, b, l, w, g);
+		Placement curr(base, b, l, w, g, rand);
 		int score = 0;
 		int newScore = curr.score();
 		float currStep = step;
@@ -157,7 +157,7 @@ void Placement::solve(const Tech &tech, Circuit *base, int starts, int b, int l,
 				}
 			}
 
-			random_shuffle(choices.begin(), choices.end());
+			shuffle(choices.begin(), choices.end(), rand);
 			currStep -= (currStep-1.0)*rate;
 			idx++;
 		} while (newScore < score*currStep);

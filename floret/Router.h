@@ -192,6 +192,8 @@ struct Router {
 	void breakCycles(vector<vector<int> > cycles);
 	void findAndBreakPinCycles();
 	void findAndBreakViaCycles();
+	void alignVirtualPins();
+	void addIOPins();
 	void buildPins(const Tech &tech);
 	void buildContacts(const Tech &tech);
 	void buildHorizConstraints(const Tech &tech);

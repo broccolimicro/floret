@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Circuit.h"
+#include <random>
 
 struct Placer;
 
@@ -11,7 +12,7 @@ struct Device {
 
 struct Placement {
 	Placement();
-	Placement(const Circuit *base, int b, int l, int w, int g);
+	Placement(const Circuit *base, int b, int l, int w, int g, std::default_random_engine &rand);
 	~Placement();
 
 	// These are needed to be able to compute the cost of the ordering

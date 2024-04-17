@@ -172,29 +172,31 @@ bool operator!=(const Contact &c0, const Contact &c1) {
 	return c0.idx != c1.idx;
 }
 
-CompareIndex::CompareIndex(const Circuit *s) {
+CompareIndex::CompareIndex(const Circuit *s, bool orderIndex) {
 	this->s = s;
+	this->orderIndex = orderIndex;
 }
 
 CompareIndex::~CompareIndex() {
+	orderIndex = true;
 }
 
 bool CompareIndex::operator()(const Index &i0, const Index &i1) {
 	const Pin &p0 = s->pin(i0);
 	const Pin &p1 = s->pin(i1);
-	return p0.pos < p1.pos or (p0.pos == p1.pos and i0 < i1);
+	return p0.pos < p1.pos or (orderIndex and p0.pos == p1.pos and i0 < i1);
 }
 
 bool CompareIndex::operator()(const Contact &c0, const Index &i1) {
 	const Pin &p0 = s->pin(c0.idx);
 	const Pin &p1 = s->pin(i1);
-	return p0.pos < p1.pos or (p0.pos == p1.pos and c0.idx < i1);
+	return p0.pos < p1.pos or (orderIndex and p0.pos == p1.pos and c0.idx < i1);
 }
 
 bool CompareIndex::operator()(const Contact &c0, const Contact &c1) {
 	const Pin &p0 = s->pin(c0.idx);
 	const Pin &p1 = s->pin(c1.idx);
-	return p0.pos < p1.pos or (p0.pos == p1.pos and c0.idx < c1.idx);
+	return p0.pos < p1.pos or (orderIndex and p0.pos == p1.pos and c0.idx < c1.idx);
 }
 
 Wire::Wire(const Tech &tech) : layout(tech) {
@@ -368,6 +370,14 @@ int Circuit::findNet(string name, bool create) {
 		return index;
 	}
 	return -1;
+}
+
+string Circuit::netName(int net) const {
+	if (net < 0) {
+		return "_";
+	}
+
+	return nets[net].name;
 }
 
 Pin &Circuit::pin(Index i) {
