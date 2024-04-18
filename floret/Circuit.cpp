@@ -529,7 +529,7 @@ int Circuit::pinHeight(Index p) const {
 }
 
 void Circuit::draw(Layout &dst) {
-	vec2i dir(1,1);
+	vec2i dir(1,-1);
 	dst.name = name;
 
 	dst.nets.reserve(nets.size());
@@ -565,7 +565,7 @@ void Circuit::draw(Layout &dst) {
 				}
 			}
 
- 			dst.push(tech.wires[pinLevel], Rect(pin.outNet, vec2i(pin.pos, bottom), vec2i(pin.pos+width, top)));
+ 			dst.push(tech.wires[pinLevel], Rect(pin.outNet, vec2i(pin.pos, bottom)*dir, vec2i(pin.pos+width, top)*dir));
 		}
 	}
 
