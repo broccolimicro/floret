@@ -1806,7 +1806,7 @@ void Router::lowerRoutes(const Tech &tech, int window) {
 				if (routes[i].pOffset >= base->stack[type].pins[j].lo and routes[i].pOffset <= base->stack[type].pins[j].hi and not routes[i].pins.empty()) {
 					auto pos = lower_bound(routes[i].pins.begin(), routes[i].pins.end(), Index(type, j), CompareIndex(base, false));
 					if (((pos == routes[i].pins.begin() and base->pin(routes[i].pins[0].idx).pos - p0.pos <= p0.width) or
-					    (pos != routes[i].pins.begin() and pos != routes[i].pins.end())) and pos->idx != Index(type, j)) {
+					    (pos != routes[i].pins.begin() and pos != routes[i].pins.end())) and not routes[i].hasPin(base, Index(type, j))) {
 						if (i >= (int)blockedLevels.size()) {
 							blockedLevels.resize(i+1);
 						}
@@ -1839,7 +1839,7 @@ void Router::lowerRoutes(const Tech &tech, int window) {
 			continue;
 		}
 		for (int j = 0; j < (int)routes[i].pins.size()-1; j++) {
-			int level = min(base->pin(routes[i].pins[j].idx).layer, base->pin(routes[i].pins[j+1].idx).layer);
+			int level = max(1, min(base->pin(routes[i].pins[j].idx).layer, base->pin(routes[i].pins[j+1].idx).layer));
 			for (; level < (int)tech.wires.size(); level++) {
 				bool found = false;
 				for (int k = max(0, j-window); not found and k < min(j+window+1, (int)blockedLevels[i].size()); k++) {
