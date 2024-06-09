@@ -21,13 +21,16 @@ Placement::Placement(const Circuit *base, int b, int l, int w, int g, std::defau
 	this->w = w;
 	this->g = g;
 
+	// fill stacks with devices that have random orientiations
 	static std::bernoulli_distribution distribution(0.5);
 	for (int i = 0; i < (int)base->mos.size(); i++) {
 		stack[base->mos[i].type].push_back(Device{i, distribution(rand)});
 	}
+	// cache stack size differences
 	this->d[0] = max(0, (int)stack[0].size()-(int)stack[1].size());
 	this->d[1] = max(0, (int)stack[1].size()-(int)stack[0].size());
 
+	// compute Wmin
 	array<int, 2> D;
 	for (int type = 0; type < 2; type++) {
 		D[type] = -2;
@@ -38,9 +41,11 @@ Placement::Placement(const Circuit *base, int b, int l, int w, int g, std::defau
 	}
 	this->Wmin = max((int)stack[0].size()+D[0], (int)stack[1].size()+D[1]) - max((int)stack[0].size(), (int)stack[1].size());
 
+	// add dummy transistors
 	bool shorter = stack[1].size() < stack[0].size();
 	stack[shorter].resize(stack[not shorter].size(), Device{-1,false});
 
+	// generate a random initial placement
 	for (int type = 0; type < 2; type++) {
 		shuffle(stack[type].begin(), stack[type].end(), rand);
 	}
@@ -51,10 +56,14 @@ Placement::~Placement() {
 
 void Placement::move(vec4i choice) {
 	for (int i = choice[0]; i < choice[1]; i++) {
-		for (int j = choice[2], k = choice[3]; j < k; j++, k--) {
+		int j = choice[2], k = choice[3];
+		for (; j < k; j++, k--) {
 			swap(stack[i][j], stack[i][k]);
 			stack[i][j].flip = not stack[i][j].flip;
 			stack[i][k].flip = not stack[i][k].flip;
+		}
+		if (j == k) {
+			stack[i][j].flip = not stack[i][j].flip;
 		}
 	}
 }
