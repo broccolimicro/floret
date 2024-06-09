@@ -6,6 +6,7 @@
 #include <ruler/Script.h>
 #include <ruler/ActConfig.h>
 #include <floret/Library.h>
+#include <floret/Timer.h>
 
 using namespace std;
 
@@ -105,15 +106,28 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
+	Timer timer;
 	Tech tech;
+	printf("loading tech -- ");
+	fflush(stdout);
+	timer.reset();
 	loadTech(tech, techPath);
 	Library cellLib(tech);
+	printf("[%f]\n", timer.since());
 	for (int i = 0; i < (int)spiceFiles.size(); i++) {
+		printf("loading %s -- ", spiceFiles[i].c_str());
+		fflush(stdout);
+		timer.reset();
 		if (not cellLib.loadFile(spiceFiles[i])) {
 			printf("file not found: '%s'\n", spiceFiles[i].c_str());
 		}
+		printf("[%f]\n", timer.since());
 	}
+	printf("building cells -- ");
+	fflush(stdout);
+	timer.reset();
 	cellLib.build(cellNames);
+	printf("[%f]\n", timer.since());
 	if (gdsPath != "") {
 		cellLib.emitGDS(gdsName, gdsPath, cellNames);
 	}

@@ -92,6 +92,7 @@ struct Pin {
 	int width;
 	int height;
 
+	// index of the pin in the opposite stack that this pin is aligned to.
 	int align;
 
 	// minimum offset from other pins following spacing rules

@@ -2,6 +2,7 @@
 #include "Draw.h"
 #include "Placer.h"
 #include "Router.h"
+#include "Timer.h"
 
 #include <ruler/Layout.h>
 #include <vector>
@@ -32,19 +33,34 @@ void Library::loadSpice(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t 
 }
 
 bool Library::loadFile(string path) {
+	Timer timer;
+	printf("loadFile\n");
+
+	printf("lang.load -- ");
+	fflush(stdout);
+	timer.reset();
 	// Initialize the grammar
 	pgen::grammar_t gram;
 	pgen::spice_t lang;
 	lang.load(gram);
+	printf("[%f]\n", timer.since());
 
+	printf("lexer.open -- ");
+	fflush(stdout);
+	timer.reset();
 	// Load the file into the lexer
 	pgen::lexer_t lexer;
 	if (not lexer.open(path)) {
 		return false;
 	}
+	printf("[%f]\n", timer.since());
 
+	printf("gram.parse -- ");
+	fflush(stdout);
+	timer.reset();
 	// Parse the file with the grammar
 	pgen::parsing ast = gram.parse(lexer);
+	printf("[%f]\n", timer.since());
 	if (ast.msgs.size() != 0) {
 		// there were parsing errors, print them out
 		for (int i = 0; i < (int)ast.msgs.size(); i++) {
@@ -53,8 +69,12 @@ bool Library::loadFile(string path) {
 		return false;
 	}
 
+	printf("loadSpice -- ");
+	fflush(stdout);
+	timer.reset();
 	// no errors, print the parsed abstract syntax tree
 	loadSpice(lang, lexer, ast.tree);
+	printf("[%f]\n", timer.since());
 	return true;
 }
 
