@@ -45,7 +45,7 @@ struct Placement {
 
 	// The cost function for the transistor stack ordering is:
 	//
-	// b*B^2 + l*L + w*W^2 - g*G
+	// b*B^2 + l*L + w*W^2 + g*G
 	//
 	// Where:
 	//
@@ -65,8 +65,8 @@ struct Placement {
 	//   each net is a node in the graph and each transistor is an arc from the
 	//   source node to the drain node.
 	//
-	// G is the number of (nmos,pmos) transistor pairs that have the same net at
-	//   their gate and are aligned at the same index in this placement. This is an
+	// G is the number of (nmos,pmos) transistor pairs in this placement aligned
+	//   at the same index that do not have the same net at their gate. This is an
 	//   extra parameter in the cost function that is not included in the original
 	//   paper.
 
@@ -93,6 +93,6 @@ struct Placement {
 
 	void move(vec4i choice);	
 	int score();
-	static void solve(const Tech &tech, Circuit *base, int starts=1000, int b=12, int l=1, int w=1, int g=10, float step=1.0, float rate=0.02);
+	static void solve(const Tech &tech, Circuit *base, int starts=100, int b=12, int l=1, int w=1, int g=10, float step=2.0, float rate=0.02);
 };
 

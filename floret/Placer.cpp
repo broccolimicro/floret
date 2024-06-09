@@ -68,10 +68,14 @@ void Placement::move(vec4i choice) {
 	}
 }
 
+// Compute the cost of this placement using the cost function documented in floret/floret/Placer.h
 int Placement::score() {
 	int B = 0, W = 0, L = 0, G = 0;
 	array<int, 2> brk = {0,0};
 
+	// compute intermediate values
+	// brk[] counts the number of diffusion breaks in this placement for each stack
+	// ext[] finds the first and last index of each net
 	vector<vec2i> ext(base->nets.size(), vec2i(((int)stack[0].size()+1)*2, -1));
 	for (int type = 0; type < 2; type++) {
 		for (auto c = stack[type].begin(); c != stack[type].end(); c++) {
@@ -92,12 +96,14 @@ int Placement::score() {
 		}
 	}
 
+	// compute B, L, and W
 	for (int i = 0; i < (int)ext.size(); i++) {
 		L += ext[i][1] - ext[i][0];
 	}
 	B = brk[0]+brk[1];
 	W = min(brk[0]+d[0]-Wmin,brk[1]+d[1]-Wmin);
 
+	// compute G, keeping track of diffusion breaks
 	for (auto i = stack[0].begin(), j = stack[1].begin(); i != stack[0].end() and j != stack[1].end(); i++, j++) {
 		bool ibrk = (i != stack[0].begin() and (i-1)->device >= 0 and i->device >= 0 and base->mos[(i-1)->device].ports[not (i-1)->flip] != base->mos[i->device].ports[i->flip]);
 		bool jbrk = (j != stack[1].begin() and (j-1)->device >= 0 and j->device >= 0 and base->mos[(j-1)->device].ports[not (j-1)->flip] != base->mos[j->device].ports[j->flip]);
@@ -112,10 +118,10 @@ int Placement::score() {
 			break;
 		}
 
-		G += (i->device >= 0 and j->device >= 0 and base->mos[i->device].gate == base->mos[j->device].gate);
+		G += (i->device >= 0 and j->device >= 0 and base->mos[i->device].gate != base->mos[j->device].gate);
 	}
 
-	return b*B*B + l*L + w*W*W - g*G;
+	return b*B*B + l*L + w*W*W + g*G;
 }
 
 void Placement::solve(const Tech &tech, Circuit *base, int starts, int b, int l, int w, int g, float step, float rate) {
@@ -132,8 +138,9 @@ void Placement::solve(const Tech &tech, Circuit *base, int starts, int b, int l,
 	//starts = 50*(int)base->mos.size();
 
 	Placement best(base, b, l, w, g, rand);
-	float bestScore = (float)best.score();
+	int bestScore = best.score();
 
+	// Precache the list of all possible moves. These will get reshuffled each time.
 	vector<vec4i> choices;
 	for (int i = 0; i < 3; i++) {
 		int end = (i == 2 ? min((int)best.stack[0].size(), (int)best.stack[1].size()) : (int)best.stack[i].size());
@@ -144,34 +151,40 @@ void Placement::solve(const Tech &tech, Circuit *base, int starts, int b, int l,
 		}
 	}
 
+	// Check multiple possible initial placements to avoid local minima
 	for (int i = 0; i < starts; i++) {
 		printf("start %d/%d\r", i, starts);
 		fflush(stdout);
+
+		// Run simulated annealing to find closest minimum
 		Placement curr(base, b, l, w, g, rand);
 		int score = 0;
 		int newScore = curr.score();
 		float currStep = step;
-		int idx = 0;
 		do {
-			//printf("%d\r", idx);
-			//fflush(stdout);
+			// Test all of the possible moves and pick the best one.
 			score = newScore;
 			for (auto choice = choices.begin(); choice != choices.end(); choice++) {
 				curr.move(*choice);
+				
+				// Check if this move makes any improvement within the constraints of
+				// the annealing temperature
 				newScore = curr.score();
-				if (newScore < score) {
+				if (newScore < score*currStep) {
 					break;
 				} else {
+					// undo the previous move
 					curr.move(*choice);
 				}
 			}
 
+			// Reshuffle the list of possible moves
 			shuffle(choices.begin(), choices.end(), rand);
-			currStep -= (currStep-1.0)*rate;
-			idx++;
-		} while (newScore < score*currStep);
 
-		//printf("finished with score %d/%d with %d iterations\n", score, bestScore, idx);
+			// cool the annealing temperature
+			currStep -= (currStep - 1.0)*rate;
+			//printf("%f %f %d<%d\n", currStep, rate, newScore, score);
+		} while ((float)score*currStep - (float)newScore > 0.01);
 
 		if (score < bestScore) {
 			bestScore = score;
@@ -180,6 +193,7 @@ void Placement::solve(const Tech &tech, Circuit *base, int starts, int b, int l,
 	}
 	printf("Placement complete after %d iterations\n", starts);
 
+	// Save the resulting placement to the Circuit
 	array<Stack, 2> result;
 	for (int type = 0; type < 2; type++) {
 		result[type].type = type;
