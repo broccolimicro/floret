@@ -1,0 +1,1109 @@
+*
+*---- act defproc: cell::n0<12,5> -----
+* raw ports:  in[0] in[1] out
+*
+.subckt _0_0cell_0_0n0_312_75_4 in_50_6 in_51_6 out
+*.PININFO in_50_6:I in_51_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_pass out in_50_6 in_51_6 GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+.ends
+*---- end of process: n0<12,5> -----
+*
+*---- act defproc: cell::g0n_0x8<> -----
+* raw ports:  in[0] out
+*
+.subckt _0_0cell_0_0g0n_0x8 in_50_6 out
+*.PININFO in_50_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_ out in_50_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=1.44 L=0.15 nrd=40.44 nrs=26.96
+xM1_ out in_50_6 GND GND sky130_fd_pr__nfet_01v8 W=0.72 L=0.15 nrd=40.44 nrs=26.96
+C_per_node_0 out GND 5e-15
+.ends
+*---- end of process: g0n_0x8<> -----
+*
+*---- act defproc: cell::p0<36,5> -----
+* raw ports:  in[0] in[1] out
+*
+.subckt _0_0cell_0_0p0_336_75_4 in_50_6 in_51_6 out
+*.PININFO in_50_6:I in_51_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_pass out in_50_6 in_51_6 Vdd sky130_fd_pr__pfet_01v8 W=1.08 L=0.15 nrd=40.44 nrs=26.96
+.ends
+*---- end of process: p0<36,5> -----
+*
+*---- act defproc: cell::g0n1na_01ox0<> -----
+* raw ports:  in[0] in[1] out
+*
+.subckt _0_0cell_0_0g0n1na_01ox0 in_50_6 in_51_6 out
+*.PININFO in_50_6:I in_51_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_ #5 in_50_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.72 L=0.15 nrd=40.44 nrs=26.96
+xM1_ out in_50_6 GND GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM2_ out in_51_6 GND GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+C_per_node_0 out GND 5e-15
+xM3_ out in_51_6 #5 Vdd sky130_fd_pr__pfet_01v8 W=0.72 L=0.15 nrd=40.44 nrs=26.96
+.ends
+*---- end of process: g0n1na_01ox0<> -----
+*
+*---- act defproc: cell::g0n1n2nao_0123oa42aoax0<> -----
+* raw ports:  in[0] in[1] in[2] in[3] in[4] out
+*
+.subckt _0_0cell_0_0g0n1n2nao_0123oa42aoax0 in_50_6 in_51_6 in_52_6 in_53_6 in_54_6 out
+*.PININFO in_50_6:I in_51_6:I in_52_6:I in_53_6:I in_54_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (state-holding): pup_reff=0.416667; pdn_reff=0.833333
+*
+* --- end node flags ---
+*
+xM0_ out in_50_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM1_ #11 in_51_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.72 L=0.15 nrd=40.44 nrs=26.96
+xM2_ #fb12# out Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM3_keeper #13 GND Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=1.59 nrd=40.44 nrs=26.96
+xM4_ #3 in_50_6 GND GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+xM6_keeper #14 Vdd GND GND sky130_fd_pr__nfet_01v8 W=0.42 L=3.36 nrd=40.44 nrs=26.96
+C_per_node_0 out GND 5e-15
+xM7_ out in_52_6 #5 GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+xM8_ out in_53_6 #5 GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+xM9_ out in_52_6 #9 GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+xM10_ out in_52_6 #11 Vdd sky130_fd_pr__pfet_01v8 W=0.72 L=0.15 nrd=40.44 nrs=26.96
+xM11_keeper out #fb12# #13 Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM12_keeper out #fb12# #14 GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM13_ #5 in_51_6 #3 GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+xM14_ #9 in_54_6 #3 GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+.ends
+*---- end of process: g0n1n2nao_0123oa42aoax0<> -----
+*
+*---- act defproc: cell::g0n_0x0<> -----
+* raw ports:  in[0] out
+*
+.subckt _0_0cell_0_0g0n_0x0 in_50_6 out
+*.PININFO in_50_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_ out in_50_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM1_ out in_50_6 GND GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+C_per_node_0 out GND 5e-15
+.ends
+*---- end of process: g0n_0x0<> -----
+*
+*---- act defproc: cell::g0n_0x7<> -----
+* raw ports:  in[0] out
+*
+.subckt _0_0cell_0_0g0n_0x7 in_50_6 out
+*.PININFO in_50_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_ out in_50_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM1_ out in_50_6 GND GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+C_per_node_0 out GND 5e-15
+.ends
+*---- end of process: g0n_0x7<> -----
+*
+*---- act defproc: cell::p0<24,5> -----
+* raw ports:  in[0] in[1] out
+*
+.subckt _0_0cell_0_0p0_324_75_4 in_50_6 in_51_6 out
+*.PININFO in_50_6:I in_51_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_pass out in_50_6 in_51_6 Vdd sky130_fd_pr__pfet_01v8 W=0.72 L=0.15 nrd=40.44 nrs=26.96
+.ends
+*---- end of process: p0<24,5> -----
+*
+*---- act defproc: cell::g2n1n0noa_01a2ox0<> -----
+* raw ports:  in[0] in[1] in[2] out
+*
+.subckt _0_0cell_0_0g2n1n0noa_01a2ox0 in_50_6 in_51_6 in_52_6 out
+*.PININFO in_50_6:I in_51_6:I in_52_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_ #7 in_52_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.72 L=0.15 nrd=40.44 nrs=26.96
+xM1_ #3 in_50_6 GND GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM2_ out in_52_6 GND GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+C_per_node_0 out GND 5e-15
+xM3_ out in_51_6 #3 GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM4_ out in_51_6 #7 Vdd sky130_fd_pr__pfet_01v8 W=0.72 L=0.15 nrd=40.44 nrs=26.96
+xM5_ out in_50_6 #7 Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+.ends
+*---- end of process: g2n1n0noa_01a2ox0<> -----
+*
+*---- act defproc: cell::g0n1na2n3nao_03a21aox0<> -----
+* raw ports:  in[0] in[1] in[2] in[3] out
+*
+.subckt _0_0cell_0_0g0n1na2n3nao_03a21aox0 in_50_6 in_51_6 in_52_6 in_53_6 out
+*.PININFO in_50_6:I in_51_6:I in_52_6:I in_53_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_ #9 in_50_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.72 L=0.15 nrd=40.44 nrs=26.96
+xM1_ #10 in_52_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.72 L=0.15 nrd=40.44 nrs=26.96
+xM2_ #3 in_50_6 GND GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM3_ #6 in_52_6 GND GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+C_per_node_0 out GND 5e-15
+xM4_ out in_53_6 #3 GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM5_ out in_51_6 #6 GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM6_ out in_51_6 #9 Vdd sky130_fd_pr__pfet_01v8 W=0.72 L=0.15 nrd=40.44 nrs=26.96
+xM7_ out in_53_6 #10 Vdd sky130_fd_pr__pfet_01v8 W=0.72 L=0.15 nrd=40.44 nrs=26.96
+.ends
+*---- end of process: g0n1na2n3nao_03a21aox0<> -----
+*
+*---- act defproc: cell::g0n1na2n3nao_41a23aox0<> -----
+* raw ports:  in[0] in[1] in[2] in[3] in[4] out
+*
+.subckt _0_0cell_0_0g0n1na2n3nao_41a23aox0 in_50_6 in_51_6 in_52_6 in_53_6 in_54_6 out
+*.PININFO in_50_6:I in_51_6:I in_52_6:I in_53_6:I in_54_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_ #9 in_50_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=1.44 L=0.15 nrd=40.44 nrs=26.96
+xM1_ #11 in_52_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=1.44 L=0.15 nrd=40.44 nrs=26.96
+xM2_ #3 in_54_6 GND GND sky130_fd_pr__nfet_01v8 W=0.72 L=0.15 nrd=40.44 nrs=26.96
+xM3_ #6 in_52_6 GND GND sky130_fd_pr__nfet_01v8 W=0.72 L=0.15 nrd=40.44 nrs=26.96
+C_per_node_0 out GND 5e-15
+xM4_ out in_51_6 #3 GND sky130_fd_pr__nfet_01v8 W=0.72 L=0.15 nrd=40.44 nrs=26.96
+xM5_ out in_53_6 #6 GND sky130_fd_pr__nfet_01v8 W=0.72 L=0.15 nrd=40.44 nrs=26.96
+xM6_ out in_51_6 #9 Vdd sky130_fd_pr__pfet_01v8 W=1.44 L=0.15 nrd=40.44 nrs=26.96
+xM7_ out in_53_6 #11 Vdd sky130_fd_pr__pfet_01v8 W=1.44 L=0.15 nrd=40.44 nrs=26.96
+.ends
+*---- end of process: g0n1na2n3nao_41a23aox0<> -----
+*
+*---- act defproc: cell::g0n_0x6<> -----
+* raw ports:  in[0] out
+*
+.subckt _0_0cell_0_0g0n_0x6 in_50_6 out
+*.PININFO in_50_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_ out in_50_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM1_ out in_50_6 GND GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+C_per_node_0 out GND 5e-15
+.ends
+*---- end of process: g0n_0x6<> -----
+*
+*---- act defproc: gate::add_full_manchester_np<4,1,6> -----
+* raw ports:  A.d[0] A.d[1] B.d[0] B.d[1] _ci P.d[0] P.d[1] S co
+*
+.subckt _0_0gate_0_0add__full__manchester__np_34_71_76_4 A_ad_50_6 A_ad_51_6 B_ad_50_6 B_ad_51_6 __ci P_ad_50_6 P_ad_51_6 S co
+*.PININFO A_ad_50_6:I A_ad_51_6:I B_ad_50_6:I B_ad_51_6:I __ci:I P_ad_50_6:O P_ad_51_6:O S:O co:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+xcx1 A_ad_50_6 B_ad_50_6 A_ad_51_6 B_ad_51_6 P_ad_50_6 _0_0cell_0_0g0n1na2n3nao_03a21aox0
+xcx4 P_ad_50_6 __ci A_ad_50_6 B_ad_50_6 P_ad_51_6 co _0_0cell_0_0g0n1na2n3nao_41a23aox0
+xcx2 P_ad_50_6 P_ad_51_6 _0_0cell_0_0g0n_0x6
+xcx0 __ci cx0_aout _0_0cell_0_0g0n_0x6
+xcx3 P_ad_50_6 cx0_aout P_ad_51_6 __ci S _0_0cell_0_0g0n1na2n3nao_03a21aox0
+.ends
+*---- end of process: add_full_manchester_np<4,1,6> -----
+*
+*---- act defproc: gate::add_full_manchester_pn<4,1,6> -----
+* raw ports:  A.d[0] A.d[1] B.d[0] B.d[1] ci P.d[0] P.d[1] S _co
+*
+.subckt _0_0gate_0_0add__full__manchester__pn_34_71_76_4 A_ad_50_6 A_ad_51_6 B_ad_50_6 B_ad_51_6 ci P_ad_50_6 P_ad_51_6 S __co
+*.PININFO A_ad_50_6:I A_ad_51_6:I B_ad_50_6:I B_ad_51_6:I ci:I P_ad_50_6:O P_ad_51_6:O S:O __co:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+xcx1 A_ad_50_6 B_ad_50_6 A_ad_51_6 B_ad_51_6 P_ad_50_6 _0_0cell_0_0g0n1na2n3nao_03a21aox0
+xcx4 P_ad_50_6 ci A_ad_51_6 B_ad_51_6 P_ad_51_6 __co _0_0cell_0_0g0n1na2n3nao_41a23aox0
+xcx2 P_ad_50_6 P_ad_51_6 _0_0cell_0_0g0n_0x6
+xcx0 ci cx0_aout _0_0cell_0_0g0n_0x6
+xcx3 P_ad_50_6 ci P_ad_51_6 cx0_aout S _0_0cell_0_0g0n1na2n3nao_03a21aox0
+.ends
+*---- end of process: add_full_manchester_pn<4,1,6> -----
+*
+*---- act defproc: gate::add_manchester_raw_alt<9,5,{3,2,2,2,0},{0,0,0,0,0,0,0,0,0},2,4,6> -----
+* raw ports:  A[0].d[0] A[0].d[1] A[1].d[0] A[1].d[1] A[2].d[0] A[3].d[0] A[3].d[1] A[4].d[0] A[4].d[1] A[5].d[0] A[5].d[1] A[6].d[0] A[6].d[1] A[7].d[0] A[7].d[1] A[8].d[0] A[8].d[1] P[0].d[0] P[0].d[1] P[1].d[0] P[1].d[1] P[2].d[0] P[2].d[1] P[3].d[0] P[3].d[1] P[4].d[0] S[0].d[1] S[1].d[1] S[2].d[1] S[3].d[1]
+*
+.subckt _0_0gate_0_0add__manchester__raw__alt_39_75_7_83_72_72_72_70_9_7_80_70_70_70_70_70_70_70_70_9_72_74_76_4 A_50_6_ad_50_6 A_50_6_ad_51_6 A_51_6_ad_50_6 A_51_6_ad_51_6 A_52_6_ad_50_6 A_53_6_ad_50_6 A_53_6_ad_51_6 A_54_6_ad_50_6 A_54_6_ad_51_6 A_55_6_ad_50_6 A_55_6_ad_51_6 A_56_6_ad_50_6 A_56_6_ad_51_6 A_57_6_ad_50_6 A_57_6_ad_51_6 A_58_6_ad_50_6 A_58_6_ad_51_6 P_50_6_ad_50_6 P_50_6_ad_51_6 P_51_6_ad_50_6 P_51_6_ad_51_6 P_52_6_ad_50_6 P_52_6_ad_51_6 P_53_6_ad_50_6 P_53_6_ad_51_6 P_54_6_ad_50_6 S_50_6_ad_51_6 S_51_6_ad_51_6 S_52_6_ad_51_6 S_53_6_ad_51_6
+*.PININFO A_50_6_ad_50_6:I A_50_6_ad_51_6:I A_51_6_ad_50_6:I A_51_6_ad_51_6:I A_52_6_ad_50_6:I A_53_6_ad_50_6:I A_53_6_ad_51_6:I A_54_6_ad_50_6:I A_54_6_ad_51_6:I A_55_6_ad_50_6:I A_55_6_ad_51_6:I A_56_6_ad_50_6:I A_56_6_ad_51_6:I A_57_6_ad_50_6:I A_57_6_ad_51_6:I A_58_6_ad_50_6:I A_58_6_ad_51_6:I P_50_6_ad_50_6:O P_50_6_ad_51_6:O P_51_6_ad_50_6:O P_51_6_ad_51_6:O P_52_6_ad_50_6:O P_52_6_ad_51_6:O P_53_6_ad_50_6:O P_53_6_ad_51_6:O P_54_6_ad_50_6:O S_50_6_ad_51_6:O S_51_6_ad_51_6:O S_52_6_ad_51_6:O S_53_6_ad_51_6:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+xadd3np_50_6 A_50_6_ad_50_6 A_50_6_ad_51_6 A_51_6_ad_50_6 A_51_6_ad_51_6 A_52_6_ad_50_6 P_50_6_ad_50_6 P_50_6_ad_51_6 S_50_6_ad_51_6 C_50_6 _0_0gate_0_0add__full__manchester__np_34_71_76_4
+xadd3np_51_6 A_55_6_ad_50_6 A_55_6_ad_51_6 A_56_6_ad_50_6 A_56_6_ad_51_6 C_51_6 P_52_6_ad_50_6 P_52_6_ad_51_6 S_52_6_ad_51_6 C_52_6 _0_0gate_0_0add__full__manchester__np_34_71_76_4
+xadd3pn_50_6 A_53_6_ad_50_6 A_53_6_ad_51_6 A_54_6_ad_50_6 A_54_6_ad_51_6 C_50_6 P_51_6_ad_50_6 P_51_6_ad_51_6 S_51_6_ad_51_6 C_51_6 _0_0gate_0_0add__full__manchester__pn_34_71_76_4
+xadd3pn_51_6 A_57_6_ad_50_6 A_57_6_ad_51_6 A_58_6_ad_50_6 A_58_6_ad_51_6 C_52_6 P_53_6_ad_50_6 P_53_6_ad_51_6 S_53_6_ad_51_6 P_54_6_ad_50_6 _0_0gate_0_0add__full__manchester__pn_34_71_76_4
+.ends
+*---- end of process: add_manchester_raw_alt<9,5,{3,2,2,2,0},{0,0,0,0,0,0,0,0,0},2,4,6> -----
+*
+*---- act defproc: gate::add_manchester_full_alt<4,4,{0,0,0,0},{0,0,0,0},0,2,4,6> -----
+* raw ports:  A[0].d[0] A[0].d[1] A[1].d[0] A[1].d[1] A[2].d[0] A[2].d[1] A[3].d[0] A[3].d[1] B[0].d[0] B[0].d[1] B[1].d[0] B[1].d[1] B[2].d[0] B[2].d[1] B[3].d[0] B[3].d[1] Ci.d[0] P[0].d[0] P[0].d[1] P[1].d[0] P[1].d[1] P[2].d[0] P[2].d[1] P[3].d[0] P[3].d[1] P[4].d[0] S[0].d[1] S[1].d[1] S[2].d[1] S[3].d[1]
+*
+.subckt _0_0gate_0_0add__manchester__full__alt_34_74_7_80_70_70_70_9_7_80_70_70_70_9_70_72_74_76_4 A_50_6_ad_50_6 A_50_6_ad_51_6 A_51_6_ad_50_6 A_51_6_ad_51_6 A_52_6_ad_50_6 A_52_6_ad_51_6 A_53_6_ad_50_6 A_53_6_ad_51_6 B_50_6_ad_50_6 B_50_6_ad_51_6 B_51_6_ad_50_6 B_51_6_ad_51_6 B_52_6_ad_50_6 B_52_6_ad_51_6 B_53_6_ad_50_6 B_53_6_ad_51_6 Ci_ad_50_6 P_50_6_ad_50_6 P_50_6_ad_51_6 P_51_6_ad_50_6 P_51_6_ad_51_6 P_52_6_ad_50_6 P_52_6_ad_51_6 P_53_6_ad_50_6 P_53_6_ad_51_6 P_54_6_ad_50_6 S_50_6_ad_51_6 S_51_6_ad_51_6 S_52_6_ad_51_6 S_53_6_ad_51_6
+*.PININFO A_50_6_ad_50_6:I A_50_6_ad_51_6:I A_51_6_ad_50_6:I A_51_6_ad_51_6:I A_52_6_ad_50_6:I A_52_6_ad_51_6:I A_53_6_ad_50_6:I A_53_6_ad_51_6:I B_50_6_ad_50_6:I B_50_6_ad_51_6:I B_51_6_ad_50_6:I B_51_6_ad_51_6:I B_52_6_ad_50_6:I B_52_6_ad_51_6:I B_53_6_ad_50_6:I B_53_6_ad_51_6:I Ci_ad_50_6:I P_50_6_ad_50_6:O P_50_6_ad_51_6:O P_51_6_ad_50_6:O P_51_6_ad_51_6:O P_52_6_ad_50_6:O P_52_6_ad_51_6:O P_53_6_ad_50_6:O P_53_6_ad_51_6:O P_54_6_ad_50_6:O S_50_6_ad_51_6:O S_51_6_ad_51_6:O S_52_6_ad_51_6:O S_53_6_ad_51_6:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+xraw A_50_6_ad_50_6 A_50_6_ad_51_6 B_50_6_ad_50_6 B_50_6_ad_51_6 Ci_ad_50_6 A_51_6_ad_50_6 A_51_6_ad_51_6 B_51_6_ad_50_6 B_51_6_ad_51_6 A_52_6_ad_50_6 A_52_6_ad_51_6 B_52_6_ad_50_6 B_52_6_ad_51_6 A_53_6_ad_50_6 A_53_6_ad_51_6 B_53_6_ad_50_6 B_53_6_ad_51_6 P_50_6_ad_50_6 P_50_6_ad_51_6 P_51_6_ad_50_6 P_51_6_ad_51_6 P_52_6_ad_50_6 P_52_6_ad_51_6 P_53_6_ad_50_6 P_53_6_ad_51_6 P_54_6_ad_50_6 S_50_6_ad_51_6 S_51_6_ad_51_6 S_52_6_ad_51_6 S_53_6_ad_51_6 _0_0gate_0_0add__manchester__raw__alt_39_75_7_83_72_72_72_70_9_7_80_70_70_70_70_70_70_70_70_9_72_74_76_4
+.ends
+*---- end of process: add_manchester_full_alt<4,4,{0,0,0,0},{0,0,0,0},0,2,4,6> -----
+*
+*---- act defproc: cell::n0<18,5> -----
+* raw ports:  in[0] in[1] out
+*
+.subckt _0_0cell_0_0n0_318_75_4 in_50_6 in_51_6 out
+*.PININFO in_50_6:I in_51_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_pass out in_50_6 in_51_6 GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+.ends
+*---- end of process: n0<18,5> -----
+*
+*---- act defproc: cell::g0n1no2n3n4n1na5n6naoaoa_01a2341o65oaoaox1<> -----
+* raw ports:  in[0] in[1] in[2] in[3] in[4] in[5] in[6] out
+*
+.subckt _0_0cell_0_0g0n1no2n3n4n1na5n6naoaoa_01a2341o65oaoaox1 in_50_6 in_51_6 in_52_6 in_53_6 in_54_6 in_55_6 in_56_6 out
+*.PININFO in_50_6:I in_51_6:I in_52_6:I in_53_6:I in_54_6:I in_55_6:I in_56_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_ #13 in_50_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=1.44 L=0.15 nrd=40.44 nrs=26.96
+xM1_ #13 in_51_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=1.44 L=0.15 nrd=40.44 nrs=26.96
+xM2_ #3 in_50_6 GND GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM3_ #6 in_52_6 GND GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+C_per_node_0 out GND 5e-15
+xM4_ out in_51_6 #3 GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM5_ out in_53_6 #6 GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM6_ out in_56_6 #9 GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM7_ out in_55_6 #9 GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+xM8_ out in_52_6 #13 Vdd sky130_fd_pr__pfet_01v8 W=0.72 L=0.15 nrd=40.44 nrs=26.96
+xM9_ out in_51_6 #15 Vdd sky130_fd_pr__pfet_01v8 W=1.08 L=0.15 nrd=40.44 nrs=26.96
+xM10_ out in_56_6 #16 Vdd sky130_fd_pr__pfet_01v8 W=1.08 L=0.15 nrd=40.44 nrs=26.96
+xM11_ #9 in_54_6 #6 GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+xM12_ #9 in_51_6 #6 GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+xM13_ #14 in_53_6 #13 Vdd sky130_fd_pr__pfet_01v8 W=1.08 L=0.15 nrd=40.44 nrs=26.96
+xM14_ #15 in_54_6 #14 Vdd sky130_fd_pr__pfet_01v8 W=1.08 L=0.15 nrd=40.44 nrs=26.96
+xM15_ #16 in_55_6 #14 Vdd sky130_fd_pr__pfet_01v8 W=1.08 L=0.15 nrd=40.44 nrs=26.96
+.ends
+*---- end of process: g0n1no2n3n4n1na5n6naoaoa_01a2341o65oaoaox1<> -----
+*
+*---- act defproc: cell::g1n_0x1<> -----
+* raw ports:  in[0] in[1] out
+*
+.subckt _0_0cell_0_0g1n_0x1 in_50_6 in_51_6 out
+*.PININFO in_50_6:I in_51_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_ out in_51_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM1_ out in_50_6 GND GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+C_per_node_0 out GND 5e-15
+.ends
+*---- end of process: g1n_0x1<> -----
+*
+*---- act defproc: cell::g1n_0x0<> -----
+* raw ports:  in[0] in[1] out
+*
+.subckt _0_0cell_0_0g1n_0x0 in_50_6 in_51_6 out
+*.PININFO in_50_6:I in_51_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_ out in_51_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM1_ out in_50_6 GND GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+C_per_node_0 out GND 5e-15
+.ends
+*---- end of process: g1n_0x0<> -----
+*
+*---- act defproc: gate::delay_up<20,6> -----
+* raw ports:  l0 l1 l r d[1] d[2] d[3] d[4] d[5] d[6] d[7] d[8] d[9] d[10] d[11] d[12] d[13] d[14] d[15] d[16] d[17] d[18] d[19] d[20] d[21] d[22] d[23] d[24] d[25] d[26] d[27] d[28] d[29] d[30] d[31] d[32] d[33] d[34] d[35] d[36] d[37] d[38] d[39]
+*
+.subckt _0_0gate_0_0delay__up_320_76_4 l0 l1 l r d_51_6 d_52_6 d_53_6 d_54_6 d_55_6 d_56_6 d_57_6 d_58_6 d_59_6 d_510_6 d_511_6 d_512_6 d_513_6 d_514_6 d_515_6 d_516_6 d_517_6 d_518_6 d_519_6 d_520_6 d_521_6 d_522_6 d_523_6 d_524_6 d_525_6 d_526_6 d_527_6 d_528_6 d_529_6 d_530_6 d_531_6 d_532_6 d_533_6 d_534_6 d_535_6 d_536_6 d_537_6 d_538_6 d_539_6
+*.PININFO l0:I l1:I l:I r:O d_51_6:O d_52_6:O d_53_6:O d_54_6:O d_55_6:O d_56_6:O d_57_6:O d_58_6:O d_59_6:O d_510_6:O d_511_6:O d_512_6:O d_513_6:O d_514_6:O d_515_6:O d_516_6:O d_517_6:O d_518_6:O d_519_6:O d_520_6:O d_521_6:O d_522_6:O d_523_6:O d_524_6:O d_525_6:O d_526_6:O d_527_6:O d_528_6:O d_529_6:O d_530_6:O d_531_6:O d_532_6:O d_533_6:O d_534_6:O d_535_6:O d_536_6:O d_537_6:O d_538_6:O d_539_6:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+xcx25 l1 d_525_6 d_526_6 _0_0cell_0_0g1n_0x1
+xcx18 d_518_6 l0 d_519_6 _0_0cell_0_0g1n_0x0
+xcx5 l1 d_55_6 d_56_6 _0_0cell_0_0g1n_0x1
+xcx1 l1 d_51_6 d_52_6 _0_0cell_0_0g1n_0x1
+xcx11 l1 d_511_6 d_512_6 _0_0cell_0_0g1n_0x1
+xcx39 l1 d_539_6 r _0_0cell_0_0g1n_0x1
+xcx10 d_510_6 l0 d_511_6 _0_0cell_0_0g1n_0x0
+xcx13 l1 d_513_6 d_514_6 _0_0cell_0_0g1n_0x1
+xcx16 d_516_6 l0 d_517_6 _0_0cell_0_0g1n_0x0
+xcx8 d_58_6 l0 d_59_6 _0_0cell_0_0g1n_0x0
+xcx30 d_530_6 l0 d_531_6 _0_0cell_0_0g1n_0x0
+xcx4 d_54_6 l0 d_55_6 _0_0cell_0_0g1n_0x0
+xcx0 l l0 d_51_6 _0_0cell_0_0g1n_0x0
+xcx9 l1 d_59_6 d_510_6 _0_0cell_0_0g1n_0x1
+xcx19 l1 d_519_6 d_520_6 _0_0cell_0_0g1n_0x1
+xcx37 l1 d_537_6 d_538_6 _0_0cell_0_0g1n_0x1
+xcx36 d_536_6 l0 d_537_6 _0_0cell_0_0g1n_0x0
+xcx31 l1 d_531_6 d_532_6 _0_0cell_0_0g1n_0x1
+xcx27 l1 d_527_6 d_528_6 _0_0cell_0_0g1n_0x1
+xcx3 l1 d_53_6 d_54_6 _0_0cell_0_0g1n_0x1
+xcx20 d_520_6 l0 d_521_6 _0_0cell_0_0g1n_0x0
+xcx12 d_512_6 l0 d_513_6 _0_0cell_0_0g1n_0x0
+xcx35 l1 d_535_6 d_536_6 _0_0cell_0_0g1n_0x1
+xcx23 l1 d_523_6 d_524_6 _0_0cell_0_0g1n_0x1
+xcx24 d_524_6 l0 d_525_6 _0_0cell_0_0g1n_0x0
+xcx34 d_534_6 l0 d_535_6 _0_0cell_0_0g1n_0x0
+xcx6 d_56_6 l0 d_57_6 _0_0cell_0_0g1n_0x0
+xcx15 l1 d_515_6 d_516_6 _0_0cell_0_0g1n_0x1
+xcx21 l1 d_521_6 d_522_6 _0_0cell_0_0g1n_0x1
+xcx17 l1 d_517_6 d_518_6 _0_0cell_0_0g1n_0x1
+xcx38 d_538_6 l0 d_539_6 _0_0cell_0_0g1n_0x0
+xcx32 d_532_6 l0 d_533_6 _0_0cell_0_0g1n_0x0
+xcx29 l1 d_529_6 d_530_6 _0_0cell_0_0g1n_0x1
+xcx2 d_52_6 l0 d_53_6 _0_0cell_0_0g1n_0x0
+xcx22 d_522_6 l0 d_523_6 _0_0cell_0_0g1n_0x0
+xcx7 l1 d_57_6 d_58_6 _0_0cell_0_0g1n_0x1
+xcx33 l1 d_533_6 d_534_6 _0_0cell_0_0g1n_0x1
+xcx26 d_526_6 l0 d_527_6 _0_0cell_0_0g1n_0x0
+xcx28 d_528_6 l0 d_529_6 _0_0cell_0_0g1n_0x0
+xcx14 d_514_6 l0 d_515_6 _0_0cell_0_0g1n_0x0
+.ends
+*---- end of process: delay_up<20,6> -----
+*
+*---- act defproc: cell::g0n_0x2<> -----
+* raw ports:  in[0] out
+*
+.subckt _0_0cell_0_0g0n_0x2 in_50_6 out
+*.PININFO in_50_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_ out in_50_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.72 L=0.15 nrd=40.44 nrs=26.96
+xM1_ out in_50_6 GND GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+C_per_node_0 out GND 5e-15
+.ends
+*---- end of process: g0n_0x2<> -----
+*
+*---- act defproc: cell::g0n_0x3<> -----
+* raw ports:  in[0] out
+*
+.subckt _0_0cell_0_0g0n_0x3 in_50_6 out
+*.PININFO in_50_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_ out in_50_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=2.16 L=0.15 nrd=40.44 nrs=26.96
+xM1_ out in_50_6 GND GND sky130_fd_pr__nfet_01v8 W=1.08 L=0.15 nrd=40.44 nrs=26.96
+C_per_node_0 out GND 5e-15
+.ends
+*---- end of process: g0n_0x3<> -----
+*
+*---- act defproc: gate::amplify_base_instant<1,300,0,12> -----
+* raw ports:  l r d[1]
+*
+.subckt _0_0gate_0_0amplify__base__instant_31_7300_70_712_4 l r d_51_6
+*.PININFO l:I r:O d_51_6:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+xcx0 l d_51_6 _0_0cell_0_0g0n_0x2
+xcx1 d_51_6 r _0_0cell_0_0g0n_0x3
+.ends
+*---- end of process: amplify_base_instant<1,300,0,12> -----
+*
+*---- act defproc: gate::amplify_fixed_instant<1,0,12,36> -----
+* raw ports:  l r d[1]
+*
+.subckt _0_0gate_0_0amplify__fixed__instant_31_70_712_736_4 l r d_51_6
+*.PININFO l:I r:O d_51_6:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+xsub l r d_51_6 _0_0gate_0_0amplify__base__instant_31_7300_70_712_4
+.ends
+*---- end of process: amplify_fixed_instant<1,0,12,36> -----
+*
+*---- act defproc: gate::delay<20,0,0,12,6> -----
+* raw ports:  l r _r
+*
+.subckt _0_0gate_0_0delay_320_70_70_712_76_4 l r __r
+*.PININFO l:I r:O __r:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+xdel__u l d_51_6 d_52_6 r d_53_6 d_54_6 d_55_6 d_56_6 d_57_6 d_58_6 d_59_6 d_510_6 d_511_6 d_512_6 d_513_6 d_514_6 d_515_6 d_516_6 d_517_6 d_518_6 d_519_6 d_520_6 d_521_6 d_522_6 d_523_6 d_524_6 d_525_6 d_526_6 d_527_6 d_528_6 d_529_6 d_530_6 d_531_6 d_532_6 d_533_6 d_534_6 d_535_6 d_536_6 d_537_6 d_538_6 d_539_6 d_540_6 __r _0_0gate_0_0delay__up_320_76_4
+xamp l d_52_6 d_51_6 _0_0gate_0_0amplify__fixed__instant_31_70_712_736_4
+.ends
+*---- end of process: delay<20,0,0,12,6> -----
+*
+*---- act defproc: cell::g0n_0x1<> -----
+* raw ports:  in[0] out
+*
+.subckt _0_0cell_0_0g0n_0x1 in_50_6 out
+*.PININFO in_50_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_ out in_50_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=1.44 L=0.15 nrd=40.44 nrs=26.96
+xM1_ out in_50_6 GND GND sky130_fd_pr__nfet_01v8 W=0.72 L=0.15 nrd=40.44 nrs=26.96
+C_per_node_0 out GND 5e-15
+.ends
+*---- end of process: g0n_0x1<> -----
+*
+*---- act defproc: gate::amplify_base_instant<1,400,0,6> -----
+* raw ports:  l r d[1]
+*
+.subckt _0_0gate_0_0amplify__base__instant_31_7400_70_76_4 l r d_51_6
+*.PININFO l:I r:O d_51_6:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+xcx0 l d_51_6 _0_0cell_0_0g0n_0x0
+xcx1 d_51_6 r _0_0cell_0_0g0n_0x1
+.ends
+*---- end of process: amplify_base_instant<1,400,0,6> -----
+*
+*---- act defproc: gate::amplify_instant<400,0,6,30> -----
+* raw ports:  l r
+*
+.subckt _0_0gate_0_0amplify__instant_3400_70_76_730_4 l r
+*.PININFO l:I r:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+xamp l r amp_ad_51_6 _0_0gate_0_0amplify__base__instant_31_7400_70_76_4
+.ends
+*---- end of process: amplify_instant<400,0,6,30> -----
+*
+*---- act defproc: cell::g4n0n5n2naao_0123aoax0<> -----
+* raw ports:  in[0] in[1] in[2] in[3] in[4] in[5] out
+*
+.subckt _0_0cell_0_0g4n0n5n2naao_0123aoax0 in_50_6 in_51_6 in_52_6 in_53_6 in_54_6 in_55_6 out
+*.PININFO in_50_6:I in_51_6:I in_52_6:I in_53_6:I in_54_6:I in_55_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (state-holding): pup_reff=0.357143; pdn_reff=0.833333
+*
+* --- end node flags ---
+*
+xM0_ out in_54_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM1_ #11 in_50_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=1.44 L=0.15 nrd=40.44 nrs=26.96
+xM2_ #fb13# out Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM3_keeper #14 GND Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=1.59 nrd=40.44 nrs=26.96
+xM4_ #3 in_50_6 GND GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+xM6_keeper #15 Vdd GND GND sky130_fd_pr__nfet_01v8 W=0.42 L=2.85 nrd=40.44 nrs=26.96
+C_per_node_0 out GND 5e-15
+xM7_ out in_51_6 #3 GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+xM8_ out in_53_6 #6 GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+xM9_ out in_52_6 #10 Vdd sky130_fd_pr__pfet_01v8 W=1.44 L=0.15 nrd=40.44 nrs=26.96
+xM10_keeper out #fb13# #14 Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM11_keeper out #fb13# #15 GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM12_ #6 in_52_6 #3 GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+xM13_ #10 in_55_6 #11 Vdd sky130_fd_pr__pfet_01v8 W=1.44 L=0.15 nrd=40.44 nrs=26.96
+.ends
+*---- end of process: g4n0n5n2naao_0123aoax0<> -----
+*
+*---- act defproc: cell::g0n_0x5<> -----
+* raw ports:  in[0] out
+*
+.subckt _0_0cell_0_0g0n_0x5 in_50_6 out
+*.PININFO in_50_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_ out in_50_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM1_ out in_50_6 GND GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+C_per_node_0 out GND 5e-15
+.ends
+*---- end of process: g0n_0x5<> -----
+*
+*---- act defproc: cell::n0<6,5> -----
+* raw ports:  in[0] in[1] out
+*
+.subckt _0_0cell_0_0n0_36_75_4 in_50_6 in_51_6 out
+*.PININFO in_50_6:I in_51_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_pass out in_50_6 in_51_6 GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+.ends
+*---- end of process: n0<6,5> -----
+*
+*---- act defproc: cell::n0<30,5> -----
+* raw ports:  in[0] in[1] out
+*
+.subckt _0_0cell_0_0n0_330_75_4 in_50_6 in_51_6 out
+*.PININFO in_50_6:I in_51_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_pass out in_50_6 in_51_6 GND sky130_fd_pr__nfet_01v8 W=0.9 L=0.15 nrd=40.44 nrs=26.96
+.ends
+*---- end of process: n0<30,5> -----
+*
+*---- act defproc: cell::p0<6,5> -----
+* raw ports:  in[0] in[1] out
+*
+.subckt _0_0cell_0_0p0_36_75_4 in_50_6 in_51_6 out
+*.PININFO in_50_6:I in_51_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_pass out in_50_6 in_51_6 Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+.ends
+*---- end of process: p0<6,5> -----
+*
+*---- act defproc: cell::p0<48,5> -----
+* raw ports:  in[0] in[1] out
+*
+.subckt _0_0cell_0_0p0_348_75_4 in_50_6 in_51_6 out
+*.PININFO in_50_6:I in_51_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_pass out in_50_6 in_51_6 Vdd sky130_fd_pr__pfet_01v8 W=1.44 L=0.15 nrd=40.44 nrs=26.96
+.ends
+*---- end of process: p0<48,5> -----
+*
+*---- act defproc: cell::g0n_0x4<> -----
+* raw ports:  in[0] out
+*
+.subckt _0_0cell_0_0g0n_0x4 in_50_6 out
+*.PININFO in_50_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_ out in_50_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=1.08 L=0.15 nrd=40.44 nrs=26.96
+xM1_ out in_50_6 GND GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+C_per_node_0 out GND 5e-15
+.ends
+*---- end of process: g0n_0x4<> -----
+*
+*---- act defproc: clk::latch_pass_tmpl<0,18446744073709551614,3,2,6> -----
+* raw ports:  xi xo q.d[0]
+*
+.subckt _0_0clk_0_0latch__pass__tmpl_30_718446744073709551614_73_72_76_4 xi xo q_ad_50_6
+*.PININFO xi:I xo:O q_ad_50_6:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+xcx1 xi q_ad_50_6 _0_0cell_0_0g0n_0x4
+xcx0 q_ad_50_6 xo _0_0cell_0_0g0n_0x2
+.ends
+*---- end of process: latch_pass_tmpl<0,18446744073709551614,3,2,6> -----
+*
+*---- act defproc: clk::platch_pass_raw<0,18446744073709551614,3,2,6> -----
+* raw ports:  clk.d[0] clk.d[1] d q.d[0] q.d[1]
+*
+.subckt _0_0clk_0_0platch__pass__raw_30_718446744073709551614_73_72_76_4 clk_ad_50_6 clk_ad_51_6 d q_ad_50_6 q_ad_51_6
+*.PININFO clk_ad_50_6:I clk_ad_51_6:I d:I q_ad_50_6:O q_ad_51_6:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+xcx2 clk_ad_50_6 q_ad_51_6 xi _0_0cell_0_0n0_36_75_4
+xcx0 clk_ad_51_6 d xi _0_0cell_0_0n0_330_75_4
+xcx3 clk_ad_51_6 q_ad_51_6 xi _0_0cell_0_0p0_36_75_4
+xcx1 clk_ad_50_6 d xi _0_0cell_0_0p0_348_75_4
+xsub xi q_ad_51_6 q_ad_50_6 _0_0clk_0_0latch__pass__tmpl_30_718446744073709551614_73_72_76_4
+.ends
+*---- end of process: platch_pass_raw<0,18446744073709551614,3,2,6> -----
+*
+*---- act defproc: clk::platch_pass<0,18446744073709551614,3,2,6> -----
+* raw ports:  clk d q.d[0] q.d[1]
+*
+.subckt _0_0clk_0_0platch__pass_30_718446744073709551614_73_72_76_4 clk d q_ad_50_6 q_ad_51_6
+*.PININFO clk:I d:I q_ad_50_6:O q_ad_51_6:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+xcx0 clk cx0_aout _0_0cell_0_0g0n_0x5
+xsub cx0_aout clk d q_ad_50_6 q_ad_51_6 _0_0clk_0_0platch__pass__raw_30_718446744073709551614_73_72_76_4
+.ends
+*---- end of process: platch_pass<0,18446744073709551614,3,2,6> -----
+*
+*---- act defproc: clk::platch_bus_pass<4,18446744073709551614,{1,1,1,1},3,2,6> -----
+* raw ports:  clk d[0].d[1] d[1].d[1] d[2].d[1] d[3].d[1] q[0].d[0] q[0].d[1] q[1].d[0] q[1].d[1] q[2].d[0] q[2].d[1] q[3].d[0] q[3].d[1]
+*
+.subckt _0_0clk_0_0platch__bus__pass_34_718446744073709551614_7_81_71_71_71_9_73_72_76_4 clk d_50_6_ad_51_6 d_51_6_ad_51_6 d_52_6_ad_51_6 d_53_6_ad_51_6 q_50_6_ad_50_6 q_50_6_ad_51_6 q_51_6_ad_50_6 q_51_6_ad_51_6 q_52_6_ad_50_6 q_52_6_ad_51_6 q_53_6_ad_50_6 q_53_6_ad_51_6
+*.PININFO clk:I d_50_6_ad_51_6:I d_51_6_ad_51_6:I d_52_6_ad_51_6:I d_53_6_ad_51_6:I q_50_6_ad_50_6:O q_50_6_ad_51_6:O q_51_6_ad_50_6:O q_51_6_ad_51_6:O q_52_6_ad_50_6:O q_52_6_ad_51_6:O q_53_6_ad_50_6:O q_53_6_ad_51_6:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+xpos_50_6 clk d_50_6_ad_51_6 q_50_6_ad_50_6 q_50_6_ad_51_6 _0_0clk_0_0platch__pass_30_718446744073709551614_73_72_76_4
+xpos_51_6 clk d_51_6_ad_51_6 q_51_6_ad_50_6 q_51_6_ad_51_6 _0_0clk_0_0platch__pass_30_718446744073709551614_73_72_76_4
+xpos_52_6 clk d_52_6_ad_51_6 q_52_6_ad_50_6 q_52_6_ad_51_6 _0_0clk_0_0platch__pass_30_718446744073709551614_73_72_76_4
+xpos_53_6 clk d_53_6_ad_51_6 q_53_6_ad_50_6 q_53_6_ad_51_6 _0_0clk_0_0platch__pass_30_718446744073709551614_73_72_76_4
+.ends
+*---- end of process: platch_bus_pass<4,18446744073709551614,{1,1,1,1},3,2,6> -----
+*
+*---- act defproc: cell::g0n1n2nao_012aax0<> -----
+* raw ports:  in[0] in[1] in[2] out
+*
+.subckt _0_0cell_0_0g0n1n2nao_012aax0 in_50_6 in_51_6 in_52_6 out
+*.PININFO in_50_6:I in_51_6:I in_52_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (state-holding): pup_reff=0.416667; pdn_reff=0.833333
+*
+* --- end node flags ---
+*
+xM0_ out in_50_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM1_ #8 in_51_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.72 L=0.15 nrd=40.44 nrs=26.96
+xM2_ #fb9# out Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM3_keeper #10 GND Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=1.59 nrd=40.44 nrs=26.96
+xM4_ #4 in_50_6 GND GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+xM6_keeper #11 Vdd GND GND sky130_fd_pr__nfet_01v8 W=0.42 L=3.36 nrd=40.44 nrs=26.96
+C_per_node_0 out GND 5e-15
+xM7_ out in_52_6 #3 GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+xM8_ out in_52_6 #8 Vdd sky130_fd_pr__pfet_01v8 W=0.72 L=0.15 nrd=40.44 nrs=26.96
+xM9_keeper out #fb9# #10 Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM10_keeper out #fb9# #11 GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM11_ #3 in_51_6 #4 GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+.ends
+*---- end of process: g0n1n2nao_012aax0<> -----
+*
+*---- act defproc: clk::latch_pass_tmpl<0,18446744073709551614,2,1,6> -----
+* raw ports:  xi xo q.d[0]
+*
+.subckt _0_0clk_0_0latch__pass__tmpl_30_718446744073709551614_72_71_76_4 xi xo q_ad_50_6
+*.PININFO xi:I xo:O q_ad_50_6:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+xcx1 xi q_ad_50_6 _0_0cell_0_0g0n_0x2
+xcx0 q_ad_50_6 xo _0_0cell_0_0g0n_0x0
+.ends
+*---- end of process: latch_pass_tmpl<0,18446744073709551614,2,1,6> -----
+*
+*---- act defproc: clk::platch_pass_raw<0,18446744073709551614,2,1,6> -----
+* raw ports:  clk.d[0] clk.d[1] d q.d[0] q.d[1]
+*
+.subckt _0_0clk_0_0platch__pass__raw_30_718446744073709551614_72_71_76_4 clk_ad_50_6 clk_ad_51_6 d q_ad_50_6 q_ad_51_6
+*.PININFO clk_ad_50_6:I clk_ad_51_6:I d:I q_ad_50_6:O q_ad_51_6:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+xcx2 clk_ad_50_6 q_ad_51_6 xi _0_0cell_0_0n0_36_75_4
+xcx0 clk_ad_51_6 d xi _0_0cell_0_0n0_330_75_4
+xcx3 clk_ad_51_6 q_ad_51_6 xi _0_0cell_0_0p0_36_75_4
+xcx1 clk_ad_50_6 d xi _0_0cell_0_0p0_348_75_4
+xsub xi q_ad_51_6 q_ad_50_6 _0_0clk_0_0latch__pass__tmpl_30_718446744073709551614_72_71_76_4
+.ends
+*---- end of process: platch_pass_raw<0,18446744073709551614,2,1,6> -----
+*
+*---- act defproc: clk::platch_pass<0,18446744073709551614,2,1,6> -----
+* raw ports:  clk d q.d[0] q.d[1]
+*
+.subckt _0_0clk_0_0platch__pass_30_718446744073709551614_72_71_76_4 clk d q_ad_50_6 q_ad_51_6
+*.PININFO clk:I d:I q_ad_50_6:O q_ad_51_6:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+xcx0 clk cx0_aout _0_0cell_0_0g0n_0x5
+xsub cx0_aout clk d q_ad_50_6 q_ad_51_6 _0_0clk_0_0platch__pass__raw_30_718446744073709551614_72_71_76_4
+.ends
+*---- end of process: platch_pass<0,18446744073709551614,2,1,6> -----
+*
+*---- act defproc: clk::platch_bus_pass<4,18446744073709551614,{1,1,1,1},2,1,6> -----
+* raw ports:  clk d[0].d[1] d[1].d[1] d[2].d[1] d[3].d[1] q[0].d[0] q[0].d[1] q[1].d[0] q[1].d[1] q[2].d[0] q[2].d[1] q[3].d[0] q[3].d[1]
+*
+.subckt _0_0clk_0_0platch__bus__pass_34_718446744073709551614_7_81_71_71_71_9_72_71_76_4 clk d_50_6_ad_51_6 d_51_6_ad_51_6 d_52_6_ad_51_6 d_53_6_ad_51_6 q_50_6_ad_50_6 q_50_6_ad_51_6 q_51_6_ad_50_6 q_51_6_ad_51_6 q_52_6_ad_50_6 q_52_6_ad_51_6 q_53_6_ad_50_6 q_53_6_ad_51_6
+*.PININFO clk:I d_50_6_ad_51_6:I d_51_6_ad_51_6:I d_52_6_ad_51_6:I d_53_6_ad_51_6:I q_50_6_ad_50_6:O q_50_6_ad_51_6:O q_51_6_ad_50_6:O q_51_6_ad_51_6:O q_52_6_ad_50_6:O q_52_6_ad_51_6:O q_53_6_ad_50_6:O q_53_6_ad_51_6:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+xpos_50_6 clk d_50_6_ad_51_6 q_50_6_ad_50_6 q_50_6_ad_51_6 _0_0clk_0_0platch__pass_30_718446744073709551614_72_71_76_4
+xpos_51_6 clk d_51_6_ad_51_6 q_51_6_ad_50_6 q_51_6_ad_51_6 _0_0clk_0_0platch__pass_30_718446744073709551614_72_71_76_4
+xpos_52_6 clk d_52_6_ad_51_6 q_52_6_ad_50_6 q_52_6_ad_51_6 _0_0clk_0_0platch__pass_30_718446744073709551614_72_71_76_4
+xpos_53_6 clk d_53_6_ad_51_6 q_53_6_ad_50_6 q_53_6_ad_51_6 _0_0clk_0_0platch__pass_30_718446744073709551614_72_71_76_4
+.ends
+*---- end of process: platch_bus_pass<4,18446744073709551614,{1,1,1,1},2,1,6> -----
+*
+*---- act defproc: cell::g3n0n4n5n6na7n8naoaao_012aax0<> -----
+* raw ports:  in[0] in[1] in[2] in[3] in[4] in[5] in[6] in[7] in[8] out
+*
+.subckt _0_0cell_0_0g3n0n4n5n6na7n8naoaao_012aax0 in_50_6 in_51_6 in_52_6 in_53_6 in_54_6 in_55_6 in_56_6 in_57_6 in_58_6 out
+*.PININFO in_50_6:I in_51_6:I in_52_6:I in_53_6:I in_54_6:I in_55_6:I in_56_6:I in_57_6:I in_58_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (state-holding): pup_reff=0.555556; pdn_reff=0.833333
+*
+* --- end node flags ---
+*
+xM0_ out in_53_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM1_ #10 in_50_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=1.08 L=0.15 nrd=40.44 nrs=26.96
+xM2_ #fb18# out Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM3_keeper #19 GND Vdd Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=1.59 nrd=40.44 nrs=26.96
+xM4_ #4 in_50_6 GND GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+xM6_keeper #20 Vdd GND GND sky130_fd_pr__nfet_01v8 W=0.42 L=4.53 nrd=40.44 nrs=26.96
+C_per_node_0 out GND 5e-15
+xM7_ out in_52_6 #3 GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+xM8_ out in_56_6 #12 Vdd sky130_fd_pr__pfet_01v8 W=1.08 L=0.15 nrd=40.44 nrs=26.96
+xM9_ out in_58_6 #15 Vdd sky130_fd_pr__pfet_01v8 W=1.08 L=0.15 nrd=40.44 nrs=26.96
+xM10_keeper out #fb18# #19 Vdd sky130_fd_pr__pfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM11_keeper out #fb18# #20 GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM12_ #3 in_51_6 #4 GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+xM13_ #9 in_54_6 #10 Vdd sky130_fd_pr__pfet_01v8 W=1.08 L=0.15 nrd=40.44 nrs=26.96
+xM14_ #12 in_55_6 #9 Vdd sky130_fd_pr__pfet_01v8 W=1.08 L=0.15 nrd=40.44 nrs=26.96
+xM15_ #15 in_57_6 #9 Vdd sky130_fd_pr__pfet_01v8 W=1.08 L=0.15 nrd=40.44 nrs=26.96
+.ends
+*---- end of process: g3n0n4n5n6na7n8naoaao_012aax0<> -----
+*
+*---- act defproc: cell::g0n1no2n3n4n1na5n6naoaoa_01a2341o65oaoaox0<> -----
+* raw ports:  in[0] in[1] in[2] in[3] in[4] in[5] in[6] out
+*
+.subckt _0_0cell_0_0g0n1no2n3n4n1na5n6naoaoa_01a2341o65oaoaox0 in_50_6 in_51_6 in_52_6 in_53_6 in_54_6 in_55_6 in_56_6 out
+*.PININFO in_50_6:I in_51_6:I in_52_6:I in_53_6:I in_54_6:I in_55_6:I in_56_6:I out:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+*
+* --- node flags ---
+*
+* out (combinational)
+*
+* --- end node flags ---
+*
+xM0_ #13 in_50_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=1.44 L=0.15 nrd=40.44 nrs=26.96
+xM1_ #13 in_51_6 Vdd Vdd sky130_fd_pr__pfet_01v8 W=1.44 L=0.15 nrd=40.44 nrs=26.96
+xM2_ #3 in_50_6 GND GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM3_ #6 in_52_6 GND GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+C_per_node_0 out GND 5e-15
+xM4_ out in_51_6 #3 GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM5_ out in_53_6 #6 GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM6_ out in_56_6 #9 GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM7_ out in_55_6 #9 GND sky130_fd_pr__nfet_01v8 W=0.42 L=0.15 nrd=40.44 nrs=26.96
+xM8_ out in_52_6 #13 Vdd sky130_fd_pr__pfet_01v8 W=0.72 L=0.15 nrd=40.44 nrs=26.96
+xM9_ out in_51_6 #15 Vdd sky130_fd_pr__pfet_01v8 W=1.44 L=0.15 nrd=40.44 nrs=26.96
+xM10_ out in_56_6 #16 Vdd sky130_fd_pr__pfet_01v8 W=1.44 L=0.15 nrd=40.44 nrs=26.96
+xM11_ #9 in_54_6 #6 GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+xM12_ #9 in_51_6 #6 GND sky130_fd_pr__nfet_01v8 W=0.54 L=0.15 nrd=40.44 nrs=26.96
+xM13_ #14 in_53_6 #13 Vdd sky130_fd_pr__pfet_01v8 W=1.44 L=0.15 nrd=40.44 nrs=26.96
+xM14_ #15 in_54_6 #14 Vdd sky130_fd_pr__pfet_01v8 W=1.44 L=0.15 nrd=40.44 nrs=26.96
+xM15_ #16 in_55_6 #14 Vdd sky130_fd_pr__pfet_01v8 W=1.44 L=0.15 nrd=40.44 nrs=26.96
+.ends
+*---- end of process: g0n1no2n3n4n1na5n6naoaoa_01a2341o65oaoaox0<> -----
+*
+*---- act defproc: bd_ic::lsb::add_sub<4,6> -----
+* raw ports:  g.Reset g._Reset g._pReset cfg A.c.b.d[0] A.c.b.d[1] A.c.e A.d[0].d[1] A.d[1].d[1] A.d[2].d[1] A.d[3].d[1] B.c.b.d[0] B.c.b.d[1] B.c.e B.d[0].d[1] B.d[1].d[1] B.d[2].d[1] B.d[3].d[1] S.c.b.d[0] S.c.b.d[1] S.c.e S.d[0].d[0] S.d[0].d[1] S.d[1].d[0] S.d[1].d[1] S.d[2].d[0] S.d[2].d[1] S.d[3].d[0] S.d[3].d[1]
+*
+.subckt _0_0bd__ic_0_0lsb_0_0add__sub_34_76_4 g_aReset g_a__Reset g_a__pReset cfg A_ac_ab_ad_50_6 A_ac_ab_ad_51_6 A_ac_ae A_ad_50_6_ad_51_6 A_ad_51_6_ad_51_6 A_ad_52_6_ad_51_6 A_ad_53_6_ad_51_6 B_ac_ab_ad_50_6 B_ac_ab_ad_51_6 B_ac_ae B_ad_50_6_ad_51_6 B_ad_51_6_ad_51_6 B_ad_52_6_ad_51_6 B_ad_53_6_ad_51_6 S_ac_ab_ad_50_6 S_ac_ab_ad_51_6 S_ac_ae S_ad_50_6_ad_50_6 S_ad_50_6_ad_51_6 S_ad_51_6_ad_50_6 S_ad_51_6_ad_51_6 S_ad_52_6_ad_50_6 S_ad_52_6_ad_51_6 S_ad_53_6_ad_50_6 S_ad_53_6_ad_51_6
+*.PININFO g_aReset:I g_a__Reset:I g_a__pReset:I cfg:I A_ac_ab_ad_50_6:I A_ac_ab_ad_51_6:I A_ac_ae:O A_ad_50_6_ad_51_6:I A_ad_51_6_ad_51_6:I A_ad_52_6_ad_51_6:I A_ad_53_6_ad_51_6:I B_ac_ab_ad_50_6:I B_ac_ab_ad_51_6:I B_ac_ae:O B_ad_50_6_ad_51_6:I B_ad_51_6_ad_51_6:I B_ad_52_6_ad_51_6:I B_ad_53_6_ad_51_6:I S_ac_ab_ad_50_6:O S_ac_ab_ad_51_6:O S_ac_ae:I S_ad_50_6_ad_50_6:O S_ad_50_6_ad_51_6:O S_ad_51_6_ad_50_6:O S_ad_51_6_ad_51_6:O S_ad_52_6_ad_50_6:O S_ad_52_6_ad_51_6:O S_ad_53_6_ad_50_6:O S_ad_53_6_ad_51_6:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+xcx53 cfg cx48_ain_51_6 cx46_aout _0_0cell_0_0n0_312_75_4
+xcx25 __cfg cx24_ain_51_6 cx24_aout _0_0cell_0_0n0_312_75_4
+xcx18 cx16_aout S_ac_ab_ad_50_6 _0_0cell_0_0g0n_0x8
+xcx42 __cfg cx38_ain_51_6 cx40_aout _0_0cell_0_0p0_336_75_4
+xcx1 cx2_aout A_ac_ab_ad_50_6 cx1_aout _0_0cell_0_0g0n1na_01ox0
+xcx5 g_a__Reset A_ac_ab_ad_50_6 B_ac_ab_ad_50_6 B_ac_ab_ad_51_6 A_ac_ab_ad_51_6 cx5_aout _0_0cell_0_0g0n1n2nao_0123oa42aoax0
+xcx57 S_ad_53_6_ad_51_6 S_ad_53_6_ad_50_6 _0_0cell_0_0g0n_0x0
+xcx8 cx6_aout cx8_aout _0_0cell_0_0g0n_0x7
+xcx0 cfg __cfg _0_0cell_0_0g0n_0x0
+xcx4 cx3_aout B_ac_ab_ad_51_6 cx4_aout _0_0cell_0_0g0n1na_01ox0
+xcx9 cx58_aout cx14_aout cx9_aout _0_0cell_0_0p0_324_75_4
+xcx36 __cfg cx32_ain_51_6 cx30_aout _0_0cell_0_0p0_324_75_4
+xcx20 cx2_aout S_ac_ab_ad_50_6 S_ac_ab_ad_51_6 Axe _0_0cell_0_0g2n1n0noa_01a2ox0
+xripple Ax_50_6_ad_50_6 Ax_50_6_ad_51_6 Ax_51_6_ad_50_6 Ax_51_6_ad_51_6 Ax_52_6_ad_50_6 Ax_52_6_ad_51_6 Ax_53_6_ad_50_6 Ax_53_6_ad_51_6 cx22_aout cx24_aout cx30_aout cx32_aout cx38_aout cx40_aout cx46_aout cx48_aout cx15_aout ripple_aP_50_6_ad_50_6 ripple_aP_50_6_ad_51_6 ripple_aP_51_6_ad_50_6 ripple_aP_51_6_ad_51_6 ripple_aP_52_6_ad_50_6 ripple_aP_52_6_ad_51_6 ripple_aP_53_6_ad_50_6 ripple_aP_53_6_ad_51_6 Co_ad_50_6 S_ad_50_6_ad_51_6 S_ad_51_6_ad_51_6 S_ad_52_6_ad_51_6 S_ad_53_6_ad_51_6 _0_0gate_0_0add__manchester__full__alt_34_74_7_80_70_70_70_9_7_80_70_70_70_9_70_72_74_76_4
+xcx54 S_ad_50_6_ad_51_6 S_ad_50_6_ad_50_6 _0_0cell_0_0g0n_0x0
+xcx35 cfg cx30_ain_51_6 cx32_aout _0_0cell_0_0n0_318_75_4
+xcx24 cfg cx24_ain_51_6 cx24_aout _0_0cell_0_0p0_324_75_4
+xcx23 __cfg cx22_ain_51_6 cx22_aout _0_0cell_0_0n0_318_75_4
+xcx41 __cfg cx40_ain_51_6 cx40_aout _0_0cell_0_0n0_312_75_4
+xcx15 g_aReset cfg cx14_aout S_ac_ae cx17_aout cx58_aout cx16_aout cx15_aout _0_0cell_0_0g0n1no2n3n4n1na5n6naoaoa_01a2341o65oaoaox1
+xcx21 cx4_aout S_ac_ab_ad_50_6 S_ac_ab_ad_51_6 Bxe _0_0cell_0_0g2n1n0noa_01a2ox0
+xcx52 __cfg cx48_ain_51_6 cx46_aout _0_0cell_0_0p0_324_75_4
+xdelay__ab0 cx7_aout delay__ab0_ar delay__ab0_a__r _0_0gate_0_0delay_320_70_70_712_76_4
+xcx32 cfg cx32_ain_51_6 cx32_aout _0_0cell_0_0p0_324_75_4
+xcx51 cfg cx46_ain_51_6 cx48_aout _0_0cell_0_0n0_318_75_4
+xcx2 cx1_aout A_ac_ab_ad_51_6 cx2_aout _0_0cell_0_0g0n1na_01ox0
+xcx22 cfg cx22_ain_51_6 cx22_aout _0_0cell_0_0p0_336_75_4
+xcx7 cx5_aout cx7_aout _0_0cell_0_0g0n_0x7
+xcx33 __cfg cx32_ain_51_6 cx32_aout _0_0cell_0_0n0_312_75_4
+xcx26 __cfg cx22_ain_51_6 cx24_aout _0_0cell_0_0p0_336_75_4
+xcx58 Co_ad_50_6 cx58_aout _0_0cell_0_0g0n_0x0
+xcx46 cfg cx46_ain_51_6 cx46_aout _0_0cell_0_0p0_336_75_4
+xget__be Bxe B_ac_ae _0_0gate_0_0amplify__instant_3400_70_76_730_4
+xcx50 __cfg cx46_ain_51_6 cx48_aout _0_0cell_0_0p0_336_75_4
+xcx11 Co_ad_50_6 cx15_aout cx9_aout _0_0cell_0_0p0_324_75_4
+xcx39 __cfg cx38_ain_51_6 cx38_aout _0_0cell_0_0n0_318_75_4
+xdelay__ab1 cx8_aout delay__ab1_ar delay__ab1_a__r _0_0gate_0_0delay_320_70_70_712_76_4
+xcx10 cx58_aout cx15_aout cx9_aout _0_0cell_0_0n0_312_75_4
+xcx13 cx9_aout cx13_aout _0_0cell_0_0g0n_0x0
+xcx16 S_ac_ae delay__ab0_ar cx9_aout delay__ab1_ar g_a__pReset cx7_aout cx16_aout _0_0cell_0_0g4n0n5n2naao_0123aoax0
+xget__ae Axe A_ac_ae _0_0gate_0_0amplify__instant_3400_70_76_730_4
+xcx30 cfg cx30_ain_51_6 cx30_aout _0_0cell_0_0p0_336_75_4
+xlatch__b B_ac_ae B_ad_50_6_ad_51_6 B_ad_51_6_ad_51_6 B_ad_52_6_ad_51_6 B_ad_53_6_ad_51_6 cx22_ain_51_6 cx24_ain_51_6 cx30_ain_51_6 cx32_ain_51_6 cx38_ain_51_6 cx40_ain_51_6 cx46_ain_51_6 cx48_ain_51_6 _0_0clk_0_0platch__bus__pass_34_718446744073709551614_7_81_71_71_71_9_73_72_76_4
+xcx19 cx17_aout S_ac_ab_ad_51_6 _0_0cell_0_0g0n_0x8
+xcx37 cfg cx32_ain_51_6 cx30_aout _0_0cell_0_0n0_312_75_4
+xcx31 __cfg cx30_ain_51_6 cx30_aout _0_0cell_0_0n0_318_75_4
+xcx27 cfg cx22_ain_51_6 cx24_aout _0_0cell_0_0n0_318_75_4
+xcx3 cx4_aout B_ac_ab_ad_50_6 cx3_aout _0_0cell_0_0g0n1na_01ox0
+xcx49 __cfg cx48_ain_51_6 cx48_aout _0_0cell_0_0n0_312_75_4
+xcx48 cfg cx48_ain_51_6 cx48_aout _0_0cell_0_0p0_324_75_4
+xcx12 Co_ad_50_6 cx14_aout cx9_aout _0_0cell_0_0n0_312_75_4
+xcx34 __cfg cx30_ain_51_6 cx32_aout _0_0cell_0_0p0_336_75_4
+xcx6 g_a__Reset A_ac_ab_ad_51_6 B_ac_ab_ad_51_6 cx6_aout _0_0cell_0_0g0n1n2nao_012aax0
+xcx45 cfg cx40_ain_51_6 cx38_aout _0_0cell_0_0n0_312_75_4
+xcx44 __cfg cx40_ain_51_6 cx38_aout _0_0cell_0_0p0_324_75_4
+xlatch__a A_ac_ae A_ad_50_6_ad_51_6 A_ad_51_6_ad_51_6 A_ad_52_6_ad_51_6 A_ad_53_6_ad_51_6 Ax_50_6_ad_50_6 Ax_50_6_ad_51_6 Ax_51_6_ad_50_6 Ax_51_6_ad_51_6 Ax_52_6_ad_50_6 Ax_52_6_ad_51_6 Ax_53_6_ad_50_6 Ax_53_6_ad_51_6 _0_0clk_0_0platch__bus__pass_34_718446744073709551614_7_81_71_71_71_9_72_71_76_4
+xcx17 S_ac_ae cx13_aout delay__ab1_ar g_a__pReset cx8_aout cx14_aout cfg cx15_aout __cfg cx17_aout _0_0cell_0_0g3n0n4n5n6na7n8naoaao_012aax0
+xcx55 S_ad_51_6_ad_51_6 S_ad_51_6_ad_50_6 _0_0cell_0_0g0n_0x0
+xcx38 cfg cx38_ain_51_6 cx38_aout _0_0cell_0_0p0_336_75_4
+xcx29 cfg cx24_ain_51_6 cx22_aout _0_0cell_0_0n0_312_75_4
+xcx43 cfg cx38_ain_51_6 cx40_aout _0_0cell_0_0n0_318_75_4
+xcx56 S_ad_52_6_ad_51_6 S_ad_52_6_ad_50_6 _0_0cell_0_0g0n_0x0
+xcx47 __cfg cx46_ain_51_6 cx46_aout _0_0cell_0_0n0_318_75_4
+xcx40 cfg cx40_ain_51_6 cx40_aout _0_0cell_0_0p0_324_75_4
+xcx28 __cfg cx24_ain_51_6 cx22_aout _0_0cell_0_0p0_324_75_4
+xcx14 g_aReset __cfg cx15_aout S_ac_ae cx17_aout Co_ad_50_6 cx16_aout cx14_aout _0_0cell_0_0g0n1no2n3n4n1na5n6naoaoa_01a2341o65oaoaox0
+.ends
+*---- end of process: add_sub<4,6> -----
+*
+*---- act defproc: testbench<> -----
+* raw ports:  g.Reset g._Reset g._pReset cfg A.c.b.d[0] A.c.b.d[1] A.c.e A.d[0].d[1] A.d[1].d[1] A.d[2].d[1] A.d[3].d[1] B.c.b.d[0] B.c.b.d[1] B.c.e B.d[0].d[1] B.d[1].d[1] B.d[2].d[1] B.d[3].d[1] S.c.b.d[0] S.c.b.d[1] S.c.e S.d[0].d[0] S.d[0].d[1] S.d[1].d[0] S.d[1].d[1] S.d[2].d[0] S.d[2].d[1] S.d[3].d[0] S.d[3].d[1]
+*
+.subckt testbench g_aReset g_a__Reset g_a__pReset cfg A_ac_ab_ad_50_6 A_ac_ab_ad_51_6 A_ac_ae A_ad_50_6_ad_51_6 A_ad_51_6_ad_51_6 A_ad_52_6_ad_51_6 A_ad_53_6_ad_51_6 B_ac_ab_ad_50_6 B_ac_ab_ad_51_6 B_ac_ae B_ad_50_6_ad_51_6 B_ad_51_6_ad_51_6 B_ad_52_6_ad_51_6 B_ad_53_6_ad_51_6 S_ac_ab_ad_50_6 S_ac_ab_ad_51_6 S_ac_ae S_ad_50_6_ad_50_6 S_ad_50_6_ad_51_6 S_ad_51_6_ad_50_6 S_ad_51_6_ad_51_6 S_ad_52_6_ad_50_6 S_ad_52_6_ad_51_6 S_ad_53_6_ad_50_6 S_ad_53_6_ad_51_6
+*.PININFO g_aReset:I g_a__Reset:I g_a__pReset:I cfg:I A_ac_ab_ad_50_6:I A_ac_ab_ad_51_6:I A_ac_ae:O A_ad_50_6_ad_51_6:I A_ad_51_6_ad_51_6:I A_ad_52_6_ad_51_6:I A_ad_53_6_ad_51_6:I B_ac_ab_ad_50_6:I B_ac_ab_ad_51_6:I B_ac_ae:O B_ad_50_6_ad_51_6:I B_ad_51_6_ad_51_6:I B_ad_52_6_ad_51_6:I B_ad_53_6_ad_51_6:I S_ac_ab_ad_50_6:O S_ac_ab_ad_51_6:O S_ac_ae:I S_ad_50_6_ad_50_6:O S_ad_50_6_ad_51_6:O S_ad_51_6_ad_50_6:O S_ad_51_6_ad_51_6:O S_ad_52_6_ad_50_6:O S_ad_52_6_ad_51_6:O S_ad_53_6_ad_50_6:O S_ad_53_6_ad_51_6:O
+*.POWER VDD Vdd
+*.POWER GND GND
+*.POWER NSUB GND
+*.POWER PSUB Vdd
+xdut g_aReset g_a__Reset g_a__pReset cfg A_ac_ab_ad_50_6 A_ac_ab_ad_51_6 A_ac_ae A_ad_50_6_ad_51_6 A_ad_51_6_ad_51_6 A_ad_52_6_ad_51_6 A_ad_53_6_ad_51_6 B_ac_ab_ad_50_6 B_ac_ab_ad_51_6 B_ac_ae B_ad_50_6_ad_51_6 B_ad_51_6_ad_51_6 B_ad_52_6_ad_51_6 B_ad_53_6_ad_51_6 S_ac_ab_ad_50_6 S_ac_ab_ad_51_6 S_ac_ae S_ad_50_6_ad_50_6 S_ad_50_6_ad_51_6 S_ad_51_6_ad_50_6 S_ad_51_6_ad_51_6 S_ad_52_6_ad_50_6 S_ad_52_6_ad_51_6 S_ad_53_6_ad_50_6 S_ad_53_6_ad_51_6 _0_0bd__ic_0_0lsb_0_0add__sub_34_76_4
+.ends
+*---- end of process: testbench<> -----
