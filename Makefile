@@ -1,3 +1,4 @@
+PYTHON_RELEASE = python$(shell python3 -c "import sys;sys.stdout.write('{}.{}'.format(sys.version_info[0],sys.version_info[1]))")
 CXXFLAGS     = -g -O2 -Wall -fmessage-length=0 -I. -L. -Ideps/gdstk/include -Ideps/ruler -Ideps/pgen -Ldeps/gdstk/build/install/lib -Ldeps/gdstk/build/install/lib64  -Ldeps/ruler -Ldeps/pgen
 # -g -fprofile-arcs -ftest-coverage
 BSOURCES     := $(wildcard src/*.cpp)
@@ -41,7 +42,7 @@ $(LTARGET): $(LOBJECTS)
 	ar rvs $(LTARGET) $(LOBJECTS)
 
 $(BTARGET): $(BOBJECTS) $(LTARGET)
-	$(CXX) $(CXXFLAGS) $(BOBJECTS) -l:$(LTARGET) -l:libruler.a -lpython3.10 -l:libpgen.a -l:libgdstk.a -l:libclipper.a -l:libqhullstatic_r.a -lz -o $(BTARGET)
+	$(CXX) $(CXXFLAGS) $(BOBJECTS) -l:$(LTARGET) -l:libruler.a -l$(PYTHON_RELEASE) -l:libpgen.a -l:libgdstk.a -l:libclipper.a -l:libqhullstatic_r.a -lz -o $(BTARGET)
 
 floret/%.o: floret/%.cpp
 	$(CXX) $(CXXFLAGS) -c -MMD -o $@ $<
