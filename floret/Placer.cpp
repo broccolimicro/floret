@@ -78,7 +78,7 @@ int Placement::score() {
 	// ext[] finds the first and last index of each net
 	vector<vec2i> ext(base->nets.size(), vec2i(((int)stack[0].size()+1)*2, -1));
 	for (int type = 0; type < 2; type++) {
-		for (auto c = stack[type].begin(); c != stack[type].end(); c++) {
+		for (auto c = stack[type].begin(); c < stack[type].end(); c++) {
 			brk[type] += (c+1 != stack[type].end() and c->device >= 0 and (c+1)->device >= 0 and base->mos[c->device].ports[not c->flip] != base->mos[(c+1)->device].ports[(c+1)->flip]);
 
 			if (c->device >= 0) {
@@ -103,8 +103,14 @@ int Placement::score() {
 	B = brk[0]+brk[1];
 	W = min(brk[0]+d[0]-Wmin,brk[1]+d[1]-Wmin);
 
+	vector<int> unallignedNmos((int)stack[0].size(), 0);
+	vector<int> unallignedPmos((int)stack[1].size(), 0);
+
+	int currX_Nmos = 0;
+	int currX_Pmos = 0;
+
 	// compute G, keeping track of diffusion breaks
-	for (auto i = stack[0].begin(), j = stack[1].begin(); i != stack[0].end() and j != stack[1].end(); i++, j++) {
+	for (auto i = stack[0].begin(), j = stack[1].begin(); i < stack[0].end() and j < stack[1].end(); i++, j++) {
 		bool ibrk = (i != stack[0].begin() and (i-1)->device >= 0 and i->device >= 0 and base->mos[(i-1)->device].ports[not (i-1)->flip] != base->mos[i->device].ports[i->flip]);
 		bool jbrk = (j != stack[1].begin() and (j-1)->device >= 0 and j->device >= 0 and base->mos[(j-1)->device].ports[not (j-1)->flip] != base->mos[j->device].ports[j->flip]);
 
@@ -118,8 +124,24 @@ int Placement::score() {
 			break;
 		}
 
-		G += (i->device >= 0 and j->device >= 0 and base->mos[i->device].gate != base->mos[j->device].gate);
+		currX_Nmos += base->mos[i->device].size[1];
+		currX_Pmos += base->mos[j->device].size[1];
+
+		if (i->device >= 0 and j->device >= 0 and base->mos[i->device].gate == base->mos[j->device].gate and currX_Nmos != currX_Pmos) {
+			unallignedNmos[base->mos[i->device].gate] += base->mos[i->device].size[1];
+			unallignedPmos[base->mos[j->device].gate] += base->mos[j->device].size[1];
+		}
+
+		//G += (i->device >= 0 and j->device >= 0 and base->mos[i->device].gate != base->mos[j->device].gate);
+		if (i->device >= 0 and j->device >= 0 and base->mos[i->device].gate != base->mos[j->device].gate) {
+			unallignedNmos[base->mos[i->device].gate] += base->mos[i->device].size[1];
+			unallignedPmos[base->mos[j->device].gate] += base->mos[j->device].size[1];
+		}
 	}
+
+	G = (max_element(unallignedNmos.begin(), unallignedNmos.end())[0] + max_element(unallignedPmos.begin(), unallignedPmos.end())[0]) / ((int)stack[0].size() - brk[0]) / ((int)stack[1].size() - brk[1]);
+	
+	//printf("G value: %d\n", G);
 
 	return b*B*B + l*L + w*W*W + g*G;
 }
@@ -139,6 +161,11 @@ void Placement::solve(const Tech &tech, Circuit *base, int starts, int b, int l,
 
 	Placement best(base, b, l, w, g, rand);
 	int bestScore = best.score();
+	// for (auto i = best.stack[0].begin(), j = best.stack[1].begin(); i != best.stack[0].end() and j != best.stack[1].end(); i++, j++) {
+	// 	printf("Nmos width: %d\n", base->mos[i->device].size[1]);
+	// 	printf("Pmos width: %d\n", base->mos[j->device].size[1]);
+	// }
+
 
 	// Precache the list of all possible moves. These will get reshuffled each time.
 	vector<vec4i> choices;
@@ -150,6 +177,8 @@ void Placement::solve(const Tech &tech, Circuit *base, int starts, int b, int l,
 			}
 		}
 	}
+
+	float epsilon = 0.000003;
 
 	// Check multiple possible initial placements to avoid local minima
 	for (int i = 0; i < starts; i++) {
@@ -183,7 +212,14 @@ void Placement::solve(const Tech &tech, Circuit *base, int starts, int b, int l,
 
 			// cool the annealing temperature
 			currStep -= (currStep - 1.0)*rate;
+			if (currStep <= 1 + epsilon) {
+				currStep = 1.0;
+			}
 			//printf("%f %f %d<%d\n", currStep, rate, newScore, score);
+			// printf("Bottom inside Do-While\n");
+			// printf("CurrStep: %f\n", currStep);
+			// printf("NewStep: %d\n", newScore);
+			// printf("Score: %d\n", score);
 		} while ((float)score*currStep - (float)newScore > 0.01);
 
 		if (score < bestScore) {
