@@ -102,6 +102,7 @@ int Placement::score() {
 	}
 	B = brk[0]+brk[1];
 	W = min(brk[0]+d[0]-Wmin,brk[1]+d[1]-Wmin);
+	//W = max(max_element(sizesNmos.begin(), sizesNmos.end())[0], max_element(sizesPmos.begin(), sizesPmos.end())[0]);
 
 	vector<int> unallignedNmos((int)stack[0].size(), 0);
 	vector<int> unallignedPmos((int)stack[1].size(), 0);
@@ -124,22 +125,16 @@ int Placement::score() {
 			break;
 		}
 
-		currX_Nmos += base->mos[i->device].size[1];
-		currX_Pmos += base->mos[j->device].size[1];
+		currX_Nmos += base->mos[i->device].size[0];
+		currX_Pmos += base->mos[j->device].size[0];
 
 		if (i->device >= 0 and j->device >= 0 and base->mos[i->device].gate == base->mos[j->device].gate and currX_Nmos != currX_Pmos) {
-			unallignedNmos[base->mos[i->device].gate] += base->mos[i->device].size[1];
-			unallignedPmos[base->mos[j->device].gate] += base->mos[j->device].size[1];
-		}
-
-		//G += (i->device >= 0 and j->device >= 0 and base->mos[i->device].gate != base->mos[j->device].gate);
-		if (i->device >= 0 and j->device >= 0 and base->mos[i->device].gate != base->mos[j->device].gate) {
-			unallignedNmos[base->mos[i->device].gate] += base->mos[i->device].size[1];
-			unallignedPmos[base->mos[j->device].gate] += base->mos[j->device].size[1];
+			unallignedNmos[base->mos[i->device].gate] += base->mos[i->device].size[0];
+			unallignedPmos[base->mos[j->device].gate] += base->mos[j->device].size[0];
 		}
 	}
 
-	G = (max_element(unallignedNmos.begin(), unallignedNmos.end())[0] + max_element(unallignedPmos.begin(), unallignedPmos.end())[0]) / ((int)stack[0].size() - brk[0]) / ((int)stack[1].size() - brk[1]);
+	G = (max_element(unallignedNmos.begin(), unallignedNmos.end())[0] + max_element(unallignedPmos.begin(), unallignedPmos.end())[0]) /* ((int)stack[0].size() - brk[0]) / ((int)stack[1].size() - brk[1])*/;
 	
 	//printf("G value: %d\n", G);
 
@@ -150,7 +145,7 @@ void Placement::solve(const Tech &tech, Circuit *base, int starts, int b, int l,
 	if (base->mos.size() == 0) {
 		return;
 	}
-	std::default_random_engine rand(0/*std::random_device{}()*/);
+	std::default_random_engine rand(std::random_device{}());
 
 	// TODO(edward.bingham) It might speed things up to scale the number of
 	// starts based upon the cell complexity. Though, given that it would really
@@ -212,14 +207,10 @@ void Placement::solve(const Tech &tech, Circuit *base, int starts, int b, int l,
 
 			// cool the annealing temperature
 			currStep -= (currStep - 1.0)*rate;
-			if (currStep <= 1 + epsilon) {
+			if (currStep <= 1 + epsilon) {		//Epsilon for floating point error causing infinite loop
 				currStep = 1.0;
 			}
 			//printf("%f %f %d<%d\n", currStep, rate, newScore, score);
-			// printf("Bottom inside Do-While\n");
-			// printf("CurrStep: %f\n", currStep);
-			// printf("NewStep: %d\n", newScore);
-			// printf("Score: %d\n", score);
 		} while ((float)score*currStep - (float)newScore > 0.01);
 
 		if (score < bestScore) {
