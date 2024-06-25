@@ -102,12 +102,11 @@ int Placement::score() {
 	}
 	B = brk[0]+brk[1];
 	W = min(brk[0]+d[0]-Wmin,brk[1]+d[1]-Wmin);
-	//W = max(max_element(sizesNmos.begin(), sizesNmos.end())[0], max_element(sizesPmos.begin(), sizesPmos.end())[0]);
 
-	vector<int> unallignedNmos((int)stack[0].size(), 0);
+	vector<int> unallignedNmos((int)stack[0].size(), 0);		//Vectors for counting how many transitors are not aligned accounting for length
 	vector<int> unallignedPmos((int)stack[1].size(), 0);
 
-	int currX_Nmos = 0;
+	int currX_Nmos = 0;		//Tracker for current position of mosfets that have been placed from left to right
 	int currX_Pmos = 0;
 
 	// compute G, keeping track of diffusion breaks
@@ -125,18 +124,17 @@ int Placement::score() {
 			break;
 		}
 
-		currX_Nmos += base->mos[i->device].size[0];
+		currX_Nmos += base->mos[i->device].size[0];		//Increment current positions of transitors based on length
 		currX_Pmos += base->mos[j->device].size[0];
 
+		//If transitors are not dummy transistors and they are not aligned, Increase G
 		if (i->device >= 0 and j->device >= 0 and base->mos[i->device].gate == base->mos[j->device].gate and currX_Nmos != currX_Pmos) {
 			unallignedNmos[base->mos[i->device].gate] += base->mos[i->device].size[0];
 			unallignedPmos[base->mos[j->device].gate] += base->mos[j->device].size[0];
 		}
 	}
 
-	G = (max_element(unallignedNmos.begin(), unallignedNmos.end())[0] + max_element(unallignedPmos.begin(), unallignedPmos.end())[0]) /* ((int)stack[0].size() - brk[0]) / ((int)stack[1].size() - brk[1])*/;
-	
-	//printf("G value: %d\n", G);
+	G = (max_element(unallignedNmos.begin(), unallignedNmos.end())[0] + max_element(unallignedPmos.begin(), unallignedPmos.end())[0]);
 
 	return b*B*B + l*L + w*W*W + g*G;
 }
