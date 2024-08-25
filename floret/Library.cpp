@@ -2,7 +2,6 @@
 #include "Draw.h"
 #include "Placer.h"
 #include "Router.h"
-#include "Timer.h"
 
 #include <ruler/Layout.h>
 #include <vector>

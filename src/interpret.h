@@ -3,8 +3,13 @@
 #include <floret/Circuit.h>
 #include <floret/Library.h>
 
+#include <string>
+
 #include "spice.h"
 
+using namespace std;
+
+string lower(string str);
 double loadValue(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &val);
 bool loadDevice(Circuit &ckt, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &dev);
 void loadSubckt(Circuit &ckt, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &subckt);

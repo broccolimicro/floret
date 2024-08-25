@@ -1,6 +1,5 @@
 #include "Placer.h"
 #include "Draw.h"
-#include "Timer.h"
 
 #include <list>
 #include <set>

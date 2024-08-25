@@ -6,8 +6,8 @@
 #include <ruler/Script.h>
 #include <ruler/ActConfig.h>
 #include <floret/Library.h>
-#include <floret/Timer.h>
 
+#include "Timer.h"
 #include "interpret.h"
 
 using namespace std;

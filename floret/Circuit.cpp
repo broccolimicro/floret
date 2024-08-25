@@ -1,6 +1,4 @@
 #include "Circuit.h"
-#include "Common.h"
-#include "Timer.h"
 #include "Draw.h"
 
 Mos::Mos() {

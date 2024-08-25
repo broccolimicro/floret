@@ -1,6 +1,19 @@
 #include "interpret.h"
-#include <floret/Common.h>
-#include <floret/Timer.h>
+#include "Timer.h"
+
+#include <utility>
+#include <math.h>
+#include <string>
+#include <stdlib.h>
+
+using namespace std;
+
+string lower(string str) {
+	for (auto c = str.begin(); c != str.end(); c++) {
+		*c = tolower(*c);
+	}
+	return str;
+}
 
 double loadValue(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &val) {
 	string constStr = "0.0";

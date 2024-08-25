@@ -4,7 +4,6 @@
 #include <list>
 
 #include "Router.h"
-#include "Timer.h"
 #include "Draw.h"
 
 PinConstraint::PinConstraint() {
