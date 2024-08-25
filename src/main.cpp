@@ -8,6 +8,8 @@
 #include <floret/Library.h>
 #include <floret/Timer.h>
 
+#include "interpret.h"
+
 using namespace std;
 
 void printHelp() {
@@ -118,7 +120,7 @@ int main(int argc, char **argv) {
 		printf("loading %s -- ", spiceFiles[i].c_str());
 		fflush(stdout);
 		timer.reset();
-		if (not cellLib.loadFile(spiceFiles[i])) {
+		if (not loadFile(cellLib, spiceFiles[i])) {
 			printf("file not found: '%s'\n", spiceFiles[i].c_str());
 		}
 		printf("[%f]\n", timer.since());

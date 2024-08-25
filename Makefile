@@ -3,7 +3,7 @@ CXXFLAGS     = -g -O2 -Wall -fmessage-length=0 -I. -L. -Ideps/gdstk/include -Ide
 # -g -fprofile-arcs -ftest-coverage
 BSOURCES     := $(wildcard src/*.cpp)
 PGRAM        := $(wildcard peg/*.peg)
-PSOURCES     := $(PGRAM:peg/%.peg=floret/%.cpp)
+PSOURCES     := $(PGRAM:peg/%.peg=src/%.cpp)
 LSOURCES     := $(wildcard floret/*.cpp) $(PSOURCES)
 LOBJECTS     := $(LSOURCES:.cpp=.o)
 BOBJECTS     := $(BSOURCES:.cpp=.o)
@@ -27,9 +27,9 @@ ruler:
 
 grammar: $(PSOURCES)
 
-floret/spice.cpp: peg/spice.peg
+src/spice.cpp: peg/spice.peg
 	deps/pgen/pgen-linux $<
-	mv peg/*.cpp peg/*.h floret
+	mv peg/*.cpp peg/*.h src
 	
 lib: $(LTARGET)
 

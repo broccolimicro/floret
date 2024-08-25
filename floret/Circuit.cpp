@@ -1,6 +1,5 @@
 #include "Circuit.h"
 #include "Common.h"
-#include "spice.h"
 #include "Timer.h"
 #include "Draw.h"
 
@@ -386,96 +385,6 @@ Pin &Circuit::pin(Index i) {
 
 const Pin &Circuit::pin(Index i) const {
 	return stack[i.type].pins[i.pin];
-}
-
-bool Circuit::loadDevice(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &dev) {
-	// deviceType deviceName paramList
-	if (dev.tokens.size() < 3) {
-		printf("not a device\n");
-		return false;
-	}
-
-	string devType = lower(lexer.read(dev.tokens[0].begin, dev.tokens[0].end));
-	string devName = lexer.read(dev.tokens[1].begin, dev.tokens[1].end);
-
-	// DESIGN(edward.bingham) Since we're focused on digital design, we'll only support transistor layout for now.
-	if (string("mx").find(devType) == string::npos) {
-		printf("not transistor or subckt %s%s\n", devType.c_str(), devName.c_str());
-		return false;
-	}
-
-	auto args = dev.tokens.begin() + 2;
-	// Moss must have the following args
-	// drain gate source base modelName
-	if (args->tokens.size() < 5) {
-		printf("not enough args\n");
-		return false;
-	}
-
-	// modelName cannot be a number or assignment
-	if (args->tokens[4].type != lang.NAME) {
-		printf("model name not present\n");
-		return false;
-	}
-
-	string modelName = lexer.read(args->tokens[4].begin, args->tokens[4].end);
-	int modelIdx = tech.findModel(modelName);
-	// if the modelName isn't in the model list, then this is a non-transistor subckt
-	if (modelIdx < 0) {
-		printf("model not found %s\n", modelName.c_str());
-		return false;
-	}
-
-	int port = 0;
-	int type = tech.models[modelIdx].type;
-	this->mos.push_back(Mos(modelIdx, type));
-	for (auto arg = args->tokens.begin(); arg != args->tokens.end(); arg++) {
-		if (arg->type == lang.PARAM) {
-			string paramName = lower(lexer.read(arg->tokens[0].begin, arg->tokens[0].end));
-			vector<double> values;
-			for (auto value = arg->tokens.begin()+1; value != arg->tokens.end(); value++) {
-				values.push_back(loadValue(lang, lexer, *value));
-			}
-			if (paramName == "w") {
-				this->mos.back().size[1] = int(values[0]/tech.dbunit);
-			} else if (paramName == "l") {
-				this->mos.back().size[0] = int(values[0]/tech.dbunit);
-			} else {
-				this->mos.back().params.insert(pair<string, vector<double> >(paramName, values));
-			}
-		} else if (port < 4) {
-			string netName = lexer.read(arg->begin, arg->end);
-			int net = this->findNet(netName, true);
-			if (port == 1) {
-				this->nets[net].gates[type]++;
-				this->mos.back().gate = net;
-			} else if (port == 3) {
-				this->mos.back().bulk = net;
-			} else {
-				this->nets[net].ports[type]++;
-				this->mos.back().ports.push_back(net);
-			}
-			port++;
-		}
-	}
-
-	return true;
-}
-
-void Circuit::loadSubckt(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &subckt) {
-	for (auto tok = subckt.tokens.begin(); tok != subckt.tokens.end(); tok++) {
-		if (tok->type == lang.NAME) {
-			this->name = lexer.read(tok->begin, tok->end);
-		} else if (tok->type == lang.PORT_LIST) {
-			for (auto port = tok->tokens.begin(); port != tok->tokens.end(); port++) {
-				this->nets.push_back(Net(lexer.read(port->begin, port->end), true));
-			}
-		} else if (tok->type == lang.DEVICE) {
-			if (not loadDevice(lang, lexer, *tok)) {
-				printf("unrecognized device\n");
-			}
-		}
-	}
 }
 
 // horizontal size of pin

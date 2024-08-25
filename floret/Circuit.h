@@ -9,8 +9,6 @@
 #include <ruler/Layout.h>
 #include <ruler/vector.h>
 
-#include "spice.h"
-
 using namespace ruler;
 using namespace std;
 
@@ -319,9 +317,6 @@ struct Circuit {
 	string netName(int net) const;
 	const Pin &pin(Index i) const;
 	Pin &pin(Index i);
-
-	bool loadDevice(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &dev);
-	void loadSubckt(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &subckt);
 
 	int pinWidth(Index i) const;
 	int pinHeight(Index i) const;
