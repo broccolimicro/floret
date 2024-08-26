@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 using namespace std;
+using namespace sch;
 
 string lower(string str) {
 	for (auto c = str.begin(); c != str.end(); c++) {
@@ -42,7 +43,7 @@ double loadValue(pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &val) {
 	return value;
 }
 
-bool loadDevice(Circuit &ckt, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &dev) {
+bool loadDevice(Subckt &ckt, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &dev) {
 	// deviceType deviceName paramList
 	if (dev.tokens.size() < 3) {
 		printf("not a device\n");
@@ -116,7 +117,7 @@ bool loadDevice(Circuit &ckt, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::to
 	return true;
 }
 
-void loadSubckt(Circuit &ckt, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &subckt) {
+void loadSubckt(Subckt &ckt, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &subckt) {
 	for (auto tok = subckt.tokens.begin(); tok != subckt.tokens.end(); tok++) {
 		if (tok->type == lang.NAME) {
 			ckt.name = lexer.read(tok->begin, tok->end);
@@ -133,16 +134,16 @@ void loadSubckt(Circuit &ckt, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::to
 }
 
 // load a spice AST into the layout engine
-void loadSpice(Library &lib, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &spice) {
+void loadSpice(Netlist &lib, pgen::spice_t lang, pgen::lexer_t &lexer, pgen::token_t &spice) {
 	for (auto tok = spice.tokens.begin(); tok != spice.tokens.end(); tok++) {
 		if (tok->type == lang.SUBCKT) {
-			lib.cells.push_back(Circuit(*lib.tech));
-			loadSubckt(lib.cells.back(), lang, lexer, *tok);
+			lib.subckts.push_back(Subckt(*lib.tech));
+			loadSubckt(lib.subckts.back(), lang, lexer, *tok);
 		}
 	}
 }
 
-bool loadFile(Library &lib, string path) {
+bool loadFile(Netlist &lib, string path) {
 	Timer timer;
 	printf("loadFile\n");
 

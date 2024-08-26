@@ -4,8 +4,11 @@
 
 #include <phy/Tech.h>
 #include <phy/Script.h>
+#include <interpret_phy/export.h>
 #include <interpret_rect/ActConfig.h>
-#include <sch/Library.h>
+#include <interpret_rect/RectFile.h>
+#include <phy/Library.h>
+#include <sch/Netlist.h>
 
 #include "Timer.h"
 #include "interpret.h"
@@ -114,13 +117,13 @@ int main(int argc, char **argv) {
 	fflush(stdout);
 	timer.reset();
 	loadTech(tech, techPath);
-	Library cellLib(tech);
+	sch::Netlist netlist(tech);
 	printf("[%f]\n", timer.since());
 	for (int i = 0; i < (int)spiceFiles.size(); i++) {
 		printf("loading %s -- ", spiceFiles[i].c_str());
 		fflush(stdout);
 		timer.reset();
-		if (not loadFile(cellLib, spiceFiles[i])) {
+		if (not loadFile(netlist, spiceFiles[i])) {
 			printf("file not found: '%s'\n", spiceFiles[i].c_str());
 		}
 		printf("[%f]\n", timer.since());
@@ -128,10 +131,17 @@ int main(int argc, char **argv) {
 	printf("building cells -- ");
 	fflush(stdout);
 	timer.reset();
-	cellLib.build(cellNames);
+	netlist.build(cellNames);
+
+	Library cellLib(&tech);
+	for (auto ckt = netlist.subckts.begin(); ckt != netlist.subckts.end(); ckt++) {
+		cellLib.cells.push_back(Layout(tech));
+		ckt->draw(cellLib.cells.back());
+	}
+
 	printf("[%f]\n", timer.since());
 	if (gdsPath != "") {
-		cellLib.emitGDS(gdsName, gdsPath, cellNames);
+		emitGDS(gdsName, gdsPath, cellLib, cellNames);
 	}
 	if (rectPath != "") {
 		act::ActConfig act;
@@ -141,7 +151,7 @@ int main(int argc, char **argv) {
 		if (not act.load(tech, confPath+"/layout.conf")) {
 			printf("error loading: '%s/layout.conf'\n", confPath.c_str());
 		}
-		cellLib.emitRect(act, rectPath, cellNames);
+		emitRect(rectPath, act, cellLib, cellNames);
 	}
 }
 
