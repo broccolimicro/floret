@@ -1,5 +1,7 @@
+.PHONY: deps
+
 PYTHON_RELEASE = python$(shell python3 -c "import sys;sys.stdout.write('{}.{}'.format(sys.version_info[0],sys.version_info[1]))")
-CXXFLAGS     = -g -O2 -Wall -fmessage-length=0 -I. -L. -Ideps/gdstk/include -Ideps/ruler -Ideps/pgen -Ideps/sch -Ldeps/gdstk/build/install/lib -Ldeps/gdstk/build/install/lib64  -Ldeps/ruler -Ldeps/pgen -Ldeps/sch
+CXXFLAGS     = -g -O2 -Wall -fmessage-length=0 -I. -L. -Ideps/gdstk/include -Ideps/phy -Ideps/interpret_phy -Ideps/interpret_rect -Ideps/pgen -Ideps/sch -Ldeps/gdstk/build/install/lib -Ldeps/gdstk/build/install/lib64  -Ldeps/phy -Ldeps/interpret_phy -Ldeps/interpret_rect -Ldeps/pgen -Ldeps/sch
 # -g -fprofile-arcs -ftest-coverage
 BSOURCES     := $(wildcard src/*.cpp)
 PGRAM        := $(wildcard peg/*.peg)
@@ -10,18 +12,12 @@ BTARGET      = floret-linux
 
 all: deps grammar $(BTARGET)
 
-deps: gdstk pgen ruler sch
-
-gdstk:
+deps:
 	$(MAKE) -s $(MAKE_FLAGS) -C deps/gdstk lib
-
-pgen:
 	$(MAKE) -s $(MAKE_FLAGS) -C deps/pgen
-
-ruler:
-	$(MAKE) -s $(MAKE_FLAGS) -C deps/ruler
-
-sch:
+	$(MAKE) -s $(MAKE_FLAGS) -C deps/phy
+	$(MAKE) -s $(MAKE_FLAGS) -C deps/interpret_phy
+	$(MAKE) -s $(MAKE_FLAGS) -C deps/interpret_rect
 	$(MAKE) -s $(MAKE_FLAGS) -C deps/sch
 
 grammar: $(PSOURCES)
@@ -36,7 +32,7 @@ check: test
 	./$(TTARGET)
 
 $(BTARGET): $(BOBJECTS)
-	$(CXX) $(CXXFLAGS) $(BOBJECTS) -l:libsch.a -l:libruler.a -l$(PYTHON_RELEASE) -l:libpgen.a -l:libgdstk.a -l:libclipper.a -l:libqhullstatic_r.a -lz -o $(BTARGET)
+	$(CXX) $(CXXFLAGS) $(BOBJECTS) -l:libsch.a -l:libphy.a -l:libinterpret_phy.a -l:libinterpret_rect.a -l$(PYTHON_RELEASE) -l:libpgen.a -l:libgdstk.a -l:libclipper.a -l:libqhullstatic_r.a -lz -o $(BTARGET)
 
 floret/%.o: floret/%.cpp
 	$(CXX) $(CXXFLAGS) -c -MMD -o $@ $<
@@ -53,7 +49,9 @@ test/gtest_main.o: $(GTEST)/src/gtest_main.cc
 clean:
 	$(MAKE) -s $(MAKE_FLAGS) -C deps/gdstk clean
 	$(MAKE) -s $(MAKE_FLAGS) -C deps/pgen clean
-	$(MAKE) -s $(MAKE_FLAGS) -C deps/ruler clean
+	$(MAKE) -s $(MAKE_FLAGS) -C deps/phy clean
+	$(MAKE) -s $(MAKE_FLAGS) -C deps/interpret_phy clean
+	$(MAKE) -s $(MAKE_FLAGS) -C deps/interpret_rect clean
 	$(MAKE) -s $(MAKE_FLAGS) -C deps/sch clean
 	rm -f src/*.o
 	rm -f src/*.d

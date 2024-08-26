@@ -10,3 +10,12 @@
 [submodule "deps/sch"]
 	path = deps/sch
 	url = https://github.com/broccolimicro/sch.git
+[submodule "deps/phy"]
+	path = deps/phy
+	url = https://github.com/broccolimicro/phy.git
+[submodule "deps/interpret_phy"]
+	path = deps/interpret_phy
+	url = https://github.com/broccolimicro/interpret_phy.git
+[submodule "deps/interpret_rect"]
+	path = deps/interpret_rect
+	url = https://github.com/broccolimicro/interpret_rect.git

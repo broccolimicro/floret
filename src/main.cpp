@@ -2,9 +2,9 @@
 #include <string>
 #include <vector>
 
-#include <ruler/Tech.h>
-#include <ruler/Script.h>
-#include <ruler/ActConfig.h>
+#include <phy/Tech.h>
+#include <phy/Script.h>
+#include <interpret_rect/ActConfig.h>
 #include <sch/Library.h>
 
 #include "Timer.h"
@@ -134,7 +134,7 @@ int main(int argc, char **argv) {
 		cellLib.emitGDS(gdsName, gdsPath, cellNames);
 	}
 	if (rectPath != "") {
-		ruler::ActConfig act;
+		act::ActConfig act;
 		if (not act.load(tech, confPath+"/global.conf")) {
 			printf("error loading: '%s/global.conf'\n", confPath.c_str());
 		}
