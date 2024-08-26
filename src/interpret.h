@@ -1,7 +1,7 @@
 #pragma once
 
-#include <floret/Circuit.h>
-#include <floret/Library.h>
+#include <sch/Circuit.h>
+#include <sch/Library.h>
 
 #include <string>
 

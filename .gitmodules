@@ -7,3 +7,6 @@
 [submodule "deps/ruler"]
 	path = deps/ruler
 	url = https://github.com/broccolimicro/ruler.git
+[submodule "deps/sch"]
+	path = deps/sch
+	url = https://github.com/broccolimicro/sch.git

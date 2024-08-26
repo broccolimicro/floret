@@ -5,7 +5,7 @@
 #include <ruler/Tech.h>
 #include <ruler/Script.h>
 #include <ruler/ActConfig.h>
-#include <floret/Library.h>
+#include <sch/Library.h>
 
 #include "Timer.h"
 #include "interpret.h"
