@@ -83,7 +83,7 @@ jobs:
           fi
         shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.LOOM_RELEASE }}
+          GITHUB_TOKEN: ${{ secrets.FLORET_RELEASE }}
 
       - name: Build binary on Linux
         if: matrix.os == 'ubuntu-latest'
@@ -112,7 +112,7 @@ jobs:
           curl -sSL -X DELETE -H "Authorization: Bearer ${GITHUB_TOKEN}" "https://api.github.com/repos/${{ github.repository }}/releases/assets/${{ steps.get_release_info.outputs.asset_id }}"
         shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.LOOM_RELEASE }}
+          GITHUB_TOKEN: ${{ secrets.FLORET_RELEASE }}
 
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
@@ -122,4 +122,4 @@ jobs:
           asset_name: ${{ matrix.to }}
           asset_content_type: application/octet-stream
         env:
-          GITHUB_TOKEN: ${{ secrets.LOOM_RELEASE }}
+          GITHUB_TOKEN: ${{ secrets.FLORET_RELEASE }}
