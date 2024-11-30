@@ -4,6 +4,11 @@
 
 Floret is an automated custom cell generator. The underlying algorithms are built from the following papers:
 
+> [!NOTE]  
+> This project has been merged into the [Loom Synthesis
+> Engine](https://github.com/broccolimicro/loom). Updates to Floret will likely
+> be infrequent as a result. See Loom for a more up-to-date version.
+
 1. Stauffer, André, and Ravi Nair. "Optimal CMOS cell transistor placement: a relaxation approach." 1988 IEEE International Conference on Computer-Aided Design. IEEE Computer Society, 1988.
 2. Chen, Howard H., and Ernest S. Kuh. "Glitter: A gridless variable-width channel router." IEEE transactions on computer-aided design of integrated circuits and systems 5.4 (1986): 459-465.
 3. Deutsch, David N. "A “Dogleg” channel router." Papers on Twenty-five years of electronic design automation. 1988. 111-119.
@@ -27,7 +32,7 @@ See [Releases](https://github.com/broccolimicro/floret/releases) for example gen
 
 This will generate a GDS library with a nand gate in `nand.gds` using the sky130 tech file provided in the tech directory.
 ```
-build-linux/floret-linux -p -c cells -t tech/sky130.py test/nand.spi
+./floret-linux -p -c cells -t tech/sky130.py test/nand.spi
 ```
 
 ![cell](https://github.com/broccolimicro/floret/assets/8902287/9085fadf-f1ff-4f82-a233-061a880ca9d2)
