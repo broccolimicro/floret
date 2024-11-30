@@ -1,0 +1,125 @@
+name: Build and Release
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            from: "floret-linux"
+            to: "floret-linux"
+          - os: macos-latest
+            from: "floret-macos"
+            to: "floret-macos"
+          - os: windows-latest
+            from: "floret-windows"
+            to: "floret-windows"
+
+    steps:
+      - name: Checkout code for workflow_dispatch
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive # This ensures submodules are pulled and initialized
+          fetch-tags: true
+
+      - name: Checkout code for release
+        if: ${{ github.event_name == 'release' }}
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive # This ensures submodules are pulled and initialized
+          fetch-tags: false
+
+      - name: Install dependencies on Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y build-essential ninja-build libqhull-dev libgraphviz-dev pax-utils curl
+
+      - name: Install dependencies on macOS
+        if: matrix.os == 'macos-latest'
+        run: brew install cmake ninja qhull graphviz curl # or any other required dependencies for macOS
+
+      - name: Install MSYS2
+        if: matrix.os == 'windows-latest'
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          path-type: inherit
+
+      - name: Install dependencies on Windows
+        if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --needed --noconfirm base-devel
+          pacman -S --needed --noconfirm msys2-runtime-devel
+          pacman -S --needed --noconfirm mingw-w64-x86_64-toolchain
+          pacman -S --needed --noconfirm mingw-w64-x86_64-cmake
+          pacman -S --needed --noconfirm mingw-w64-x86_64-ninja
+          pacman -S --needed --noconfirm mingw-w64-x86_64-qhull
+          pacman -S --needed --noconfirm mingw-w64-x86_64-zlib
+          pacman -S --needed --noconfirm mingw-w64-x86_64-graphviz
+          pacman -S --needed --noconfirm zip
+          pacman -S --needed --noconfirm curl
+
+      - name: Get Latest Release Info
+        id: get_release_info
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "url=${{ github.event.release.upload_url }}" >> $GITHUB_OUTPUT
+            echo "release_id=${{ github.event.release.id }}" >> $GITHUB_OUTPUT
+            echo "asset_id=" >> $GITHUB_OUTPUT
+          else
+            release_info="$(curl -sSL -H "Authorization: Bearer ${GITHUB_TOKEN}" https://api.github.com/repos/broccolimicro/floret/releases | jq -r 'first')"
+            echo "url=$(echo "$release_info" | jq -r '.upload_url')" >> $GITHUB_OUTPUT
+            echo "release_id=$(echo "$release_info" | jq -r '.id')" >> $GITHUB_OUTPUT
+            echo "asset_id=$(echo "$release_info" | jq -r '.assets | .[] | select(.name == "'${{ matrix.to }}'") | .id')" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.LOOM_RELEASE }}
+
+      - name: Build binary on Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          make MAINTAINER_NAME="$MAINTAINER_NAME" MAINTAINER_EMAIL="$MAINTAINER_EMAIL"
+        shell: bash
+        env:
+          MAINTAINER_NAME: ${{ vars.MAINTAINER_NAME }}
+          MAINTAINER_EMAIL: ${{ vars.MAINTAINER_EMAIL }}
+
+      - name: Build binary on macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          make
+        shell: bash
+
+      - name: Build binary on Windows
+        if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
+        run: |
+          make
+
+      - name: Delete Existing Asset
+        if: steps.get_release_info.outputs.asset_id != ''
+        run: |
+          curl -sSL -X DELETE -H "Authorization: Bearer ${GITHUB_TOKEN}" "https://api.github.com/repos/${{ github.repository }}/releases/assets/${{ steps.get_release_info.outputs.asset_id }}"
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.LOOM_RELEASE }}
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.get_release_info.outputs.url }}
+          asset_path: ${{ matrix.from }}
+          asset_name: ${{ matrix.to }}
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.LOOM_RELEASE }}
