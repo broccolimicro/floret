@@ -1,6 +1,3 @@
-[submodule "deps/pgen"]
-	path = deps/pgen
-	url = https://github.com/nbingham1/pgen.git
 [submodule "deps/gdstk"]
 	path = deps/gdstk
 	url = https://github.com/heitzmann/gdstk.git
@@ -19,3 +16,18 @@
 [submodule "deps/interpret_rect"]
 	path = deps/interpret_rect
 	url = https://github.com/broccolimicro/interpret_rect.git
+[submodule "deps/interpret_sch"]
+	path = deps/interpret_sch
+	url = https://github.com/broccolimicro/interpret_sch.git
+[submodule "deps/parse"]
+	path = deps/parse
+	url = https://github.com/broccolimicro/parse.git
+[submodule "deps/parse_spice"]
+	path = deps/parse_spice
+	url = https://github.com/broccolimicro/parse_spice.git
+[submodule "deps/common"]
+	path = deps/common
+	url = https://github.com/broccolimicro/common.git
+[submodule "deps/parse_act"]
+	path = deps/parse_act
+	url = https://github.com/broccolimicro/parse_act.git
