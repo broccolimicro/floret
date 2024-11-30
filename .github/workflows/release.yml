@@ -13,13 +13,13 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         include:
           - os: ubuntu-latest
-            from: "floret-linux"
+            from: "floret"
             to: "floret-linux"
           - os: macos-latest
-            from: "floret-macos"
+            from: "floret"
             to: "floret-macos"
           - os: windows-latest
-            from: "floret-windows"
+            from: "floret"
             to: "floret-windows"
 
     steps:

@@ -2,12 +2,12 @@
 
 > *small flower buds at the head of a piece of broccoli.*
 
-Floret is an automated custom cell generator. The underlying algorithms are built from the following papers:
-
 > [!NOTE]  
 > This project has been merged into the [Loom Synthesis
 > Engine](https://github.com/broccolimicro/loom). Updates to Floret will likely
 > be infrequent as a result. See Loom for a more up-to-date version.
+
+Floret is an automated custom cell generator. The underlying algorithms are built from the following papers:
 
 1. Stauffer, André, and Ravi Nair. "Optimal CMOS cell transistor placement: a relaxation approach." 1988 IEEE International Conference on Computer-Aided Design. IEEE Computer Society, 1988.
 2. Chen, Howard H., and Ernest S. Kuh. "Glitter: A gridless variable-width channel router." IEEE transactions on computer-aided design of integrated circuits and systems 5.4 (1986): 459-465.
