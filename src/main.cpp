@@ -11,6 +11,7 @@
 #include <phy/Library.h>
 #include <sch/Netlist.h>
 #include <sch/Tapeout.h>
+#include <sch/Placer.h>
 #include <interpret_sch/import.h>
 #include <interpret_sch/export.h>
 
@@ -62,7 +63,7 @@ void export_cells(const phy::Library &lib, const sch::Netlist &net) {
 				export_layout(cellPath+".gds", lib.macros[i]);
 				export_lef(cellPath+".lef", lib.macros[i]);
 				if (i < (int)net.subckts.size()) {
-					export_spi(cellPath+".spi", net, net.subckts[i]);
+					export_spi(cellPath+".spi", *lib.tech, net, net.subckts[i]);
 				}
 			}
 		}
@@ -82,6 +83,10 @@ bool loadCell(phy::Library &lib, sch::Netlist &lst, int idx, bool progress=false
 		printf("[");
 	}
 
+	Timer tmr;
+	float searchDelay = 0.0;
+	float genDelay = 0.0;
+
 	sch::Subckt spiNet = lst.subckts[idx];
 	spiNet.cleanDangling(true);
 	spiNet.combineDevices();
@@ -96,13 +101,15 @@ bool loadCell(phy::Library &lib, sch::Netlist &lst, int idx, bool progress=false
 				gdsNet.cleanDangling(true);
 				gdsNet.combineDevices();
 				gdsNet.canonicalize();
+				searchDelay = tmr.since();
 				if (gdsNet.compare(spiNet) == 0) {
-					printf("%sFOUND%s]\n", KGRN, KNRM);
+					printf("%sFOUND %d DBUNIT2 AREA%s]\t%gs\n", KGRN, lib.macros[idx].box.area(), KNRM, searchDelay);
 				} else {
 					printf("%sFAILED LVS%s, ", KRED, KNRM);
 					imported = false;
 				}
 			} else {
+				searchDelay = tmr.since();
 				printf("%sFAILED IMPORT%s, ", KRED, KNRM);
 			}
 		}
@@ -113,12 +120,16 @@ bool loadCell(phy::Library &lib, sch::Netlist &lst, int idx, bool progress=false
 		}
 	}
 
-	int result = sch::routeCell(lib, lst, idx);
+	tmr.reset();
+
+	int result = sch::buildCell(lib, lst, idx);
 	if (progress) {
 		if (result == 1) {
-			printf("%sFAILED PLACEMENT%s]\n", KRED, KNRM);
+			genDelay = tmr.since();
+			printf("%sFAILED PLACEMENT%s]\t(%gs %gs)\n", KRED, KNRM, searchDelay, genDelay);
 		} else if (result == 2) {
-			printf("%sFAILED ROUTING%s]\n", KRED, KNRM);
+			genDelay = tmr.since();
+			printf("%sFAILED ROUTING%s]\t(%gs %gs)\n", KRED, KNRM, searchDelay, genDelay);
 		} else {
 			sch::Subckt gdsNet(true);
 			extract(gdsNet, lib.macros[idx], true);
@@ -126,10 +137,11 @@ bool loadCell(phy::Library &lib, sch::Netlist &lst, int idx, bool progress=false
 			gdsNet.combineDevices();
 			gdsNet.canonicalize();
 
+			genDelay = tmr.since();
 			if (gdsNet.compare(spiNet) == 0) {
-				printf("%sGENERATED%s]\n", KGRN, KNRM);
+				printf("%sGENERATED %d DBUNIT2 AREA%s]\t(%gs %gs)\n", KGRN, lib.macros[idx].box.area(), KNRM, searchDelay, genDelay);
 			} else {
-				printf("%sFAILED LVS%s]\n", KRED, KNRM);
+				printf("%sFAILED LVS%s]\t(%gs %gs)\n", KRED, KNRM, searchDelay, genDelay);
 				if (debug) {
 					gdsNet.print();
 					spiNet.print();
@@ -140,12 +152,13 @@ bool loadCell(phy::Library &lib, sch::Netlist &lst, int idx, bool progress=false
 	return false;
 }
 
-void loadCells(phy::Library &lib, sch::Netlist &lst, gdstk::GdsWriter *out=nullptr, bool progress=false, bool debug=false) {
+void loadCells(phy::Library &lib, sch::Netlist &lst, gdstk::GdsWriter *stream=nullptr, map<int, gdstk::Cell*> *cells=nullptr, bool progress=false, bool debug=false) {
 	bool libFound = filesystem::exists(lib.tech->lib);
 	if (progress) {
 		printf("Load cell layouts:\n");
 	}
-	steady_clock::time_point start = steady_clock::now();
+
+	Timer tmr;
 	lib.macros.reserve(lst.subckts.size()+lib.macros.size());
 	for (int i = 0; i < (int)lst.subckts.size(); i++) {
 		if (lst.subckts[i].isCell) {
@@ -158,19 +171,59 @@ void loadCells(phy::Library &lib, sch::Netlist &lst, gdstk::GdsWriter *out=nullp
 				string cellPath = lib.tech->lib + "/" + lib.macros[i].name;
 				export_layout(cellPath+".gds", lib.macros[i]);
 				export_lef(cellPath+".lef", lib.macros[i]);
-				export_spi(cellPath+".spi", lst, lst.subckts[i]);
+				export_spi(cellPath+".spi", *lib.tech, lst, lst.subckts[i]);
 			}
-			if (out != nullptr) {
-				out->write_cell(*phy::export_layout(lib.macros[i]));
+			if (stream != nullptr and cells != nullptr) {
+				export_layout(*stream, lib, i, *cells);
 			}
+			lst.mapToLayout(i, lib.macros[i]);
 		}
 	}
-	steady_clock::time_point finish = steady_clock::now();
 	if (progress) {
-		printf("done [%gs]\n\n", ((float)duration_cast<milliseconds>(finish - start).count())/1000.0);
+		printf("done\t%gs\n\n", tmr.since());
 	}
 }
 
+void doPlacement(phy::Library &lib, sch::Netlist &lst, gdstk::GdsWriter *stream=nullptr, map<int, gdstk::Cell*> *cells=nullptr, bool report_progress=false) {
+	if (report_progress) {
+		printf("Placing Cells:\n");
+	}
+
+	if (lib.macros.size() < lst.subckts.size()) {
+		lib.macros.resize(lst.subckts.size(), Layout(*lib.tech));
+	}
+
+	sch::Placer placer(lib, lst);
+
+	Timer total;
+	for (int i = 0; i < (int)lst.subckts.size(); i++) {
+		if (not lst.subckts[i].isCell) {
+			if (report_progress) {
+				printf("  %s...", lst.subckts[i].name.c_str());
+				fflush(stdout);
+			}
+			Timer tmr;
+			lib.macros[i].name = lst.subckts[i].name;
+			placer.place(i);
+			if (report_progress) {
+				int area = 0;
+				for (auto j = lst.subckts[i].inst.begin(); j != lst.subckts[i].inst.end(); j++) {
+					if (lst.subckts[j->subckt].isCell) {
+						area += lib.macros[j->subckt].box.area();
+					}
+				}
+				printf("[%s%d DBUNIT2 AREA%s]\t%gs\n", KGRN, area, KNRM, tmr.since());
+			}
+			if (stream != nullptr and cells != nullptr) {
+				export_layout(*stream, lib, i, *cells);
+			}
+		}
+	}
+
+	if (report_progress) {
+		printf("done\t%gs\n\n", total.since());
+	}
+}
 
 int main(int argc, char **argv) {
 	std::filesystem::path current = std::filesystem::current_path();
@@ -334,10 +387,10 @@ int main(int argc, char **argv) {
 
 	phy::Tech tech;
 	if (not phy::loadTech(tech, techPath, cellsDir)) {
-		cout << "techfile does not exist \'" + techPath + "\'." << endl;
+		cout << "Unable to load techfile \'" + techPath + "\'." << endl;
 		return 1;
 	}
-	sch::Netlist net(tech);
+	sch::Netlist net;
 
 	if (format == "spi") {
 		parse_spice::netlist::register_syntax(tokens);
@@ -348,7 +401,7 @@ int main(int argc, char **argv) {
 		if (tokens.decrement(__FILE__, __LINE__))
 		{
 			parse_spice::netlist syntax(tokens);
-			sch::import_netlist(syntax, net, &tokens);
+			sch::import_netlist(tech, net, syntax, &tokens);
 		}
 	}
 
@@ -358,30 +411,35 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	net.mapCells(progress);
+	if (progress) printf("Break subckts into cells:\n");
+	Timer cellsTmr;
+	net.mapCells(tech, progress);
+	if (progress) printf("done\t%gs\n\n", cellsTmr.since());
 
 	if (format != "spi") {
+		// This spice netlist is always exported
 		FILE *fout = stdout;
 		if (prefix != "") {
 			fout = fopen((prefix+".spi").c_str(), "w");
 		}
-		fprintf(fout, "%s", sch::export_netlist(net).to_string().c_str());
+		fprintf(fout, "%s", sch::export_netlist(tech, net).to_string().c_str());
 		fclose(fout);
 	}
 
 	phy::Library lib(tech);
+
+	map<int, gdstk::Cell*> cells;
+
 	gdstk::GdsWriter gds = {};
 	gds = gdstk::gdswriter_init((prefix+".gds").c_str(), prefix.c_str(), ((double)tech.dbunit)*1e-6, ((double)tech.dbunit)*1e-6, 4, nullptr, nullptr);
+	
+	loadCells(lib, net, &gds, &cells, progress, debug);
 
-	if (format == "chp"
-		or format == "hse"
-		or format == "astg"
-		or format == "prs"
-		or format == "spi") {
-		loadCells(lib, net, &gds, progress, debug);
-	}
+	doPlacement(lib, net, &gds, &cells, progress);
 
 	gds.close();
+
+	if (progress) printf("compiled in %gs\n\n", timer.since());
 
 	if (!is_clean()) {
 		complete();

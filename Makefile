@@ -7,11 +7,12 @@ DEPEND        = phy sch interpret_phy interpret_sch interpret_rect parse_spice p
 
 SRCDIR        = src
 
-INCLUDE_PATHS = $(DEPEND:%=-Ideps/%) -Ideps/gdstk/build/install/include $(shell python3-config --includes) -I.
+INCLUDE_PATHS = $(DEPEND:%=-Ideps/%) -Ideps/gdstk/build/include $(shell python3-config --includes) -I.
 LIBRARY_PATHS = $(DEPEND:%=-Ldeps/%) -L$(shell python3-config --prefix)/lib -L.
 LIBRARIES     = $(DEPEND:%=-l%) -l$(PYTHON_RELEASE)
 LIBFILES      = $(foreach dep,$(DEPEND),deps/$(dep)/lib$(dep).a)
-CXXFLAGS      = -std=c++17 -O2 -g -Wall -fmessage-length=0
+CXXFLAGS      = -std=c++17 -O2 -g -Wall -fmessage-length=0 -D CL_HPP_MINIMUM_OPENCL_VERSION=120 -D CL_HPP_TARGET_OPENCL_VERSION=120 -D CL_HPP_ENABLE_EXCEPTIONS 
+
 LDFLAGS	      =  
 
 SOURCES	     := $(shell mkdir -p $(SRCDIR); find $(SRCDIR) -name '*.cpp')
@@ -31,21 +32,21 @@ ifeq ($(OS),Windows_NT)
 			CXXFLAGS += -D IA32
 		endif
 	endif
-	LIBRARIES += -l:libgdstk.a -l:libclipper.a -l:libqhullstatic_r.a -lz
-	LIBRARY_PATHS += -Ldeps/gdstk/build/install/lib -Ldeps/gdstk/build/install/lib64
+	LIBRARIES += -l:libgdstk.a -l:libclipper.a -l:libqhullstatic_r.a -lz -lOpenCL
+	LIBRARY_PATHS += -Ldeps/gdstk/build/lib -Ldeps/gdstk/build/lib64
 else
 	UNAME_S := $(shell uname -s)
 	ifeq ($(UNAME_S),Linux)
 		CXXFLAGS += -D LINUX
-		LIBRARIES += -l:libgdstk.a -l:libclipper.a -l:libqhullstatic_r.a -lz
-		LIBRARY_PATHS += -Ldeps/gdstk/build/install/lib -Ldeps/gdstk/build/install/lib64
+		LIBRARIES += -l:libgdstk.a -l:libclipper.a -l:libqhullstatic_r.a -lz -lOpenCL
+		LIBRARY_PATHS += -Ldeps/gdstk/build/lib -Ldeps/gdstk/build/lib64
 	endif
 	ifeq ($(UNAME_S),Darwin)
 		CXXFLAGS += -D OSX -mmacos-version-min=12.0 -Wno-missing-braces
-		INCLUDE_PATHS += -I$(shell brew --prefix qhull)/include -I$(shell brew --prefix graphviz)/include
+		INCLUDE_PATHS += -I$(shell brew --prefix qhull)/include -I$(shell brew --prefix graphviz)/include -I$(shell brew --prefix opencl-headers)/include -I$(shell brew --prefix opencl-clhpp-headers)/include
 		LIBRARY_PATHS += -L$(shell brew --prefix qhull)/lib -L$(shell brew --prefix graphviz)/lib
-		LIBRARIES += -lgdstk -lclipper -lqhullstatic_r -lz
-		LIBRARY_PATHS += -Ldeps/gdstk/build/install/lib
+		LIBRARIES += -lgdstk -lclipper -lqhullstatic_r -lz -framework OpenCL
+		LIBRARY_PATHS += -Ldeps/gdstk/build/lib
 	endif
 	UNAME_P := $(shell uname -p)
 	ifeq ($(UNAME_P),x86_64)
