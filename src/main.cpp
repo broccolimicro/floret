@@ -6,10 +6,10 @@
 #include <phy/Script.h>
 #include <interpret_phy/import.h>
 #include <interpret_phy/export.h>
-#include <interpret_rect/ActConfig.h>
-#include <interpret_rect/RectFile.h>
-#include <phy/Library.h>
-#include <sch/Netlist.h>
+//#include <interpret_rect/ActConfig.h>
+//#include <interpret_rect/RectFile.h>
+#include <phy/Layout.h>
+#include <sch/Subckt.h>
 #include <sch/Tapeout.h>
 #include <sch/Placer.h>
 #include <interpret_sch/import.h>
@@ -26,8 +26,24 @@
 #define KBLU  "\x1B[34m"
 using namespace std::chrono;
 
-
 using namespace std;
+
+#include <fstream>
+#include <iterator>
+#include <stdexcept>
+#include <string>
+
+std::string readFile(const std::string& filename) {
+	std::ifstream file(filename, std::ios::binary);
+	if (not file.is_open()) {
+		throw std::runtime_error("Cannot open file: " + filename);
+	}
+
+	return std::string(
+		std::istreambuf_iterator<char>{file},
+		std::istreambuf_iterator<char>{}
+	);
+}
 
 void printHelp() {
 	printf("Usage: floret [options] <file.spi>\n");
@@ -52,33 +68,31 @@ void printVersion() {
 	printf("\n");
 }
 
-void export_cells(const phy::Library &lib, const sch::Netlist &net) {
-	if (not filesystem::exists(lib.tech->lib)) {
-		filesystem::create_directory(lib.tech->lib);
+namespace cell {
+
+void export_cell(std::string path, const phy::Tech &tech, const sch::Subckt &ckt, const phy::Layout &macro) {
+	string cellPath = path + "/" + ckt.name;
+	export_spi(cellPath+".spi", tech, ckt);
+	export_layout(cellPath+".gds", macro);
+	export_lef(cellPath+".lef", macro);
+}
+
+void export_cells(std::string path, const phy::Tech &tech, std::vector<sch::Subckt> &subckts, std::vector<phy::Layout> &macros) {
+	if (not filesystem::exists(path)) {
+		filesystem::create_directory(path);
 	}
-	for (int i = 0; i < (int)lib.macros.size(); i++) {
-		if (lib.macros[i].name.rfind("cell_", 0) == 0) {
-			string cellPath = lib.tech->lib + "/" + lib.macros[i].name;
-			if (not filesystem::exists(cellPath+".gds")) {
-				export_layout(cellPath+".gds", lib.macros[i]);
-				export_lef(cellPath+".lef", lib.macros[i]);
-				if (i < (int)net.subckts.size()) {
-					export_spi(cellPath+".spi", *lib.tech, net, net.subckts[i]);
-				}
-			}
+	for (size_t i = 0; i < subckts.size(); i++) {
+		if (subckts[i].isCell) {
+			export_cell(path, tech, subckts[i], macros[i]);
 		}
 	}
 }
 
 // returns whether the cell was imported
-bool loadCell(phy::Library &lib, sch::Netlist &lst, int idx, bool progress=false, bool debug=false) {
-	if (idx >= (int)lib.macros.size()) {
-		lib.macros.resize(idx+1, Layout(*lib.tech));
-	}
-	lib.macros[idx].name = lst.subckts[idx].name;
-	string cellPath = lib.tech->lib + "/" + lib.macros[idx].name+".gds";
+bool import_cell(std::string path, const phy::Tech &tech, std::vector<sch::Subckt> &subckts, std::vector<phy::Layout> &macros, int index, bool progress, bool debug) {
+	string cellPath = path + "/" + subckts[index].name+".gds";
 	if (progress) {
-		printf("  %s...", lib.macros[idx].name.c_str());
+		printf("  %s...", subckts[index].name.c_str());
 		fflush(stdout);
 		printf("[");
 	}
@@ -87,23 +101,24 @@ bool loadCell(phy::Library &lib, sch::Netlist &lst, int idx, bool progress=false
 	float searchDelay = 0.0;
 	float genDelay = 0.0;
 
-	sch::Subckt spiNet = lst.subckts[idx];
-	spiNet.cleanDangling(true);
-	spiNet.combineDevices();
-	spiNet.canonicalize();
+	subckts[index].cleanDangling(true);
+	subckts[index].combineDevices();
+	subckts[index].canonicalize();
 
+	phy::Layout macro(tech);
 	if (filesystem::exists(cellPath)) {
-		bool imported = import_layout(lib.macros[idx], cellPath, lib.macros[idx].name);
+		bool imported = import_layout(macro, cellPath, subckts[index].name);
 		if (progress) {
 			if (imported) {
+				macro.trace();
 				sch::Subckt gdsNet(true);
-				extract(gdsNet, lib.macros[idx], true);
+				extract(gdsNet, macro, true);
 				gdsNet.cleanDangling(true);
 				gdsNet.combineDevices();
 				gdsNet.canonicalize();
 				searchDelay = tmr.since();
-				if (gdsNet.compare(spiNet) == 0) {
-					printf("%sFOUND %d DBUNIT2 AREA%s]\t%gs\n", KGRN, lib.macros[idx].box.area(), KNRM, searchDelay);
+				if (gdsNet.compare(subckts[index]) == 0) {
+					printf("%sFOUND %d DBUNIT2 AREA%s]\t%gs\n", KGRN, macro.box.area(), KNRM, searchDelay);
 				} else {
 					printf("%sFAILED LVS%s, ", KRED, KNRM);
 					imported = false;
@@ -114,15 +129,16 @@ bool loadCell(phy::Library &lib, sch::Netlist &lst, int idx, bool progress=false
 			}
 		}
 		if (imported) {
+			macros[index] = macro;
 			return true;
 		} else {
-			lib.macros[idx].clear();
+			macro.clear();
 		}
 	}
 
 	tmr.reset();
 
-	int result = sch::buildCell(lib, lst, idx);
+	int result = sch::buildCell(macro, subckts[index]);
 	if (progress) {
 		if (result == 1) {
 			genDelay = tmr.since();
@@ -132,19 +148,20 @@ bool loadCell(phy::Library &lib, sch::Netlist &lst, int idx, bool progress=false
 			printf("%sFAILED ROUTING%s]\t(%gs %gs)\n", KRED, KNRM, searchDelay, genDelay);
 		} else {
 			sch::Subckt gdsNet(true);
-			extract(gdsNet, lib.macros[idx], true);
+			extract(gdsNet, macro, true);
 			gdsNet.cleanDangling(true);
 			gdsNet.combineDevices();
 			gdsNet.canonicalize();
 
 			genDelay = tmr.since();
-			if (gdsNet.compare(spiNet) == 0) {
-				printf("%sGENERATED %d DBUNIT2 AREA%s]\t(%gs %gs)\n", KGRN, lib.macros[idx].box.area(), KNRM, searchDelay, genDelay);
+			if (gdsNet.compare(subckts[index]) == 0) {
+				printf("%sGENERATED %d DBUNIT2 AREA%s]\t(%gs %gs)\n", KGRN, macro.box.area(), KNRM, searchDelay, genDelay);
+				macros[index] = macro;
 			} else {
 				printf("%sFAILED LVS%s]\t(%gs %gs)\n", KRED, KNRM, searchDelay, genDelay);
 				if (debug) {
 					gdsNet.print();
-					spiNet.print();
+					subckts[index].print();
 				}
 			}
 		}
@@ -152,31 +169,24 @@ bool loadCell(phy::Library &lib, sch::Netlist &lst, int idx, bool progress=false
 	return false;
 }
 
-void loadCells(phy::Library &lib, sch::Netlist &lst, gdstk::GdsWriter *stream=nullptr, map<int, gdstk::Cell*> *cells=nullptr, bool progress=false, bool debug=false) {
-	bool libFound = filesystem::exists(lib.tech->lib);
+void update_library(std::string path, const phy::Tech &tech, std::vector<sch::Subckt> &subckts, std::vector<phy::Layout> &macros, bool progress, bool debug) {
+	bool libFound = filesystem::exists(path);
 	if (progress) {
 		printf("Load cell layouts:\n");
 	}
 
 	Timer tmr;
-	lib.macros.reserve(lst.subckts.size()+lib.macros.size());
-	for (int i = 0; i < (int)lst.subckts.size(); i++) {
-		if (lst.subckts[i].isCell) {
-			if (not loadCell(lib, lst, i, progress, debug)) {
+	for (size_t i = 0; i < subckts.size(); i++) {
+		if (subckts[i].isCell) {
+			
+			if (not import_cell(path, tech, subckts, macros, i, progress, debug)) {
 				// We generated a new cell, save this to the cell library
 				if (not libFound) {
-					filesystem::create_directory(lib.tech->lib);
+					filesystem::create_directory(path);
 					libFound = true;
 				}
-				string cellPath = lib.tech->lib + "/" + lib.macros[i].name;
-				export_layout(cellPath+".gds", lib.macros[i]);
-				export_lef(cellPath+".lef", lib.macros[i]);
-				export_spi(cellPath+".spi", *lib.tech, lst, lst.subckts[i]);
+				export_cell(path, tech, subckts[i], macros[i]);
 			}
-			if (stream != nullptr and cells != nullptr) {
-				export_layout(*stream, lib, i, *cells);
-			}
-			lst.mapToLayout(i, lib.macros[i]);
 		}
 	}
 	if (progress) {
@@ -184,45 +194,107 @@ void loadCells(phy::Library &lib, sch::Netlist &lst, gdstk::GdsWriter *stream=nu
 	}
 }
 
-void doPlacement(phy::Library &lib, sch::Netlist &lst, gdstk::GdsWriter *stream=nullptr, map<int, gdstk::Cell*> *cells=nullptr, bool report_progress=false) {
-	if (report_progress) {
-		printf("Placing Cells:\n");
+}
+
+bool mapCells(const phy::Tech &tech, std::vector<sch::Subckt> &subckts, std::vector<phy::Layout> &macros, int index, bool progress) {
+	sch::Subckt &ckt = subckts[index];
+	if (ckt.isCell) {
+		return true;
 	}
 
-	if (lib.macros.size() < lst.subckts.size()) {
-		lib.macros.resize(lst.subckts.size(), Layout(*lib.tech));
-	}
-
-	sch::Placer placer(lib, lst);
-
-	Timer total;
-	for (int i = 0; i < (int)lst.subckts.size(); i++) {
-		if (not lst.subckts[i].isCell) {
-			if (report_progress) {
-				printf("  %s...", lst.subckts[i].name.c_str());
-				fflush(stdout);
+	vector<sch::Subckt> cells = sch::mapCells(tech, ckt, progress);
+	for (sch::Subckt &cell : cells) {
+		/*std::string originalName = cell.name;
+		cell.name = "cell_" + encodeBase32(cell.id);
+		for (auto i = ckt.inst.begin(); i != ckt.inst.end(); i++) {
+			if (i->type == originalName) {
+				i->type = cell.name;
 			}
-			Timer tmr;
-			lib.macros[i].name = lst.subckts[i].name;
-			placer.place(i);
-			if (report_progress) {
-				int area = 0;
-				for (auto j = lst.subckts[i].inst.begin(); j != lst.subckts[i].inst.end(); j++) {
-					if (lst.subckts[j->subckt].isCell) {
-						area += lib.macros[j->subckt].box.area();
-					}
-				}
-				printf("[%s%d DBUNIT2 AREA%s]\t%gs\n", KGRN, area, KNRM, tmr.since());
-			}
-			if (stream != nullptr and cells != nullptr) {
-				export_layout(*stream, lib, i, *cells);
+		}*/
+		bool found = false;
+		for (size_t i = 0; i < subckts.size(); i++) {
+			if (subckts[i].name == cell.name) {
+				found = true;
+				break;
 			}
 		}
+		if (not found) {
+			subckts.push_back(cell);
+			macros.push_back(Layout(tech, cell.name));
+		}
 	}
+	return true;
+}
 
-	if (report_progress) {
-		printf("done\t%gs\n\n", total.since());
+struct SchLinker : sch::Linker {
+	const phy::Tech &tech;
+	vector<sch::Subckt> &subckts;
+	vector<phy::Layout> &macros;
+
+	SchLinker(const phy::Tech &tech, vector<sch::Subckt> &subckts, vector<phy::Layout> &macros) : tech(tech), subckts(subckts), macros(macros) {
 	}
+	~SchLinker() {}
+
+	sch::Implementation find(const sch::Instance &inst) override {
+		int index = -1;
+		for (size_t i = 0; i < subckts.size(); i++) {
+			if (subckts[i].name == inst.type) {
+				index = (int)i;
+				break;
+			}
+		}
+		sch::Implementation result;
+		if (index < 0) {
+			error("", "unable to link '" + inst.type + "'", __FILE__, __LINE__);
+			return result;
+		}
+		
+		result.ckt = &subckts[index];
+		result.macro = &macros[index];
+		if (result.ckt != nullptr and result.macro != nullptr) {
+			result.cktToMacro = result.ckt->mapToLayout(*result.macro);
+		}
+		return result;
+	}
+};
+
+bool spiToGds(std::string path, const phy::Tech &tech, std::vector<sch::Subckt> &subckts, std::vector<phy::Layout> &macros, int index, bool progress, bool debug) {
+	sch::Subckt &ckt = subckts[index];
+	if (ckt.inst.empty() and not ckt.mos.empty()) {
+		if (not cell::import_cell(path, tech, subckts, macros, index, progress, debug)) {
+			// We generated a new cell, save this to the cell library
+			if (not filesystem::exists(path)) {
+				filesystem::create_directory(path);
+			}
+			cell::export_cell(path, tech, subckts[index], macros[index]);
+		}
+		return true;
+	} else if (ckt.mos.empty() and not ckt.inst.empty()) {
+		if (progress) {
+			printf("Placing %s...", ckt.name.c_str());
+			fflush(stdout);
+		}
+		Timer tmr;
+		phy::Layout &macro = macros[index];
+
+		SchLinker linker(tech, subckts, macros);
+		sch::Placer placer(&linker, 0, 0, true, false);
+		placer.load(sch::Implementation(&ckt, &macro));
+		sch::Placement prob(placer, 0);
+		prob.solve();
+		prob.save(macro);
+		if (progress) {
+			printf("[%sDONE%s]\t%gs\n", KGRN, KNRM, tmr.since());
+		}
+		return true;
+	} else if (ckt.mos.empty() and ckt.inst.empty()) {
+		warning("", "found blackbox \"" + ckt.name + "\"", __FILE__, __LINE__);
+		return true;
+	} else {
+		error("", "no support for mixed macro/micro layout in \"" + ckt.name + "\"", __FILE__, __LINE__);
+		return false;
+	}
+	return false;
 }
 
 int main(int argc, char **argv) {
@@ -267,9 +339,6 @@ int main(int argc, char **argv) {
 	string filename = "";
 	string prefix = "";
 	string format = "";
-
-	configuration config;
-	config.set_working_directory(argv[0]);
 
 	tokenizer tokens;
 	bool noCells = false;
@@ -386,34 +455,42 @@ int main(int argc, char **argv) {
 	}
 
 	phy::Tech tech;
-	if (not phy::loadTech(tech, techPath, cellsDir)) {
+	if (not phy::loadTech(&tech, techPath, vector<std::string>())) {
 		cout << "Unable to load techfile \'" + techPath + "\'." << endl;
 		return 1;
 	}
-	sch::Netlist net;
+	std::vector<sch::Subckt> subckts;
+	std::vector<phy::Layout> macros;
 
 	if (format == "spi") {
+		tokenizer tokens;
 		parse_spice::netlist::register_syntax(tokens);
-		config.load(tokens, filename, "");
+
+		tokens.insert(filename, readFile(filename));
 
 		tokens.increment(false);
 		tokens.expect<parse_spice::netlist>();
 		if (tokens.decrement(__FILE__, __LINE__))
 		{
 			parse_spice::netlist syntax(tokens);
-			sch::import_netlist(tech, net, syntax, &tokens);
+			sch::import_netlist(tech, subckts, syntax, &tokens);
 		}
 	}
 
 	if (noCells) {
-		for (int i = 0; i < (int)net.subckts.size(); i++) {
-			net.subckts[i].isCell = true;
+		for (int i = 0; i < (int)subckts.size(); i++) {
+			subckts[i].isCell = true;
 		}
 	}
 
 	if (progress) printf("Break subckts into cells:\n");
 	Timer cellsTmr;
-	net.mapCells(tech, progress);
+	for (size_t i = 0; i < subckts.size(); i++) {
+		macros.push_back(phy::Layout(tech, subckts[i].name));
+	}
+	for (int i = subckts.size()-1; i >= 0; i--) {
+		mapCells(tech, subckts, macros, i, progress);
+	}
 	if (progress) printf("done\t%gs\n\n", cellsTmr.since());
 
 	if (format != "spi") {
@@ -422,20 +499,22 @@ int main(int argc, char **argv) {
 		if (prefix != "") {
 			fout = fopen((prefix+".spi").c_str(), "w");
 		}
-		fprintf(fout, "%s", sch::export_netlist(tech, net).to_string().c_str());
+		fprintf(fout, "%s", sch::export_netlist(tech, subckts).to_string().c_str());
 		fclose(fout);
 	}
 
-	phy::Library lib(tech);
+	cell::update_library(cellsDir, tech, subckts, macros, progress, debug);
 
-	map<int, gdstk::Cell*> cells;
+	for (size_t i = 0; i < subckts.size(); i++) {
+		spiToGds(cellsDir, tech, subckts, macros, i, progress, debug);
+	}
 
 	gdstk::GdsWriter gds = {};
 	gds = gdstk::gdswriter_init((prefix+".gds").c_str(), prefix.c_str(), ((double)tech.dbunit)*1e-6, ((double)tech.dbunit)*1e-6, 4, nullptr, nullptr);
-	
-	loadCells(lib, net, &gds, &cells, progress, debug);
 
-	doPlacement(lib, net, &gds, &cells, progress);
+	for (size_t i = 0; i < macros.size(); i++) {
+		phy::export_layout(gds, macros[i]);
+	}
 
 	gds.close();
 
