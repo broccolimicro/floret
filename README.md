@@ -32,7 +32,7 @@ See [Releases](https://github.com/broccolimicro/floret/releases) for example gen
 
 This will generate a GDS library with a nand gate in `nand.gds` using the sky130 tech file provided in the tech directory.
 ```
-./floret-linux -p -c cells -t tech/sky130.py test/nand.spi
+./floret -p -c cells -t tech/sky130/tech.py test/nand.spi
 ```
 
 ![cell](https://github.com/broccolimicro/floret/assets/8902287/9085fadf-f1ff-4f82-a233-061a880ca9d2)
