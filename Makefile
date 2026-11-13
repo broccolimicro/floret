@@ -87,6 +87,43 @@ build/$(SRCDIR)/%.o: $(SRCDIR)/%.cpp
 	@$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) -MM -MF $(patsubst %.o,%.d,$@) -MT $@ -c $<
 	$(CXX) $(CXXFLAGS) $(INCLUDE_PATHS) -c -o $@ $<
 
+linux: $(TARGET)
+	mkdir -p floret-linux/usr/local/bin
+	cp floret floret-linux/usr/local/bin
+	mkdir -p floret-linux/usr/local/share/
+	cp -r tech floret-linux/usr/local/share
+	mkdir -p floret-linux/DEBIAN
+	mkdir -p debian
+	touch debian/control
+	echo "Package: floret" > floret-linux/DEBIAN/control
+	cat VERSION | sed 's/\([0-9]\+\)\.\([0-9]\+\)\.\([0-9]\+\)/\1.\2-\3/g' | xargs -I{} echo "Version: {}" >> floret-linux/DEBIAN/control
+	echo "Section: base" >> floret-linux/DEBIAN/control
+	echo "Priority: optional" >> floret-linux/DEBIAN/control
+	echo "Architecture: amd64" >> floret-linux/DEBIAN/control
+	dpkg-shlibdeps -O floret-linux/usr/local/bin/floret | sed 's/.*Depends=/Depends: /g' >> floret-linux/DEBIAN/control
+	echo "Maintainer: $(MAINTAINER_NAME) <$(MAINTAINER_EMAIL)>" >> floret-linux/DEBIAN/control
+	echo "Description: Loom" >> floret-linux/DEBIAN/control
+	echo " A programming language for quasi-delay insensitive asynchronous circuits" >> floret-linux/DEBIAN/control
+	dpkg-deb --build --root-owner-group floret-linux
+	rm -rf debian floret-linux
+
+windows: $(TARGET)
+	mkdir -p Floret/bin
+	mkdir -p Floret/share
+	cp floret.exe Floret/bin/floret.exe
+	cp -r tech Floret/share/tech
+	ldd Floret/bin/floret.exe | grep "mingw64" | sed 's/.*\/mingw64/\/mingw64/g' | sed 's/ (.*$$//g' | xargs -I{} cp {} Floret/bin
+	zip -r floret-windows.zip Floret
+	rm -rf Floret
+
+macos: $(TARGET)
+	mkdir -p floret-macos/bin
+	mkdir -p floret-macos/share
+	cp floret floret-macos/bin/floret
+	cp -r tech floret-macos/share/tech
+	tar -czvf floret-macos.tar.gz floret-macos
+
+
 include $(DEPS) $(TEST_DEPS)
 
 clean:
