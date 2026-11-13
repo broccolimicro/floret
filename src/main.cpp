@@ -108,9 +108,9 @@ bool import_cell(std::string path, const phy::Tech &tech, std::vector<sch::Subck
 	phy::Layout macro(tech);
 	if (filesystem::exists(cellPath)) {
 		bool imported = import_layout(macro, cellPath, subckts[index].name);
+		macro.trace();
 		if (progress) {
 			if (imported) {
-				macro.trace();
 				sch::Subckt gdsNet(true);
 				extract(gdsNet, macro, true);
 				gdsNet.cleanDangling(true);
